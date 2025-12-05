@@ -1,0 +1,122 @@
+# Sentinel Hub - Docker Compose Configuration
+# Start with: docker-compose up -d
+
+version: '3.8'
+
+services:
+  # ===================
+  # API Server
+  # ===================
+  api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    ports:
+      - "8080:8080"
+    environment:
+      - DATABASE_URL=postgres://sentinel:${DB_PASSWORD:-sentinel}@db:5432/sentinel?sslmode=disable
+      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      - DOCUMENT_STORAGE=/data/documents
+      - OLLAMA_HOST=http://ollama:11434
+      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      - LOG_LEVEL=info
+    volumes:
+      - document_storage:/data/documents
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8080/health"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 10s
+    networks:
+      - sentinel-network
+
+  # ===================
+  # Document Processor
+  # ===================
+  # Contains all document parsing dependencies
+  # (poppler, tesseract, pandoc, etc.)
+  processor:
+    build:
+      context: ./processor
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgres://sentinel:${DB_PASSWORD:-sentinel}@db:5432/sentinel?sslmode=disable
+      - DOCUMENT_STORAGE=/data/documents
+      - OLLAMA_HOST=http://ollama:11434
+      - WORKER_CONCURRENCY=${WORKER_CONCURRENCY:-4}
+      # Azure AI Foundry Configuration (optional)
+      - AZURE_AI_ENDPOINT=${AZURE_AI_ENDPOINT:-}
+      - AZURE_AI_KEY=${AZURE_AI_KEY:-}
+      - AZURE_AI_DEPLOYMENT=${AZURE_AI_DEPLOYMENT:-claude-opus-4-5}
+      - AZURE_AI_API_VERSION=${AZURE_AI_API_VERSION:-2024-02-01}
+    volumes:
+      - document_storage:/data/documents
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - sentinel-network
+
+  # ===================
+  # Database
+  # ===================
+  db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=sentinel
+      - POSTGRES_PASSWORD=${DB_PASSWORD:-sentinel}
+      - POSTGRES_DB=sentinel
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    ports:
+      - "127.0.0.1:5432:5432"  # Only localhost access
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentinel -d sentinel"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+    networks:
+      - sentinel-network
+
+  # ===================
+  # LLM Service (Ollama)
+  # ===================
+  # Local LLM for knowledge extraction
+  # No data leaves your server
+  ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "127.0.0.1:11434:11434"  # Only localhost access
+    volumes:
+      - ollama_models:/root/.ollama
+    restart: unless-stopped
+    # Uncomment for GPU support:
+    # deploy:
+    #   resources:
+    #     reservations:
+    #       devices:
+    #         - driver: nvidia
+    #           count: 1
+    #           capabilities: [gpu]
+    networks:
+      - sentinel-network
+
+volumes:
+  postgres_data:
+    driver: local
+  document_storage:
+    driver: local
+  ollama_models:
+    driver: local
+
+networks:
+  sentinel-network:
+    name: sentinel-network
+

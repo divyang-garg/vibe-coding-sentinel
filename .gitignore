@@ -1,0 +1,47 @@
+# Sentinel Rules
+.cursor/rules/*.md
+!.cursor/rules/00-constitution.md
+
+# Build artifacts
+sentinel
+sentinel.exe
+*.exe
+main.go
+
+# OS files
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# IDE files
+.vscode/
+.idea/
+*.swp
+*.swo
+*~
+
+# Sentinel runtime files
+.sentinel/history.json
+.sentinel/telemetry-queue.json
+.sentinel/backups/
+.sentinel/cache/
+
+# Test artifacts
+*.test
+*.prof
+coverage.out
+
+# Environment files
+.env
+.env.local
+*.key
+*.pem
+
+# Temporary files
+*.tmp
+*.log
+/tmp/

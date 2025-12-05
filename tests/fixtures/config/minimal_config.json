@@ -1,0 +1,5 @@
+{
+  "scanDirs": [],
+  "excludePaths": ["node_modules", ".git"]
+}
+

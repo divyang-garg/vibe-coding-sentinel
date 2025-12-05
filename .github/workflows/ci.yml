@@ -1,0 +1,177 @@
+name: CI
+
+on:
+  push:
+    branches: [main, develop]
+  pull_request:
+    branches: [main]
+
+jobs:
+  build:
+    name: Build and Test
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      
+      - name: Build Sentinel
+        run: |
+          # Extract Go source from shell script and compile
+          chmod +x synapsevibsentinel.sh
+          ./synapsevibsentinel.sh
+      
+      - name: Verify binary exists
+        run: |
+          test -f ./sentinel || (echo "Binary not found" && exit 1)
+          ./sentinel --help
+      
+      - name: Run self-audit
+        run: |
+          # Run audit on the codebase (excluding test fixtures)
+          ./sentinel audit || true  # Don't fail on audit findings
+      
+      - name: Test status command
+        run: |
+          rm -f /tmp/sentinel.lock  # Clean up lock file
+          ./sentinel status
+      
+      - name: Test init command (dry run)
+        run: |
+          rm -f /tmp/sentinel.lock
+          # Test that help works
+          ./sentinel --help
+
+  test-fixtures:
+    name: Test Security Detection
+    runs-on: ubuntu-latest
+    needs: build
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      
+      - name: Build Sentinel
+        run: ./synapsevibsentinel.sh
+      
+      - name: Test security detection on vulnerable files
+        run: |
+          rm -f /tmp/sentinel.lock
+          
+          # Run audit and capture output
+          ./sentinel audit --output json --output-file audit-report.json || true
+          
+          # Verify we detected issues in security fixtures
+          if [ -f audit-report.json ]; then
+            # Check that we found critical issues
+            CRITICAL_COUNT=$(cat audit-report.json | grep -o '"critical":[0-9]*' | head -1 | cut -d':' -f2)
+            echo "Found $CRITICAL_COUNT critical issues"
+            
+            if [ "$CRITICAL_COUNT" -lt 1 ]; then
+              echo "ERROR: Expected to find critical issues in security fixtures"
+              exit 1
+            fi
+          fi
+      
+      - name: Upload audit report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: audit-report
+          path: audit-report.json
+
+  lint:
+    name: Shell Script Lint
+    runs-on: ubuntu-latest
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Install shellcheck
+        run: sudo apt-get install -y shellcheck
+      
+      - name: Lint shell scripts
+        run: |
+          # Lint the main script (allow some warnings)
+          shellcheck -e SC2034,SC2086 synapsevibsentinel.sh || true
+          
+          # Lint test fixture scripts
+          shellcheck tests/fixtures/projects/shell/scripts/deploy.sh || true
+          shellcheck tests/fixtures/projects/shell/scripts/utils.sh || true
+
+  cross-platform:
+    name: Cross-Platform Build
+    runs-on: ${{ matrix.os }}
+    strategy:
+      matrix:
+        os: [ubuntu-latest, macos-latest, windows-latest]
+      fail-fast: false
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      
+      - name: Build on Unix
+        if: runner.os != 'Windows'
+        run: ./synapsevibsentinel.sh
+      
+      - name: Build on Windows
+        if: runner.os == 'Windows'
+        shell: bash
+        run: |
+          # Extract Go code and compile manually on Windows
+          ./synapsevibsentinel.sh
+      
+      - name: Verify binary
+        run: |
+          ./sentinel --help || ./sentinel.exe --help
+
+  release:
+    name: Release Build
+    runs-on: ubuntu-latest
+    needs: [build, test-fixtures, lint]
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
+    
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+      
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+      
+      - name: Build release binary
+        run: |
+          ./synapsevibsentinel.sh
+          
+          # Create release artifacts directory
+          mkdir -p release
+          cp sentinel release/
+          cp README.md release/
+          
+          # Create version file
+          echo "v24.$(date +%Y%m%d)" > release/VERSION
+      
+      - name: Upload release artifacts
+        uses: actions/upload-artifact@v4
+        with:
+          name: sentinel-release
+          path: release/
+

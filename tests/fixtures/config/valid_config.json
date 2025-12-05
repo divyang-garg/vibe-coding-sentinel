@@ -1,0 +1,29 @@
+{
+  "scanDirs": ["src", "lib", "app"],
+  "excludePaths": [
+    "node_modules",
+    ".git",
+    "vendor",
+    "dist",
+    "build",
+    ".next",
+    "*.test.*",
+    "*_test.go",
+    "*.bak",
+    "*.tmp"
+  ],
+  "severityLevels": {
+    "secrets": "critical",
+    "console.log": "warning",
+    "eval": "critical",
+    "NOLOCK": "critical",
+    "$where": "critical",
+    "simplexml_load_string": "warning"
+  },
+  "customPatterns": {
+    "todo": "TODO:|FIXME:|HACK:",
+    "deprecated": "@deprecated"
+  },
+  "ruleLocations": [".cursor/rules"]
+}
+

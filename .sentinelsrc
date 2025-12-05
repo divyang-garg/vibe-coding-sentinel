@@ -1,0 +1,32 @@
+{
+  "scanDirs": ["."],
+  "excludePaths": [
+    "node_modules",
+    ".git",
+    "vendor",
+    "dist",
+    "build",
+    ".next",
+    "*.test.*",
+    "*_test.go",
+    "*_test.sh",
+    "test_*.sh",
+    "*.bak",
+    "*.tmp",
+    "*.swp",
+    "*.md",
+    ".cursor/rules_backup*",
+    "docs",
+    "tests/fixtures",
+    ".sentinel/*.json"
+  ],
+  "severityLevels": {
+    "secrets": "critical",
+    "console.log": "warning",
+    "NOLOCK": "critical",
+    "$where": "critical",
+    "simplexml_load_string": "warning"
+  },
+  "customPatterns": {},
+  "ruleLocations": [".cursor/rules"]
+}

@@ -1,0 +1,77 @@
+{
+  "items": [
+    {
+      "id": "ki_a1b2c3d4",
+      "type": "business_rule",
+      "title": "Order Cancellation Policy",
+      "content": "Orders can only be cancelled within 24 hours of creation and before the shipping status is set. Premium users have an extended cancellation window of 48 hours.",
+      "source": "sample_requirements.txt",
+      "confidence": 0.92,
+      "status": "approved",
+      "approvedBy": "auto",
+      "approvedAt": "2025-12-04T22:24:04+05:30",
+      "createdAt": "2024-12-04T12:00:00Z"
+    },
+    {
+      "id": "ki_e5f6g7h8",
+      "type": "business_rule",
+      "title": "Refund Processing Time",
+      "content": "Refunds are processed within 5-7 business days after the cancellation is approved.",
+      "source": "sample_requirements.txt",
+      "confidence": 0.88,
+      "status": "approved",
+      "approvedBy": "developer",
+      "approvedAt": "2025-12-04T22:24:16+05:30",
+      "createdAt": "2024-12-04T12:00:00Z"
+    },
+    {
+      "id": "ki_i9j0k1l2",
+      "type": "entity",
+      "title": "User",
+      "content": "Represents a registered customer with the following attributes: id (UUID), email (string, unique), name (string), role (enum: admin, user, premium), created_at (datetime).",
+      "source": "sample_requirements.txt",
+      "confidence": 0.95,
+      "status": "approved",
+      "approvedBy": "auto",
+      "approvedAt": "2025-12-04T22:24:04+05:30",
+      "createdAt": "2024-12-04T12:00:00Z"
+    },
+    {
+      "id": "ki_m3n4o5p6",
+      "type": "entity",
+      "title": "Order",
+      "content": "Represents a customer order with attributes: id (UUID), user_id (UUID, foreign key), status (enum: pending, processing, shipped, delivered, cancelled), total (decimal), created_at (datetime).",
+      "source": "sample_requirements.txt",
+      "confidence": 0.93,
+      "status": "approved",
+      "approvedBy": "auto",
+      "approvedAt": "2025-12-04T22:24:04+05:30",
+      "createdAt": "2024-12-04T12:00:00Z"
+    },
+    {
+      "id": "ki_q7r8s9t0",
+      "type": "glossary",
+      "title": "Premium User",
+      "content": "A user with an active premium subscription that provides additional benefits such as extended cancellation windows and priority support.",
+      "source": "sample_requirements.txt",
+      "confidence": 0.91,
+      "status": "approved",
+      "approvedBy": "auto",
+      "approvedAt": "2025-12-04T22:24:04+05:30",
+      "createdAt": "2024-12-04T12:00:00Z"
+    },
+    {
+      "id": "ki_u1v2w3x4",
+      "type": "glossary",
+      "title": "SKU",
+      "content": "Stock Keeping Unit - A unique identifier for each distinct product and service that can be purchased.",
+      "source": "sample_requirements.txt",
+      "confidence": 0.97,
+      "status": "approved",
+      "approvedBy": "auto",
+      "approvedAt": "2025-12-04T22:24:04+05:30",
+      "createdAt": "2024-12-04T12:00:00Z"
+    }
+  ],
+  "lastUpdated": "2025-12-04T22:24:16+05:30",
+  "version": 1

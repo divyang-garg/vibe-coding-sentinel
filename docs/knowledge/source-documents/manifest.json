@@ -1,0 +1,15 @@
+{
+  "documents": [
+    {
+      "path": "Vibecodingguide.docx",
+      "name": "Vibecodingguide.docx",
+      "type": "docx",
+      "size": 21897,
+      "parsedAt": "2025-12-04T18:08:06+05:30",
+      "textPath": "docs/knowledge/extracted/Vibecodingguide.txt",
+      "checksum": "504b030414000600",
+      "status": "parsed"
+    }
+  ],
+  "lastUpdate": "2025-12-04T18:08:06+05:30"
+}

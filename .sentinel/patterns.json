@@ -1,0 +1,42 @@
+{
+  "language": "Shell",
+  "framework": "",
+  "naming": {
+    "functions": "snake_case",
+    "variables": "camelCase",
+    "files": "camelCase",
+    "classes": "PascalCase",
+    "constants": "SCREAMING_SNAKE_CASE",
+    "confidence": 0.95,
+    "samples": 57
+  },
+  "imports": {
+    "style": "absolute",
+    "prefix": "@/",
+    "grouping": [
+      "external",
+      "internal",
+      "relative"
+    ],
+    "extensions": false,
+    "confidence": 0.5
+  },
+  "structure": {
+    "sourceRoot": "",
+    "testPattern": "tests/",
+    "componentPattern": "",
+    "servicePattern": "",
+    "utilPattern": "",
+    "folderMap": {}
+  },
+  "codeStyle": {
+    "indentStyle": "spaces",
+    "indentSize": 2,
+    "quoteStyle": "single",
+    "semicolons": true,
+    "trailingComma": ""
+  },
+  "learnedAt": "2025-12-04T17:43:58+05:30",
+  "fileCount": 16,
+  "version": 1
+}

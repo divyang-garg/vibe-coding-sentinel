@@ -1,0 +1,31 @@
+name: Sentinel Gate
+on: [push, pull_request]
+jobs:
+  audit:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Setup Go
+        uses: actions/setup-go@v4
+        with:
+          go-version: '1.21'
+      - name: Cache Sentinel Binary
+        id: cache
+        uses: actions/cache@v3
+        with:
+          path: ./sentinel
+          key: sentinel-${{ hashFiles('synapsevibsentinel.sh') }}
+      - name: Build Sentinel
+        if: steps.cache.outputs.cache-hit != 'true'
+        run: |
+          chmod +x synapsevibsentinel.sh
+          ./synapsevibsentinel.sh
+      - name: Run Sentinel Audit
+        run: |
+          if [ -f ./sentinel ]; then
+            chmod +x ./sentinel
+            ./sentinel audit
+          else
+            echo "❌ Sentinel binary not found. Build may have failed."
+            exit 1
+          fi

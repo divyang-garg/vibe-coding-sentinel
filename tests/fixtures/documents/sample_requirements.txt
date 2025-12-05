@@ -1,0 +1,61 @@
+# Project Requirements Document
+
+## Overview
+This document outlines the requirements for the Sample Project.
+
+## Functional Requirements
+
+### FR-001: User Authentication
+- Users must be able to login with email and password
+- Support for OAuth 2.0 (Google, GitHub)
+- Session timeout after 30 minutes of inactivity
+
+### FR-002: User Dashboard
+- Display user profile information
+- Show recent activity
+- List pending tasks
+
+### FR-003: Order Management
+- Create new orders
+- Edit existing orders (within 24 hours)
+- Cancel orders (before shipping)
+
+## Non-Functional Requirements
+
+### NFR-001: Performance
+- Page load time < 3 seconds
+- API response time < 500ms
+- Support 1000 concurrent users
+
+### NFR-002: Security
+- All data encrypted in transit (TLS 1.3)
+- Passwords hashed with bcrypt
+- SQL injection prevention
+
+## Business Rules
+
+### BR-001: Order Cancellation
+Orders can only be cancelled within 24 hours of creation and before shipping status.
+
+### BR-002: Premium Users
+Premium users get extended cancellation window of 48 hours.
+
+### BR-003: Refund Policy
+Refunds are processed within 5-7 business days.
+
+## Entities
+
+### User
+- id: UUID
+- email: string
+- name: string
+- role: enum (admin, user, premium)
+- created_at: datetime
+
+### Order
+- id: UUID
+- user_id: UUID
+- status: enum (pending, processing, shipped, delivered, cancelled)
+- total: decimal
+- created_at: datetime
+
