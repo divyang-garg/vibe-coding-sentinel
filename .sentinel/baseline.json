@@ -1,0 +1,12 @@
+{
+  "entries": [
+    {
+      "file": "hub/api/security_analyzer.go",
+      "line": 140,
+      "pattern": "(?i)(SELECT|INSERT|UPDATE|DELETE).*\\+.*[\"']",
+      "message": "Potential SQL injection (string concatenation)",
+      "severity": "critical",
+      "reason": "This is a security rule pattern definition, not actual vulnerable code. It is used to detect SQL injection vulnerabilities in analyzed code."
+    }
+  ]
+}

@@ -28,5 +28,21 @@
     "simplexml_load_string": "warning"
   },
   "customPatterns": {},
-  "ruleLocations": [".cursor/rules"]
+  "ruleLocations": [".cursor/rules"],
+  "fileSize": {
+    "thresholds": {
+      "warning": 300,
+      "critical": 500,
+      "maximum": 1000
+    },
+    "exceptions": [
+      "synapsevibsentinel.sh",
+      "hub/api/main.go",
+      "hub/api/security_analyzer.go",
+      "hub/api/ast_analyzer.go",
+      "hub/api/architecture_analyzer.go",
+      "hub/processor/main.go",
+      "tests/run_all_tests.sh"
+    ]
+  }
 }
