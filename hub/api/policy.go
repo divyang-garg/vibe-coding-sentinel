@@ -25,18 +25,18 @@ type HookPolicy struct {
 		FileSize      bool `json:"file_size"`
 	} `json:"audit_config"`
 	OverridePolicy struct {
-		CriticalRequiresApproval     bool `json:"critical_requires_approval"`
-		MaxOverridesPerDay           int  `json:"max_overrides_per_day"`
+		CriticalRequiresApproval      bool `json:"critical_requires_approval"`
+		MaxOverridesPerDay            int  `json:"max_overrides_per_day"`
 		OverrideRequiresJustification bool `json:"override_requires_justification"`
 	} `json:"override_policy"`
 	BaselinePolicy struct {
-		RequiresReview      bool `json:"requires_review"`
-		AutoApproveAfterDays int `json:"auto_approve_after_days"`
-		MaxBaselinesPerWeek  int `json:"max_baselines_per_week"`
+		RequiresReview       bool `json:"requires_review"`
+		AutoApproveAfterDays int  `json:"auto_approve_after_days"`
+		MaxBaselinesPerWeek  int  `json:"max_baselines_per_week"`
 	} `json:"baseline_policy"`
 	ExceptionPolicy struct {
-		RequiresApproval        bool `json:"requires_approval"`
-		TemporaryExceptionDays  int  `json:"temporary_exception_days"`
+		RequiresApproval       bool `json:"requires_approval"`
+		TemporaryExceptionDays int  `json:"temporary_exception_days"`
 	} `json:"exception_policy"`
 }
 
@@ -91,7 +91,7 @@ func createOrUpdateHookPolicyHandler(w http.ResponseWriter, r *http.Request) {
 
 	// Get org_id from query first
 	orgID := r.URL.Query().Get("org_id")
-	
+
 	// Read body once into bytes
 	bodyBytes, err := io.ReadAll(r.Body)
 	if err != nil {
@@ -162,9 +162,9 @@ func createOrUpdateHookPolicyHandler(w http.ResponseWriter, r *http.Request) {
 
 		w.Header().Set("Content-Type", "application/json")
 		json.NewEncoder(w).Encode(map[string]interface{}{
-			"id":        policyID,
-			"status":    "created",
-			"message":   "Hook policy created",
+			"id":         policyID,
+			"status":     "created",
+			"message":    "Hook policy created",
 			"updated_at": time.Now().Format(time.RFC3339),
 		})
 		return
@@ -189,10 +189,9 @@ func createOrUpdateHookPolicyHandler(w http.ResponseWriter, r *http.Request) {
 
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(map[string]interface{}{
-		"id":        existingID,
-		"status":    "updated",
-		"message":   "Hook policy updated",
+		"id":         existingID,
+		"status":     "updated",
+		"message":    "Hook policy updated",
 		"updated_at": time.Now().Format(time.RFC3339),
 	})
 }
-

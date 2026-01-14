@@ -1,0 +1,39 @@
+{
+  "tasks": [
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440000",
+      "title": "Implement user authentication",
+      "status": "in_progress",
+      "priority": "high",
+      "verification_confidence": 0.75
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440001",
+      "title": "Add error handling",
+      "status": "pending",
+      "priority": "medium",
+      "verification_confidence": 0.0
+    },
+    {
+      "id": "550e8400-e29b-41d4-a716-446655440002",
+      "title": "Write unit tests",
+      "status": "completed",
+      "priority": "low",
+      "verification_confidence": 0.95
+    }
+  ],
+  "total": 3,
+  "limit": 50,
+  "offset": 0,
+  "has_next": false,
+  "has_previous": false
+}
+
+
+
+
+
+
+
+
+

@@ -50,7 +50,13 @@ UNIT_BUSINESS_RULES_RESULT=0
 UNIT_DETECTION_METRICS_RESULT=0
 UNIT_SECURITY_ANALYSIS_RESULT=0
 UNIT_FILE_SIZE_RESULT=0
+UNIT_CACHE_RACE_RESULT=0
+UNIT_RETRY_LOGIC_RESULT=0
+UNIT_DB_TIMEOUT_RESULT=0
+UNIT_ERROR_RECOVERY_RESULT=0
 INTEGRATION_RESULT=0
+INTEGRATION_HOOK_ERROR_RESULT=0
+INTEGRATION_CACHE_INVALIDATION_RESULT=0
 
 # Run scanning unit tests
 echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
@@ -276,6 +282,70 @@ fi
 
 echo ""
 
+# Run Cache Race Condition unit tests
+echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
+echo -e "${BLUE}Running Cache Race Condition Unit Tests...${NC}"
+echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
+
+rm -f /tmp/sentinel.lock
+if bash tests/unit/cache_race_condition_test.sh; then
+    UNIT_CACHE_RACE_RESULT=0
+    echo -e "${GREEN}Cache Race Condition tests passed!${NC}"
+else
+    UNIT_CACHE_RACE_RESULT=1
+    echo -e "${RED}Cache Race Condition tests failed!${NC}"
+fi
+
+echo ""
+
+# Run Retry Logic unit tests
+echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
+echo -e "${BLUE}Running Retry Logic Unit Tests...${NC}"
+echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
+
+rm -f /tmp/sentinel.lock
+if bash tests/unit/retry_logic_test.sh; then
+    UNIT_RETRY_LOGIC_RESULT=0
+    echo -e "${GREEN}Retry Logic tests passed!${NC}"
+else
+    UNIT_RETRY_LOGIC_RESULT=1
+    echo -e "${RED}Retry Logic tests failed!${NC}"
+fi
+
+echo ""
+
+# Run Database Timeout unit tests
+echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
+echo -e "${BLUE}Running Database Timeout Unit Tests...${NC}"
+echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
+
+rm -f /tmp/sentinel.lock
+if bash tests/unit/db_timeout_test.sh; then
+    UNIT_DB_TIMEOUT_RESULT=0
+    echo -e "${GREEN}Database Timeout tests passed!${NC}"
+else
+    UNIT_DB_TIMEOUT_RESULT=1
+    echo -e "${RED}Database Timeout tests failed!${NC}"
+fi
+
+echo ""
+
+# Run Error Recovery unit tests
+echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
+echo -e "${BLUE}Running Error Recovery Unit Tests...${NC}"
+echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
+
+rm -f /tmp/sentinel.lock
+if bash tests/unit/error_recovery_test.sh; then
+    UNIT_ERROR_RECOVERY_RESULT=0
+    echo -e "${GREEN}Error Recovery tests passed!${NC}"
+else
+    UNIT_ERROR_RECOVERY_RESULT=1
+    echo -e "${RED}Error Recovery tests failed!${NC}"
+fi
+
+echo ""
+
 # Run integration tests
 echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
 echo -e "${BLUE}Running Integration Tests...${NC}"
@@ -288,6 +358,38 @@ if ./tests/integration/workflow_test.sh; then
 else
     INTEGRATION_RESULT=1
     echo -e "${RED}Integration tests failed!${NC}"
+fi
+
+echo ""
+
+# Run Hook Error Handling integration tests
+echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
+echo -e "${BLUE}Running Hook Error Handling Integration Tests...${NC}"
+echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
+
+rm -f /tmp/sentinel.lock
+if bash tests/integration/hook_error_handling_test.sh; then
+    INTEGRATION_HOOK_ERROR_RESULT=0
+    echo -e "${GREEN}Hook Error Handling tests passed!${NC}"
+else
+    INTEGRATION_HOOK_ERROR_RESULT=1
+    echo -e "${RED}Hook Error Handling tests failed!${NC}"
+fi
+
+echo ""
+
+# Run Cache Invalidation integration tests
+echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
+echo -e "${BLUE}Running Cache Invalidation Integration Tests...${NC}"
+echo -e "${BLUE}════════════════════════════════════════════════════════════${NC}"
+
+rm -f /tmp/sentinel.lock
+if bash tests/integration/cache_invalidation_test.sh; then
+    INTEGRATION_CACHE_INVALIDATION_RESULT=0
+    echo -e "${GREEN}Cache Invalidation tests passed!${NC}"
+else
+    INTEGRATION_CACHE_INVALIDATION_RESULT=1
+    echo -e "${RED}Cache Invalidation tests failed!${NC}"
 fi
 
 echo ""
@@ -388,16 +490,107 @@ else
     echo -e "File Size Management Tests: ${RED}✗ FAILED${NC}"
 fi
 
+if [[ "${UNIT_CACHE_RACE_RESULT}" -eq 0 ]]; then
+    echo -e "Cache Race Condition Tests: ${GREEN}✓ PASSED${NC}"
+else
+    echo -e "Cache Race Condition Tests: ${RED}✗ FAILED${NC}"
+fi
+
+if [[ "${UNIT_RETRY_LOGIC_RESULT}" -eq 0 ]]; then
+    echo -e "Retry Logic Tests: ${GREEN}✓ PASSED${NC}"
+else
+    echo -e "Retry Logic Tests: ${RED}✗ FAILED${NC}"
+fi
+
+if [[ "${UNIT_DB_TIMEOUT_RESULT}" -eq 0 ]]; then
+    echo -e "Database Timeout Tests: ${GREEN}✓ PASSED${NC}"
+else
+    echo -e "Database Timeout Tests: ${RED}✗ FAILED${NC}"
+fi
+
+if [[ "${UNIT_ERROR_RECOVERY_RESULT}" -eq 0 ]]; then
+    echo -e "Error Recovery Tests: ${GREEN}✓ PASSED${NC}"
+else
+    echo -e "Error Recovery Tests: ${RED}✗ FAILED${NC}"
+fi
+
 if [[ "${INTEGRATION_RESULT}" -eq 0 ]]; then
     echo -e "Integration Tests: ${GREEN}✓ PASSED${NC}"
 else
     echo -e "Integration Tests: ${RED}✗ FAILED${NC}"
 fi
 
+if [[ "${INTEGRATION_HOOK_ERROR_RESULT}" -eq 0 ]]; then
+    echo -e "Hook Error Handling Tests: ${GREEN}✓ PASSED${NC}"
+else
+    echo -e "Hook Error Handling Tests: ${RED}✗ FAILED${NC}"
+fi
+
+if [[ "${INTEGRATION_CACHE_INVALIDATION_RESULT}" -eq 0 ]]; then
+    echo -e "Cache Invalidation Tests: ${GREEN}✓ PASSED${NC}"
+else
+    echo -e "Cache Invalidation Tests: ${RED}✗ FAILED${NC}"
+fi
+
+# Phase 10: Test Enforcement System Tests
+echo ""
+echo -e "${YELLOW}Phase 10: Test Enforcement System Tests${NC}"
+echo ""
+
+echo "Running Mutation Engine Tests..."
+UNIT_MUTATION_ENGINE_RESULT=0
+if ! bash tests/unit/mutation_engine_test.sh; then
+    UNIT_MUTATION_ENGINE_RESULT=1
+fi
+
+echo "Running Test Sandbox Tests..."
+UNIT_TEST_SANDBOX_RESULT=0
+if ! bash tests/unit/test_sandbox_test.sh; then
+    UNIT_TEST_SANDBOX_RESULT=1
+fi
+
+echo "Running Agent Test Commands Tests..."
+UNIT_TEST_AGENT_COMMANDS_RESULT=0
+if ! bash tests/unit/test_agent_commands_test.sh; then
+    UNIT_TEST_AGENT_COMMANDS_RESULT=1
+fi
+
+echo "Running Test Enforcement E2E Integration Tests..."
+INTEGRATION_TEST_ENFORCEMENT_RESULT=0
+if ! bash tests/integration/test_enforcement_e2e_test.sh; then
+    INTEGRATION_TEST_ENFORCEMENT_RESULT=1
+fi
+
+echo ""
+echo -e "${YELLOW}Phase 10 Test Results:${NC}"
+if [[ "${UNIT_MUTATION_ENGINE_RESULT}" -eq 0 ]]; then
+    echo -e "Mutation Engine Tests: ${GREEN}✓ PASSED${NC}"
+else
+    echo -e "Mutation Engine Tests: ${RED}✗ FAILED${NC}"
+fi
+
+if [[ "${UNIT_TEST_SANDBOX_RESULT}" -eq 0 ]]; then
+    echo -e "Test Sandbox Tests: ${GREEN}✓ PASSED${NC}"
+else
+    echo -e "Test Sandbox Tests: ${RED}✗ FAILED${NC}"
+fi
+
+if [[ "${UNIT_TEST_AGENT_COMMANDS_RESULT}" -eq 0 ]]; then
+    echo -e "Agent Test Commands Tests: ${GREEN}✓ PASSED${NC}"
+else
+    echo -e "Agent Test Commands Tests: ${RED}✗ FAILED${NC}"
+fi
+
+if [[ "${INTEGRATION_TEST_ENFORCEMENT_RESULT}" -eq 0 ]]; then
+    echo -e "Test Enforcement E2E Tests: ${GREEN}✓ PASSED${NC}"
+else
+    echo -e "Test Enforcement E2E Tests: ${RED}✗ FAILED${NC}"
+fi
+
 echo ""
 
 # Overall result
-if [[ "${UNIT_SCANNING_RESULT}" -eq 0 && "${UNIT_PATTERNS_RESULT}" -eq 0 && "${UNIT_FIX_RESULT}" -eq 0 && "${UNIT_INGEST_RESULT}" -eq 0 && "${UNIT_KNOWLEDGE_RESULT}" -eq 0 && "${UNIT_TELEMETRY_RESULT}" -eq 0 && "${UNIT_AGENT_TELEMETRY_RESULT}" -eq 0 && "${UNIT_HUB_API_RESULT}" -eq 0 && "${UNIT_MCP_RESULT}" -eq 0 && "${UNIT_AST_ANALYSIS_RESULT}" -eq 0 && "${UNIT_VIBE_ACCURACY_RESULT}" -eq 0 && "${UNIT_VIBE_COMPARISON_RESULT}" -eq 0 && "${UNIT_VIBE_FALLBACK_RESULT}" -eq 0 && "${UNIT_VIBE_DEDUPLICATION_RESULT}" -eq 0 && "${UNIT_CROSS_FILE_ANALYSIS_RESULT}" -eq 0 && "${UNIT_SECURITY_RESULT}" -eq 0 && "${UNIT_BUSINESS_RULES_RESULT}" -eq 0 && "${UNIT_DETECTION_METRICS_RESULT}" -eq 0 && "${UNIT_FILE_SIZE_RESULT}" -eq 0 && "${INTEGRATION_RESULT}" -eq 0 ]]; then
+if [[ "${UNIT_SCANNING_RESULT}" -eq 0 && "${UNIT_PATTERNS_RESULT}" -eq 0 && "${UNIT_FIX_RESULT}" -eq 0 && "${UNIT_INGEST_RESULT}" -eq 0 && "${UNIT_KNOWLEDGE_RESULT}" -eq 0 && "${UNIT_TELEMETRY_RESULT}" -eq 0 && "${UNIT_AGENT_TELEMETRY_RESULT}" -eq 0 && "${UNIT_HUB_API_RESULT}" -eq 0 && "${UNIT_MCP_RESULT}" -eq 0 && "${UNIT_AST_ANALYSIS_RESULT}" -eq 0 && "${UNIT_VIBE_ACCURACY_RESULT}" -eq 0 && "${UNIT_VIBE_COMPARISON_RESULT}" -eq 0 && "${UNIT_VIBE_FALLBACK_RESULT}" -eq 0 && "${UNIT_VIBE_DEDUPLICATION_RESULT}" -eq 0 && "${UNIT_CROSS_FILE_ANALYSIS_RESULT}" -eq 0 && "${UNIT_SECURITY_RESULT}" -eq 0 && "${UNIT_BUSINESS_RULES_RESULT}" -eq 0 && "${UNIT_DETECTION_METRICS_RESULT}" -eq 0 && "${UNIT_FILE_SIZE_RESULT}" -eq 0 && "${UNIT_CACHE_RACE_RESULT}" -eq 0 && "${UNIT_RETRY_LOGIC_RESULT}" -eq 0 && "${UNIT_DB_TIMEOUT_RESULT}" -eq 0 && "${UNIT_ERROR_RECOVERY_RESULT}" -eq 0 && "${INTEGRATION_RESULT}" -eq 0 && "${INTEGRATION_HOOK_ERROR_RESULT}" -eq 0 && "${INTEGRATION_CACHE_INVALIDATION_RESULT}" -eq 0 && "${UNIT_MUTATION_ENGINE_RESULT}" -eq 0 && "${UNIT_TEST_SANDBOX_RESULT}" -eq 0 && "${UNIT_TEST_AGENT_COMMANDS_RESULT}" -eq 0 && "${INTEGRATION_TEST_ENFORCEMENT_RESULT}" -eq 0 ]]; then
     echo -e "${GREEN}╔════════════════════════════════════════════════════════════╗${NC}"
     echo -e "${GREEN}║           ALL TESTS PASSED!                                ║${NC}"
     echo -e "${GREEN}╚════════════════════════════════════════════════════════════╝${NC}"

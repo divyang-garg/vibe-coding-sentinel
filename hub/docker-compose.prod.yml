@@ -1,0 +1,40 @@
+version: '3.8'
+
+# Production overrides - extends docker-compose.yml
+# Usage: docker-compose -f docker-compose.yml -f docker-compose.prod.yml up
+#
+# SECURITY: This file enforces production-specific security settings
+# - Removes port exposure (use reverse proxy)
+# - Adds resource limits
+# - Enforces production environment
+
+services:
+  api:
+    environment:
+      # Override to enforce production settings
+      - ENVIRONMENT=production
+    # Remove port exposure (use reverse proxy)
+    ports: []
+    # Add resource limits
+    deploy:
+      resources:
+        limits:
+          cpus: '2'
+          memory: 2G
+        reservations:
+          cpus: '1'
+          memory: 1G
+
+  db:
+    # Note: SSL certificates must be configured separately
+    # For production, use managed database service or configure SSL certificates
+    # command: postgres -c ssl=on -c ssl_cert_file=/var/lib/postgresql/server.crt -c ssl_key_file=/var/lib/postgresql/server.key
+    # volumes:
+    #   - ./ssl/server.crt:/var/lib/postgresql/server.crt:ro
+    #   - ./ssl/server.key:/var/lib/postgresql/server.key:ro
+
+
+
+
+
+

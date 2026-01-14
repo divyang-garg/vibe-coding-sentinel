@@ -1,0 +1,269 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Sentinel Hub - LLM Configuration</title>
+    <link rel="stylesheet" href="css/styles.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>Sentinel Hub - LLM Configuration</h1>
+            <nav>
+                <button class="nav-btn active" data-tab="config">Configuration</button>
+                <button class="nav-btn" data-tab="usage">Usage Dashboard</button>
+                <button class="nav-btn" data-tab="optimization">Cost Optimization</button>
+                <button class="nav-btn" data-tab="organization">Organization</button>
+            </nav>
+        </header>
+
+        <main>
+            <!-- Configuration Tab -->
+            <section id="config-section" class="tab-content active">
+                <h2>LLM Provider Configuration</h2>
+                
+                <div class="config-form-container">
+                    <form id="config-form">
+                        <div class="form-group">
+                            <label for="provider">Provider *</label>
+                            <select id="provider" name="provider" required>
+                                <option value="">Select a provider</option>
+                            </select>
+                            <span class="error-message" id="provider-error"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="model">Model *</label>
+                            <select id="model" name="model" required disabled>
+                                <option value="">Select a provider first</option>
+                            </select>
+                            <span class="error-message" id="model-error"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label for="api-key">API Key *</label>
+                            <div class="input-with-toggle">
+                                <input type="password" id="api-key" name="api_key" required>
+                                <button type="button" class="toggle-password" data-target="api-key">Show</button>
+                            </div>
+                            <span class="error-message" id="api-key-error"></span>
+                        </div>
+
+                        <div class="form-group">
+                            <label>Cost Optimization Settings</label>
+                            
+                            <div class="checkbox-group">
+                                <label>
+                                    <input type="checkbox" id="use-cache" name="use_cache" checked>
+                                    Enable caching
+                                </label>
+                            </div>
+
+                            <div class="form-group-inline">
+                                <label for="cache-ttl">Cache TTL (hours)</label>
+                                <input type="number" id="cache-ttl" name="cache_ttl_hours" value="24" min="1" max="8760">
+                            </div>
+
+                            <div class="checkbox-group">
+                                <label>
+                                    <input type="checkbox" id="progressive-depth" name="progressive_depth" checked>
+                                    Enable progressive depth analysis
+                                </label>
+                            </div>
+
+                            <div class="form-group-inline">
+                                <label for="max-cost">Max Cost Per Request ($)</label>
+                                <input type="number" id="max-cost" name="max_cost_per_request" step="0.01" min="0">
+                            </div>
+                        </div>
+
+                        <div class="form-actions">
+                            <button type="button" id="test-connection" class="btn-secondary">Test Connection</button>
+                            <button type="submit" class="btn-primary">Save Configuration</button>
+                            <button type="button" id="cancel-edit" class="btn-secondary" style="display: none;">Cancel</button>
+                        </div>
+                    </form>
+                </div>
+
+                <div class="config-list-container">
+                    <h3>Existing Configurations</h3>
+                    <div id="config-list">
+                        <p class="loading">Loading configurations...</p>
+                    </div>
+                </div>
+            </section>
+
+            <!-- Usage Dashboard Tab -->
+            <section id="usage-section" class="tab-content">
+                <h2>Usage Dashboard</h2>
+
+                <div class="date-filter">
+                    <label for="period-select">Period:</label>
+                    <select id="period-select">
+                        <option value="daily">Last 24 Hours</option>
+                        <option value="weekly">Last 7 Days</option>
+                        <option value="monthly" selected>Last 30 Days</option>
+                        <option value="yearly">Last Year</option>
+                    </select>
+                    <button id="refresh-usage" class="btn-secondary">Refresh</button>
+                </div>
+
+                <div class="usage-overview">
+                    <div class="stat-card">
+                        <h3>Total Tokens</h3>
+                        <p id="total-tokens" class="stat-value">0</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total Cost</h3>
+                        <p id="total-cost" class="stat-value">$0.00</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Average Cost</h3>
+                        <p id="average-cost" class="stat-value">$0.00</p>
+                    </div>
+                    <div class="stat-card">
+                        <h3>Total Requests</h3>
+                        <p id="total-requests" class="stat-value">0</p>
+                    </div>
+                </div>
+
+                <div class="charts-container">
+                    <div class="chart-card">
+                        <h3>Cost by Provider</h3>
+                        <canvas id="provider-chart"></canvas>
+                    </div>
+                    <div class="chart-card">
+                        <h3>Cost by Model</h3>
+                        <canvas id="model-chart"></canvas>
+                    </div>
+                </div>
+
+                <div class="chart-card full-width">
+                    <h3>Cost Trends</h3>
+                    <canvas id="trends-chart"></canvas>
+                </div>
+
+                <div class="usage-table-container">
+                    <h3>Usage Details</h3>
+                    <div class="table-controls">
+                        <button id="export-csv" class="btn-secondary">Export CSV</button>
+                        <button id="export-json" class="btn-secondary">Export JSON</button>
+                    </div>
+                    <table id="usage-table">
+                        <thead>
+                            <tr>
+                                <th>Date</th>
+                                <th>Provider</th>
+                                <th>Model</th>
+                                <th>Tokens</th>
+                                <th>Cost</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <tr>
+                                <td colspan="5" class="loading">Loading usage data...</td>
+                            </tr>
+                        </tbody>
+                    </table>
+                </div>
+            </section>
+
+            <!-- Cost Optimization Tab -->
+            <section id="optimization-section" class="tab-content">
+                <h2>Cost Optimization Metrics</h2>
+
+                <div class="date-filter">
+                    <label for="optimization-period-select">Period:</label>
+                    <select id="optimization-period-select">
+                        <option value="daily">Daily</option>
+                        <option value="weekly">Weekly</option>
+                        <option value="monthly" selected>Monthly</option>
+                    </select>
+                    <button id="refresh-optimization" class="btn-secondary">Refresh</button>
+                </div>
+
+                <!-- Cache Metrics Section -->
+                <div class="metrics-section">
+                    <h3>Cache Performance</h3>
+                    <div class="metrics-grid">
+                        <div class="metric-card">
+                            <div class="metric-label">Cache Hit Rate</div>
+                            <div class="metric-value" id="cache-hit-rate">-</div>
+                            <div class="metric-description">Percentage of requests served from cache</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Total Cache Hits</div>
+                            <div class="metric-value" id="cache-hits">-</div>
+                            <div class="metric-description">Number of successful cache hits</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Total Cache Misses</div>
+                            <div class="metric-value" id="cache-misses">-</div>
+                            <div class="metric-description">Number of cache misses</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Cache Size</div>
+                            <div class="metric-value" id="cache-size">-</div>
+                            <div class="metric-description">Number of cached entries</div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="cache-hit-rate-chart"></canvas>
+                    </div>
+                </div>
+
+                <!-- Cost Savings Section -->
+                <div class="metrics-section">
+                    <h3>Cost Savings</h3>
+                    <div class="metrics-grid">
+                        <div class="metric-card highlight">
+                            <div class="metric-label">Total Cost</div>
+                            <div class="metric-value" id="opt-total-cost">-</div>
+                            <div class="metric-description">Total LLM costs for period</div>
+                        </div>
+                        <div class="metric-card highlight">
+                            <div class="metric-label">Cost Savings</div>
+                            <div class="metric-value savings" id="opt-cost-savings">-</div>
+                            <div class="metric-description">Estimated savings from optimization</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Savings Percentage</div>
+                            <div class="metric-value" id="opt-savings-percentage">-</div>
+                            <div class="metric-description">Percentage of cost saved</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Cache Hit Savings</div>
+                            <div class="metric-value savings" id="opt-cache-hit-savings">-</div>
+                            <div class="metric-description">Savings from cache hits</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Model Selection Savings</div>
+                            <div class="metric-value savings" id="opt-model-selection-savings">-</div>
+                            <div class="metric-description">Savings from smart model selection</div>
+                        </div>
+                        <div class="metric-card">
+                            <div class="metric-label">Total Requests</div>
+                            <div class="metric-value" id="opt-total-requests">-</div>
+                            <div class="metric-description">Total LLM requests in period</div>
+                        </div>
+                    </div>
+                    <div class="chart-container">
+                        <canvas id="cost-savings-chart"></canvas>
+                    </div>
+                </div>
+            </section>
+        </main>
+
+        <div id="toast-container"></div>
+    </div>
+
+    <script src="js/api.js"></script>
+    <script src="js/config.js"></script>
+    <script src="js/usage.js"></script>
+    <script src="js/optimization.js"></script>
+    <script src="js/main.js"></script>
+</body>
+</html>
+

@@ -1,0 +1,28 @@
+{
+  "project": {
+    "name": "Sentinel Test Project",
+    "version": "1.0.0",
+    "description": "A test project for Sentinel document processing"
+  },
+  "settings": {
+    "security": {
+      "enabled": true,
+      "rules": ["secrets", "injection", "validation"]
+    },
+    "patterns": {
+      "languages": ["javascript", "python", "go"],
+      "frameworks": ["react", "express", "fastapi"]
+    },
+    "autoFix": {
+      "safeMode": true,
+      "backupEnabled": true
+    }
+  },
+  "team": {
+    "members": [
+      {"name": "Alice", "role": "Lead Developer"},
+      {"name": "Bob", "role": "Security Engineer"},
+      {"name": "Charlie", "role": "DevOps Engineer"}
+    ]
+  }
+}

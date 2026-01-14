@@ -11,17 +11,29 @@ services:
     build:
       context: ./api
       dockerfile: Dockerfile
+    # SECURITY: Environment variables loaded from .env file
+    # Copy .env.example to .env and fill in actual values
+    # .env file is gitignored and should never be committed
+    env_file:
+      - .env
     ports:
       - "8080:8080"
     environment:
-      - DATABASE_URL=postgres://sentinel:${DB_PASSWORD:-sentinel}@db:5432/sentinel?sslmode=disable
-      - JWT_SECRET=${JWT_SECRET:-change-me-in-production}
+      # SECURITY: All environment variables MUST be set via .env file
+      # See .env.example for required variables
+      # NEVER use default values in production
+      - DATABASE_URL=postgres://sentinel:${DB_PASSWORD}@db:5432/sentinel?sslmode=require
+      - JWT_SECRET=${JWT_SECRET}
       - DOCUMENT_STORAGE=/data/documents
+      - BINARY_STORAGE=/data/binaries
+      - RULES_STORAGE=/data/rules
       - OLLAMA_HOST=http://ollama:11434
-      - CORS_ORIGIN=${CORS_ORIGIN:-*}
+      - CORS_ORIGIN=${CORS_ORIGIN}
       - LOG_LEVEL=info
     volumes:
       - document_storage:/data/documents
+      - binary_storage:/data/binaries
+      - rules_storage:/data/rules
     depends_on:
       db:
         condition: service_healthy
@@ -44,8 +56,11 @@ services:
     build:
       context: ./processor
       dockerfile: Dockerfile
+    # SECURITY: Environment variables loaded from .env file
+    env_file:
+      - .env
     environment:
-      - DATABASE_URL=postgres://sentinel:${DB_PASSWORD:-sentinel}@db:5432/sentinel?sslmode=disable
+      - DATABASE_URL=postgres://sentinel:${DB_PASSWORD}@db:5432/sentinel?sslmode=require
       - DOCUMENT_STORAGE=/data/documents
       - OLLAMA_HOST=http://ollama:11434
       - WORKER_CONCURRENCY=${WORKER_CONCURRENCY:-4}
@@ -70,7 +85,8 @@ services:
     image: postgres:15-alpine
     environment:
       - POSTGRES_USER=sentinel
-      - POSTGRES_PASSWORD=${DB_PASSWORD:-sentinel}
+      # SECURITY: Password must be set via .env file
+      - POSTGRES_PASSWORD=${DB_PASSWORD}
       - POSTGRES_DB=sentinel
     volumes:
       - postgres_data:/var/lib/postgresql/data
@@ -112,6 +128,10 @@ volumes:
   postgres_data:
     driver: local
   document_storage:
+    driver: local
+  binary_storage:
+    driver: local
+  rules_storage:
     driver: local
   ollama_models:
     driver: local

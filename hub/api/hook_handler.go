@@ -2,7 +2,6 @@
 package main
 
 import (
-	"context"
 	"database/sql"
 	"encoding/json"
 	"fmt"
@@ -72,27 +71,6 @@ type HookMetrics struct {
 // =============================================================================
 
 // queryWithTimeout performs a database query with timeout context
-func queryWithTimeout(ctx context.Context, query string, args ...interface{}) (*sql.Rows, error) {
-	queryCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	return db.QueryContext(queryCtx, query, args...)
-}
-
-// queryRowWithTimeout performs a database query row with timeout context
-func queryRowWithTimeout(ctx context.Context, query string, args ...interface{}) *sql.Row {
-	queryCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	return db.QueryRowContext(queryCtx, query, args...)
-}
-
-// execWithTimeout performs a database exec with timeout context
-func execWithTimeout(ctx context.Context, query string, args ...interface{}) (sql.Result, error) {
-	queryCtx, cancel := context.WithTimeout(ctx, 10*time.Second)
-	defer cancel()
-	return db.ExecContext(queryCtx, query, args...)
-}
-
-// buildPatternQuery builds a parameterized query for pattern extraction with validation
 func buildPatternQuery(orgID, startDate, endDate string) (string, []interface{}, error) {
 	query := `SELECT findings_summary FROM hook_executions WHERE result = 'blocked'`
 	args := []interface{}{}

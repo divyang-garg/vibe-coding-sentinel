@@ -1,0 +1,569 @@
+{
+  "documents": {
+    "17f8b7dbf8b4dc77": {
+      "id": "17f8b7dbf8b4dc77",
+      "title": "sample",
+      "content": "This is a simple test DOCX content.",
+      "format": "docx",
+      "path": "test_docs/sample.docx",
+      "size": 36,
+      "modified": "2026-01-08T18:22:19.077915877+05:30",
+      "metadata": {},
+      "indexed_at": "2026-01-08T18:25:40.882877+05:30"
+    },
+    "28bc3097f81f5714": {
+      "id": "28bc3097f81f5714",
+      "title": "Sentinel HTML Guide",
+      "content": "Sentinel HTML Guide Sentinel HTML Documentation Overview This HTML document provides comprehensive information about Sentinel's HTML processing capabilities. Key Features HTML parsing and text extraction Title extraction from \u0026lt;title\u0026gt; tags Script and style removal Clean text conversion Usage Sentinel can process HTML documents and extract searchable content for documentation purposes. console.log(\"This script content should be removed during processing\"); body { font-family: Arial, sans-serif; } .overview { background: #f0f0f0; }",
+      "format": "html",
+      "path": "test_docs/sample.html",
+      "size": 1031,
+      "modified": "2026-01-08T17:52:35.722202049+05:30",
+      "metadata": {},
+      "indexed_at": "2026-01-08T18:25:40.883015+05:30"
+    },
+    "2f53636523852758": {
+      "id": "2f53636523852758",
+      "title": "config.json",
+      "content": "{\n  \"project\": {\n    \"name\": \"Sentinel Test Project\",\n    \"version\": \"1.0.0\",\n    \"description\": \"A test project for Sentinel document processing\"\n  },\n  \"settings\": {\n    \"security\": {\n      \"enabled\": true,\n      \"rules\": [\"secrets\", \"injection\", \"validation\"]\n    },\n    \"patterns\": {\n      \"languages\": [\"javascript\", \"python\", \"go\"],\n      \"frameworks\": [\"react\", \"express\", \"fastapi\"]\n    },\n    \"autoFix\": {\n      \"safeMode\": true,\n      \"backupEnabled\": true\n    }\n  },\n  \"team\": {\n    \"members\": [\n      {\"name\": \"Alice\", \"role\": \"Lead Developer\"},\n      {\"name\": \"Bob\", \"role\": \"Security Engineer\"},\n      {\"name\": \"Charlie\", \"role\": \"DevOps Engineer\"}\n    ]\n  }\n}\n",
+      "format": "json",
+      "path": "test_docs/config.json",
+      "size": 675,
+      "modified": "2026-01-08T17:52:41.709627677+05:30",
+      "metadata": {
+        "parsed_json": true
+      },
+      "indexed_at": "2026-01-08T18:25:40.882095+05:30"
+    },
+    "61831bdcd21f7ba5": {
+      "id": "61831bdcd21f7ba5",
+      "title": "Sentinel Documentation",
+      "content": "Overview Sentinel is an AI-powered code analysis and security tool that helps development teams maintain high-quality, secure codebases. Features Security Analysis: Advanced threat detection Pattern Learning: Intelligent code pattern recognition Auto-Fix: Automated code improvements Team Collaboration: Shared standards and task management Getting Started Initialize your project: `sentinel init` Learn patterns: `sentinel learn` Run security audit: `sentinel audit --offline` Fix issues: `sentinel fix --safe` Best Practices Run audits regularly Keep patterns updated Use safe mode for fixes Review changes before committing This document contains important information about Sentinel's capabilities and usage.",
+      "format": "md",
+      "path": "test_docs/sample.md",
+      "size": 803,
+      "modified": "2026-01-08T17:52:23.316839938+05:30",
+      "metadata": {},
+      "indexed_at": "2026-01-08T18:25:40.883263+05:30"
+    },
+    "9b5d9fa43f251a7a": {
+      "id": "9b5d9fa43f251a7a",
+      "title": "sample",
+      "content": "This is a simple test PDF content.",
+      "format": "pdf",
+      "path": "test_docs/sample.pdf",
+      "size": 35,
+      "modified": "2026-01-08T18:22:19.077846835+05:30",
+      "metadata": {},
+      "indexed_at": "2026-01-08T18:25:40.883569+05:30"
+    }
+  },
+  "index": {
+    "about": [
+      "28bc3097f81f5714",
+      "61831bdcd21f7ba5"
+    ],
+    "advanced": [
+      "61831bdcd21f7ba5"
+    ],
+    "alice": [
+      "2f53636523852758"
+    ],
+    "analysis": [
+      "61831bdcd21f7ba5"
+    ],
+    "and": [
+      "28bc3097f81f5714",
+      "61831bdcd21f7ba5"
+    ],
+    "arial": [
+      "28bc3097f81f5714"
+    ],
+    "audit": [
+      "61831bdcd21f7ba5"
+    ],
+    "audits": [
+      "61831bdcd21f7ba5"
+    ],
+    "auto": [
+      "61831bdcd21f7ba5"
+    ],
+    "autofix": [
+      "2f53636523852758"
+    ],
+    "automated": [
+      "61831bdcd21f7ba5"
+    ],
+    "background": [
+      "28bc3097f81f5714"
+    ],
+    "backupenabled": [
+      "2f53636523852758"
+    ],
+    "basic": [
+      "17f8b7dbf8b4dc77",
+      "9b5d9fa43f251a7a"
+    ],
+    "before": [
+      "61831bdcd21f7ba5"
+    ],
+    "best": [
+      "61831bdcd21f7ba5"
+    ],
+    "better": [
+      "17f8b7dbf8b4dc77",
+      "9b5d9fa43f251a7a"
+    ],
+    "bob": [
+      "2f53636523852758"
+    ],
+    "body": [
+      "28bc3097f81f5714"
+    ],
+    "can": [
+      "28bc3097f81f5714"
+    ],
+    "capabilities": [
+      "28bc3097f81f5714",
+      "61831bdcd21f7ba5"
+    ],
+    "changes": [
+      "61831bdcd21f7ba5"
+    ],
+    "charlie": [
+      "2f53636523852758"
+    ],
+    "clean": [
+      "28bc3097f81f5714"
+    ],
+    "code": [
+      "61831bdcd21f7ba5"
+    ],
+    "codebases": [
+      "61831bdcd21f7ba5"
+    ],
+    "collaboration": [
+      "61831bdcd21f7ba5"
+    ],
+    "committing": [
+      "61831bdcd21f7ba5"
+    ],
+    "completed": [
+      "17f8b7dbf8b4dc77",
+      "9b5d9fa43f251a7a"
+    ],
+    "comprehensive": [
+      "28bc3097f81f5714"
+    ],
+    "config": [
+      "2f53636523852758"
+    ],
+    "console": [
+      "28bc3097f81f5714"
+    ],
+    "contains": [
+      "61831bdcd21f7ba5"
+    ],
+    "content": [
+      "28bc3097f81f5714",
+      "17f8b7dbf8b4dc77",
+      "9b5d9fa43f251a7a"
+    ],
+    "conversion": [
+      "28bc3097f81f5714"
+    ],
+    "description": [
+      "2f53636523852758"
+    ],
+    "detection": [
+      "61831bdcd21f7ba5"
+    ],
+    "developer": [
+      "2f53636523852758"
+    ],
+    "development": [
+      "61831bdcd21f7ba5"
+    ],
+    "devops": [
+      "2f53636523852758"
+    ],
+    "document": [
+      "2f53636523852758",
+      "28bc3097f81f5714",
+      "61831bdcd21f7ba5",
+      "17f8b7dbf8b4dc77",
+      "9b5d9fa43f251a7a"
+    ],
+    "documentation": [
+      "28bc3097f81f5714",
+      "61831bdcd21f7ba5"
+    ],
+    "documents": [
+      "28bc3097f81f5714"
+    ],
+    "docx": [
+      "17f8b7dbf8b4dc77"
+    ],
+    "during": [
+      "28bc3097f81f5714"
+    ],
+    "enabled": [
+      "2f53636523852758"
+    ],
+    "engineer": [
+      "2f53636523852758"
+    ],
+    "express": [
+      "2f53636523852758"
+    ],
+    "external": [
+      "17f8b7dbf8b4dc77",
+      "9b5d9fa43f251a7a"
+    ],
+    "extract": [
+      "28bc3097f81f5714"
+    ],
+    "extraction": [
+      "28bc3097f81f5714",
+      "17f8b7dbf8b4dc77",
+      "9b5d9fa43f251a7a"
+    ],
+    "f0f0f0": [
+      "28bc3097f81f5714"
+    ],
+    "family": [
+      "28bc3097f81f5714"
+    ],
+    "fastapi": [
+      "2f53636523852758"
+    ],
+    "features": [
+      "28bc3097f81f5714",
+      "61831bdcd21f7ba5"
+    ],
+    "fix": [
+      "61831bdcd21f7ba5"
+    ],
+    "fixes": [
+      "61831bdcd21f7ba5"
+    ],
+    "font": [
+      "28bc3097f81f5714"
+    ],
+    "for": [
+      "2f53636523852758",
+      "28bc3097f81f5714",
+      "61831bdcd21f7ba5",
+      "17f8b7dbf8b4dc77",
+      "9b5d9fa43f251a7a"
+    ],
+    "frameworks": [
+      "2f53636523852758"
+    ],
+    "from": [
+      "28bc3097f81f5714"
+    ],
+    "full": [
+      "17f8b7dbf8b4dc77",
+      "9b5d9fa43f251a7a"
+    ],
+    "getting": [
+      "61831bdcd21f7ba5"
+    ],
+    "guide": [
+      "28bc3097f81f5714"
+    ],
+    "helps": [
+      "61831bdcd21f7ba5"
+    ],
+    "high": [
+      "61831bdcd21f7ba5"
+    ],
+    "html": [
+      "28bc3097f81f5714"
+    ],
+    "important": [
+      "61831bdcd21f7ba5"
+    ],
+    "improvements": [
+      "61831bdcd21f7ba5"
+    ],
+    "information": [
+      "28bc3097f81f5714",
+      "61831bdcd21f7ba5"
+    ],
+    "init": [
+      "61831bdcd21f7ba5"
+    ],
+    "initialize": [
+      "61831bdcd21f7ba5"
+    ],
+    "injection": [
+      "2f53636523852758"
+    ],
+    "intelligent": [
+      "61831bdcd21f7ba5"
+    ],
+    "issues": [
+      "61831bdcd21f7ba5"
+    ],
+    "javascript": [
+      "2f53636523852758"
+    ],
+    "json": [
+      "2f53636523852758"
+    ],
+    "keep": [
+      "61831bdcd21f7ba5"
+    ],
+    "key": [
+      "28bc3097f81f5714"
+    ],
+    "languages": [
+      "2f53636523852758"
+    ],
+    "lead": [
+      "2f53636523852758"
+    ],
+    "learn": [
+      "61831bdcd21f7ba5"
+    ],
+    "learning": [
+      "61831bdcd21f7ba5"
+    ],
+    "library": [
+      "17f8b7dbf8b4dc77",
+      "9b5d9fa43f251a7a"
+    ],
+    "log": [
+      "28bc3097f81f5714"
+    ],
+    "maintain": [
+      "61831bdcd21f7ba5"
+    ],
+    "management": [
+      "61831bdcd21f7ba5"
+    ],
+    "members": [
+      "2f53636523852758"
+    ],
+    "mode": [
+      "61831bdcd21f7ba5"
+    ],
+    "name": [
+      "2f53636523852758"
+    ],
+    "offline": [
+      "61831bdcd21f7ba5"
+    ],
+    "overview": [
+      "28bc3097f81f5714",
+      "61831bdcd21f7ba5"
+    ],
+    "parsing": [
+      "28bc3097f81f5714",
+      "17f8b7dbf8b4dc77",
+      "9b5d9fa43f251a7a"
+    ],
+    "pattern": [
+      "61831bdcd21f7ba5"
+    ],
+    "patterns": [
+      "2f53636523852758",
+      "61831bdcd21f7ba5"
+    ],
+    "pdf": [
+      "9b5d9fa43f251a7a"
+    ],
+    "powered": [
+      "61831bdcd21f7ba5"
+    ],
+    "practices": [
+      "61831bdcd21f7ba5"
+    ],
+    "process": [
+      "28bc3097f81f5714"
+    ],
+    "processing": [
+      "2f53636523852758",
+      "28bc3097f81f5714"
+    ],
+    "project": [
+      "2f53636523852758",
+      "61831bdcd21f7ba5"
+    ],
+    "provides": [
+      "28bc3097f81f5714"
+    ],
+    "purposes": [
+      "28bc3097f81f5714"
+    ],
+    "python": [
+      "2f53636523852758"
+    ],
+    "quality": [
+      "61831bdcd21f7ba5"
+    ],
+    "react": [
+      "2f53636523852758"
+    ],
+    "recognition": [
+      "61831bdcd21f7ba5"
+    ],
+    "regularly": [
+      "61831bdcd21f7ba5"
+    ],
+    "removal": [
+      "28bc3097f81f5714"
+    ],
+    "removed": [
+      "28bc3097f81f5714"
+    ],
+    "requires": [
+      "17f8b7dbf8b4dc77",
+      "9b5d9fa43f251a7a"
+    ],
+    "results": [
+      "17f8b7dbf8b4dc77",
+      "9b5d9fa43f251a7a"
+    ],
+    "review": [
+      "61831bdcd21f7ba5"
+    ],
+    "role": [
+      "2f53636523852758"
+    ],
+    "rules": [
+      "2f53636523852758"
+    ],
+    "run": [
+      "61831bdcd21f7ba5"
+    ],
+    "safe": [
+      "61831bdcd21f7ba5"
+    ],
+    "safemode": [
+      "2f53636523852758"
+    ],
+    "sample": [
+      "17f8b7dbf8b4dc77",
+      "9b5d9fa43f251a7a"
+    ],
+    "sans": [
+      "28bc3097f81f5714"
+    ],
+    "script": [
+      "28bc3097f81f5714"
+    ],
+    "searchable": [
+      "28bc3097f81f5714"
+    ],
+    "secrets": [
+      "2f53636523852758"
+    ],
+    "secure": [
+      "61831bdcd21f7ba5"
+    ],
+    "security": [
+      "2f53636523852758",
+      "61831bdcd21f7ba5"
+    ],
+    "sentinel": [
+      "2f53636523852758",
+      "28bc3097f81f5714",
+      "61831bdcd21f7ba5"
+    ],
+    "serif": [
+      "28bc3097f81f5714"
+    ],
+    "settings": [
+      "2f53636523852758"
+    ],
+    "shared": [
+      "61831bdcd21f7ba5"
+    ],
+    "should": [
+      "28bc3097f81f5714"
+    ],
+    "simple": [
+      "17f8b7dbf8b4dc77",
+      "9b5d9fa43f251a7a"
+    ],
+    "standards": [
+      "61831bdcd21f7ba5"
+    ],
+    "started": [
+      "61831bdcd21f7ba5"
+    ],
+    "style": [
+      "28bc3097f81f5714"
+    ],
+    "tags": [
+      "28bc3097f81f5714"
+    ],
+    "task": [
+      "61831bdcd21f7ba5"
+    ],
+    "team": [
+      "2f53636523852758",
+      "61831bdcd21f7ba5"
+    ],
+    "teams": [
+      "61831bdcd21f7ba5"
+    ],
+    "test": [
+      "2f53636523852758",
+      "17f8b7dbf8b4dc77",
+      "9b5d9fa43f251a7a"
+    ],
+    "text": [
+      "28bc3097f81f5714",
+      "17f8b7dbf8b4dc77",
+      "9b5d9fa43f251a7a"
+    ],
+    "that": [
+      "61831bdcd21f7ba5"
+    ],
+    "this": [
+      "28bc3097f81f5714",
+      "61831bdcd21f7ba5",
+      "17f8b7dbf8b4dc77",
+      "9b5d9fa43f251a7a"
+    ],
+    "threat": [
+      "61831bdcd21f7ba5"
+    ],
+    "title": [
+      "28bc3097f81f5714"
+    ],
+    "tool": [
+      "61831bdcd21f7ba5"
+    ],
+    "true": [
+      "2f53636523852758"
+    ],
+    "updated": [
+      "61831bdcd21f7ba5"
+    ],
+    "usage": [
+      "28bc3097f81f5714",
+      "61831bdcd21f7ba5"
+    ],
+    "use": [
+      "61831bdcd21f7ba5"
+    ],
+    "validation": [
+      "2f53636523852758"
+    ],
+    "version": [
+      "2f53636523852758"
+    ],
+    "xml": [
+      "17f8b7dbf8b4dc77"
+    ],
+    "your": [
+      "61831bdcd21f7ba5"
+    ]
+  },
+  "last_updated": "2026-01-08T18:25:40.883574+05:30"
+}

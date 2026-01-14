@@ -33,45 +33,45 @@ type TestValidation struct {
 
 // ValidateTestsRequest represents the request to validate tests
 type ValidateTestsRequest struct {
-	ProjectID         string   `json:"projectId"`
+	ProjectID          string   `json:"project_id"`
 	TestRequirementIDs []string `json:"testRequirementIds,omitempty"` // Optional: specific requirements
-	TestCode          string   `json:"testCode"` // Test code to validate
-	TestFilePath      string   `json:"testFilePath"`
+	TestCode           string   `json:"testCode"`                     // Test code to validate
+	TestFilePath       string   `json:"testFilePath"`
 }
 
 // ValidateTestsResponse represents the response
 type ValidateTestsResponse struct {
-	Success    bool             `json:"success"`
+	Success     bool             `json:"success"`
 	Validations []TestValidation `json:"validations"`
-	Count      int              `json:"count"`
-	Message    string           `json:"message,omitempty"`
+	Count       int              `json:"count"`
+	Message     string           `json:"message,omitempty"`
 }
 
 // validateTestStructure validates the structure of a test function
 func validateTestStructure(testCode string, language string) (bool, []string) {
 	var issues []string
 	isValid := true
-	
+
 	lines := strings.Split(testCode, "\n")
 	hasAssertion := false
-	
+
 	// Look for test structure patterns based on language
 	switch language {
 	case "go":
 		// Go tests: setup, execution, assertion
 		for _, line := range lines {
 			lineLower := strings.ToLower(line)
-			if strings.Contains(lineLower, "assert") || strings.Contains(lineLower, "if") || 
-			   strings.Contains(lineLower, "require.") || strings.Contains(lineLower, "assert.") {
+			if strings.Contains(lineLower, "assert") || strings.Contains(lineLower, "if") ||
+				strings.Contains(lineLower, "require.") || strings.Contains(lineLower, "assert.") {
 				hasAssertion = true
 			}
 		}
-		
+
 		if !hasAssertion {
 			issues = append(issues, "Missing assertions - test does not verify expected behavior")
 			isValid = false
 		}
-		
+
 	case "javascript", "typescript":
 		// JS/TS tests: setup, execution, assertion
 		for _, line := range lines {
@@ -80,12 +80,12 @@ func validateTestStructure(testCode string, language string) (bool, []string) {
 				hasAssertion = true
 			}
 		}
-		
+
 		if !hasAssertion {
 			issues = append(issues, "Missing assertions - test does not verify expected behavior")
 			isValid = false
 		}
-		
+
 	case "python":
 		// Python tests: setup, execution, assertion
 		for _, line := range lines {
@@ -94,19 +94,19 @@ func validateTestStructure(testCode string, language string) (bool, []string) {
 				hasAssertion = true
 			}
 		}
-		
+
 		if !hasAssertion {
 			issues = append(issues, "Missing assertions - test does not verify expected behavior")
 			isValid = false
 		}
 	}
-	
+
 	// Check for shared state (test isolation)
 	if strings.Contains(testCode, "global") || strings.Contains(testCode, "static") {
 		issues = append(issues, "Potential shared state - test may not be isolated")
 		isValid = false
 	}
-	
+
 	return isValid, issues
 }
 
@@ -114,33 +114,33 @@ func validateTestStructure(testCode string, language string) (bool, []string) {
 func analyzeAssertions(testCode string, language string) (bool, []string) {
 	var issues []string
 	isValid := true
-	
+
 	lines := strings.Split(testCode, "\n")
 	hasStrongAssertion := false
-	
+
 	// Look for strong assertions (not just null checks)
 	for _, line := range lines {
 		lineLower := strings.ToLower(line)
-		
+
 		// Weak assertions (just checking non-null)
 		if strings.Contains(lineLower, "!= nil") || strings.Contains(lineLower, "!== null") ||
-		   strings.Contains(lineLower, "is not none") {
+			strings.Contains(lineLower, "is not none") {
 			// Check if there are stronger assertions nearby
 			hasStrongAssertion = false
 		}
-		
+
 		// Strong assertions (checking actual values)
 		if strings.Contains(lineLower, "==") || strings.Contains(lineLower, "===") ||
-		   strings.Contains(lineLower, "equals") || strings.Contains(lineLower, "equal") {
+			strings.Contains(lineLower, "equals") || strings.Contains(lineLower, "equal") {
 			hasStrongAssertion = true
 		}
 	}
-	
+
 	if !hasStrongAssertion {
 		issues = append(issues, "Weak assertions detected - test only checks for null/non-null, not actual values")
 		isValid = false
 	}
-	
+
 	return isValid, issues
 }
 
@@ -148,13 +148,13 @@ func analyzeAssertions(testCode string, language string) (bool, []string) {
 func checkCompleteness(testCode string, testRequirement TestRequirement) (bool, []string) {
 	var issues []string
 	isComplete := true
-	
+
 	testCodeLower := strings.ToLower(testCode)
 	requirementDescLower := strings.ToLower(testRequirement.Description)
-	
+
 	// Extract keywords from requirement
 	keywords := extractKeywords(requirementDescLower)
-	
+
 	// Check if test code mentions requirement keywords
 	matchedKeywords := 0
 	for _, keyword := range keywords {
@@ -162,13 +162,13 @@ func checkCompleteness(testCode string, testRequirement TestRequirement) (bool, 
 			matchedKeywords++
 		}
 	}
-	
+
 	// If less than 50% of keywords match, test may not cover requirement
 	if len(keywords) > 0 && float64(matchedKeywords)/float64(len(keywords)) < 0.5 {
 		issues = append(issues, fmt.Sprintf("Test may not fully cover requirement: only %d/%d keywords matched", matchedKeywords, len(keywords)))
 		isComplete = false
 	}
-	
+
 	// Check requirement type coverage
 	switch testRequirement.RequirementType {
 	case "happy_path":
@@ -178,45 +178,45 @@ func checkCompleteness(testCode string, testRequirement TestRequirement) (bool, 
 		}
 	case "error_case":
 		if !strings.Contains(testCodeLower, "error") && !strings.Contains(testCodeLower, "fail") &&
-		   !strings.Contains(testCodeLower, "invalid") && !strings.Contains(testCodeLower, "exception") {
+			!strings.Contains(testCodeLower, "invalid") && !strings.Contains(testCodeLower, "exception") {
 			issues = append(issues, "Error case test may be missing - no error/failure scenarios found")
 			isComplete = false
 		}
 	case "edge_case":
 		if !strings.Contains(testCodeLower, "edge") && !strings.Contains(testCodeLower, "boundary") &&
-		   !strings.Contains(testCodeLower, "limit") && !strings.Contains(testCodeLower, "max") &&
-		   !strings.Contains(testCodeLower, "min") {
+			!strings.Contains(testCodeLower, "limit") && !strings.Contains(testCodeLower, "max") &&
+			!strings.Contains(testCodeLower, "min") {
 			issues = append(issues, "Edge case test may be missing - no boundary/limit scenarios found")
 			isComplete = false
 		}
 	}
-	
+
 	return isComplete, issues
 }
 
 // calculateValidationScore calculates a validation score (0.0 to 1.0)
 func calculateValidationScore(structureValid bool, assertionsValid bool, completenessValid bool, issues []string) float64 {
 	score := 1.0
-	
+
 	// Deduct points for each issue
 	deductionPerIssue := 0.1
 	score -= float64(len(issues)) * deductionPerIssue
-	
+
 	// Deduct points for invalid structure
 	if !structureValid {
 		score -= 0.3
 	}
-	
+
 	// Deduct points for weak assertions
 	if !assertionsValid {
 		score -= 0.2
 	}
-	
+
 	// Deduct points for incomplete coverage
 	if !completenessValid {
 		score -= 0.2
 	}
-	
+
 	// Ensure score is between 0.0 and 1.0
 	if score < 0.0 {
 		score = 0.0
@@ -224,7 +224,7 @@ func calculateValidationScore(structureValid bool, assertionsValid bool, complet
 	if score > 1.0 {
 		score = 1.0
 	}
-	
+
 	return score
 }
 
@@ -234,23 +234,23 @@ func getTestRequirement(ctx context.Context, requirementID string) (*TestRequire
 	                 code_function, priority, created_at, updated_at
 	          FROM test_requirements
 	          WHERE id = $1`
-	
+
 	row := queryRowWithTimeout(ctx, query, requirementID)
-	
+
 	var req TestRequirement
 	err := row.Scan(
 		&req.ID, &req.KnowledgeItemID, &req.RuleTitle, &req.RequirementType,
 		&req.Description, &req.CodeFunction, &req.Priority,
 		&req.CreatedAt, &req.UpdatedAt,
 	)
-	
+
 	if err == sql.ErrNoRows {
 		return nil, fmt.Errorf("test requirement not found")
 	}
 	if err != nil {
 		return nil, fmt.Errorf("failed to query test requirement: %w", err)
 	}
-	
+
 	return &req, nil
 }
 
@@ -261,7 +261,7 @@ func saveTestValidation(ctx context.Context, validation TestValidation) error {
 	if err != nil {
 		return fmt.Errorf("failed to marshal issues: %w", err)
 	}
-	
+
 	query := `
 		INSERT INTO test_validations 
 		(id, test_requirement_id, validation_status, issues, test_code_hash, score, validated_at, created_at)
@@ -273,7 +273,7 @@ func saveTestValidation(ctx context.Context, validation TestValidation) error {
 			score = EXCLUDED.score,
 			validated_at = EXCLUDED.validated_at
 	`
-	
+
 	_, err = execWithTimeout(ctx, query,
 		validation.ID, validation.TestRequirementID, validation.ValidationStatus,
 		issuesJSON, validation.TestCodeHash, validation.Score, validation.ValidatedAt, validation.CreatedAt,
@@ -281,7 +281,7 @@ func saveTestValidation(ctx context.Context, validation TestValidation) error {
 	if err != nil {
 		return fmt.Errorf("failed to save test validation: %w", err)
 	}
-	
+
 	return nil
 }
 
@@ -300,7 +300,7 @@ func detectLanguage(testFilePath string, testCode string) string {
 			return "python"
 		}
 	}
-	
+
 	// Fallback: detect from code content
 	testCodeLower := strings.ToLower(testCode)
 	if strings.Contains(testCodeLower, "package main") || strings.Contains(testCodeLower, "func test") {
@@ -312,7 +312,7 @@ func detectLanguage(testFilePath string, testCode string) string {
 	if strings.Contains(testCodeLower, "def test_") {
 		return "python"
 	}
-	
+
 	return "go" // Ultimate fallback
 }
 
@@ -322,13 +322,13 @@ func validateTestsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	
+
 	var req ValidateTestsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
 		return
 	}
-	
+
 	// Validate required fields
 	if req.ProjectID == "" {
 		http.Error(w, "projectId is required", http.StatusBadRequest)
@@ -338,16 +338,16 @@ func validateTestsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "testCode is required", http.StatusBadRequest)
 		return
 	}
-	
+
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
-	
+
 	// Calculate test code hash for caching
 	testCodeHash := fmt.Sprintf("%x", sha256.Sum256([]byte(req.TestCode)))
-	
+
 	// Detect language from file path and code content
 	language := detectLanguage(req.TestFilePath, req.TestCode)
-	
+
 	// Get test requirements to validate against
 	var requirements []TestRequirement
 	if len(req.TestRequirementIDs) > 0 {
@@ -365,34 +365,34 @@ func validateTestsHandler(w http.ResponseWriter, r *http.Request) {
 		// For now, validate structure and assertions only
 		requirements = []TestRequirement{}
 	}
-	
+
 	var validations []TestValidation
 	now := time.Now()
-	
+
 	// If no specific requirements, validate test structure and assertions only
 	if len(requirements) == 0 {
 		structureValid, structureIssues := validateTestStructure(req.TestCode, language)
 		assertionsValid, assertionIssues := analyzeAssertions(req.TestCode, language)
-		
+
 		allIssues := append(structureIssues, assertionIssues...)
 		score := calculateValidationScore(structureValid, assertionsValid, true, allIssues)
-		
+
 		status := "valid"
 		if !structureValid || !assertionsValid {
 			status = "invalid"
 		}
-		
-			validation := TestValidation{
-				ID:               uuid.New().String(),
-				TestRequirementID: "", // No specific requirement
-				ValidationStatus:  status,
-				Issues:           allIssues,
-				TestCodeHash:      testCodeHash,
-				Score:            score,
-				ValidatedAt:      now,
-				CreatedAt:        now,
-			}
-		
+
+		validation := TestValidation{
+			ID:                uuid.New().String(),
+			TestRequirementID: "", // No specific requirement
+			ValidationStatus:  status,
+			Issues:            allIssues,
+			TestCodeHash:      testCodeHash,
+			Score:             score,
+			ValidatedAt:       now,
+			CreatedAt:         now,
+		}
+
 		validations = append(validations, validation)
 	} else {
 		// Validate against each requirement
@@ -400,46 +400,46 @@ func validateTestsHandler(w http.ResponseWriter, r *http.Request) {
 			structureValid, structureIssues := validateTestStructure(req.TestCode, language)
 			assertionsValid, assertionIssues := analyzeAssertions(req.TestCode, language)
 			completenessValid, completenessIssues := checkCompleteness(req.TestCode, requirement)
-			
+
 			allIssues := append(structureIssues, assertionIssues...)
 			allIssues = append(allIssues, completenessIssues...)
 			score := calculateValidationScore(structureValid, assertionsValid, completenessValid, allIssues)
-			
+
 			status := "valid"
 			if !structureValid || !assertionsValid {
 				status = "invalid"
 			} else if !completenessValid {
 				status = "incomplete"
 			}
-			
+
 			validation := TestValidation{
-				ID:               uuid.New().String(),
+				ID:                uuid.New().String(),
 				TestRequirementID: requirement.ID,
 				ValidationStatus:  status,
-				Issues:           allIssues,
+				Issues:            allIssues,
 				TestCodeHash:      testCodeHash,
-				Score:            score,
-				ValidatedAt:      now,
-				CreatedAt:        now,
+				Score:             score,
+				ValidatedAt:       now,
+				CreatedAt:         now,
 			}
-			
+
 			// Save to database
 			if err := saveTestValidation(ctx, validation); err != nil {
 				log.Printf("Error saving validation: %v", err)
 				continue
 			}
-			
+
 			validations = append(validations, validation)
 		}
 	}
-	
+
 	response := ValidateTestsResponse{
 		Success:     true,
 		Validations: validations,
 		Count:       len(validations),
 		Message:     fmt.Sprintf("Validated %d test requirement(s)", len(validations)),
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
@@ -450,16 +450,16 @@ func getValidationHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	
+
 	testRequirementID := chi.URLParam(r, "test_requirement_id")
 	if testRequirementID == "" {
 		http.Error(w, "test_requirement_id is required", http.StatusBadRequest)
 		return
 	}
-	
+
 	ctx, cancel := context.WithTimeout(r.Context(), 10*time.Second)
 	defer cancel()
-	
+
 	query := `
 		SELECT id, test_requirement_id, validation_status, issues, score, validated_at, created_at
 		FROM test_validations
@@ -467,17 +467,17 @@ func getValidationHandler(w http.ResponseWriter, r *http.Request) {
 		ORDER BY validated_at DESC
 		LIMIT 1
 	`
-	
+
 	row := queryRowWithTimeout(ctx, query, testRequirementID)
-	
+
 	var validation TestValidation
 	var issuesStr sql.NullString
-	
+
 	err := row.Scan(
 		&validation.ID, &validation.TestRequirementID, &validation.ValidationStatus,
 		&issuesStr, &validation.Score, &validation.ValidatedAt, &validation.CreatedAt,
 	)
-	
+
 	if err == sql.ErrNoRows {
 		http.Error(w, "Validation not found", http.StatusNotFound)
 		return
@@ -487,7 +487,7 @@ func getValidationHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, fmt.Sprintf("Failed to query validation: %v", err), http.StatusInternalServerError)
 		return
 	}
-	
+
 	if issuesStr.Valid {
 		// Parse issues array (stored as PostgreSQL array)
 		validation.Issues = strings.Split(strings.Trim(issuesStr.String, "{}"), ",")
@@ -495,8 +495,7 @@ func getValidationHandler(w http.ResponseWriter, r *http.Request) {
 			validation.Issues[i] = strings.Trim(issue, "\"")
 		}
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(validation)
 }
-

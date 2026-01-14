@@ -37,7 +37,7 @@ type TestCoverage struct {
 
 // AnalyzeCoverageRequest represents the request to analyze test coverage
 type AnalyzeCoverageRequest struct {
-	ProjectID        string     `json:"projectId"`
+	ProjectID        string     `json:"project_id"`
 	TestFiles        []TestFile `json:"testFiles"`                  // Test files with content (changed from []string)
 	KnowledgeItemIDs []string   `json:"knowledgeItemIds,omitempty"` // Optional: specific rules
 }
@@ -304,7 +304,7 @@ func analyzeCoverageHandler(w http.ResponseWriter, r *http.Request) {
 	defer cancel()
 
 	// Get business rules for this project
-	rules, err := extractBusinessRules(ctx, req.ProjectID, req.KnowledgeItemIDs)
+	rules, err := extractBusinessRules(ctx, req.ProjectID, req.KnowledgeItemIDs, "", nil)
 	if err != nil {
 		log.Printf("Error extracting business rules: %v", err)
 		http.Error(w, fmt.Sprintf("Failed to extract business rules: %v", err), http.StatusInternalServerError)

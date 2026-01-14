@@ -9,3 +9,14 @@ app.get('/api/data', (req, res) => {
     res.json({ data: 'sensitive' });
 });
 
+
+
+
+
+
+
+
+
+
+
+

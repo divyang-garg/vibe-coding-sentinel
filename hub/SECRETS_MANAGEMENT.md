@@ -18,13 +18,63 @@ All sensitive configuration values are managed via environment variables loaded 
    - Kubernetes: Use Kubernetes secrets
    - Cloud: Use cloud secrets manager (AWS Secrets Manager, Azure Key Vault, etc.)
 
-## Required Secrets
+## Required Environment Variables
 
-- `DB_PASSWORD`: Database password (32+ characters recommended)
-- `JWT_SECRET`: JWT signing secret (64+ characters recommended)
+### Database Configuration
+- `DATABASE_URL`: PostgreSQL connection string (default: `postgres://sentinel:sentinel@localhost:5432/sentinel?sslmode=disable`)
+- `DB_PASSWORD`: Database password (32+ characters recommended) - part of DATABASE_URL
+
+### Authentication & Security
 - `ADMIN_API_KEY`: Admin API key for admin endpoints (64 hex characters recommended)
-- `CORS_ORIGIN`: Allowed CORS origin (must be specific domain, not `*`)
-- `AZURE_AI_KEY`: Azure AI Foundry API key (if using)
+- `JWT_SECRET`: JWT signing secret (64+ characters recommended)
+- `CORS_ORIGIN`: Allowed CORS origin (default: `*` - change to specific domain in production)
+
+### Storage Paths
+- `DOCUMENT_STORAGE`: Path for document storage (default: `/data/documents`)
+- `BINARY_STORAGE`: Path for binary storage (default: `/data/binaries`)
+- `RULES_STORAGE`: Path for rules storage (default: `/data/rules`)
+
+### Server Configuration
+- `PORT`: Server port (default: `8080`)
+
+### LLM Provider (Optional)
+- `AZURE_AI_KEY`: Azure AI Foundry API key (if using Azure AI)
+
+## Advanced Configuration (Optional)
+
+### Timeout Settings
+- `SENTINEL_DB_TIMEOUT`: Database query timeout (default: `10s`)
+- `SENTINEL_ANALYSIS_TIMEOUT`: Analysis operation timeout (default: `60s`)
+- `SENTINEL_HTTP_TIMEOUT`: HTTP request timeout (default: `30s`)
+- `SENTINEL_CONTEXT_TIMEOUT`: Default context timeout (default: `30s`)
+
+### Limits Configuration
+- `SENTINEL_MAX_FILE_SIZE`: Maximum file size in bytes (default: `104857600` - 100MB)
+- `SENTINEL_MAX_STRING_LENGTH`: Maximum string length (default: `1000000` - 1M chars)
+- `SENTINEL_MAX_REQUEST_SIZE`: Maximum HTTP request size (default: `10485760` - 10MB)
+- `SENTINEL_RATE_LIMIT_RPS`: Rate limit requests per second (default: `100`)
+- `SENTINEL_RATE_LIMIT_BURST`: Rate limit burst size (default: `200`)
+
+### Task Management Limits
+- `SENTINEL_MAX_TASK_TITLE_LENGTH`: Maximum task title length (default: `500`)
+- `SENTINEL_MAX_TASK_DESCRIPTION_LENGTH`: Maximum task description length (default: `5000`)
+- `SENTINEL_DEFAULT_TASK_LIST_LIMIT`: Default task list limit (default: `50`)
+- `SENTINEL_MAX_TASK_LIST_LIMIT`: Maximum task list limit (default: `1000`)
+- `SENTINEL_DEFAULT_DATE_RANGE_DAYS`: Default date range in days (default: `30`)
+
+### Cache Configuration
+- `SENTINEL_CACHE_TTL`: Default cache TTL (default: `5m`)
+- `SENTINEL_TASK_CACHE_TTL`: Task cache TTL (default: `5m`)
+- `SENTINEL_VERIFICATION_CACHE_TTL`: Verification cache TTL (default: `1h`)
+- `SENTINEL_DEPENDENCY_CACHE_TTL`: Dependency cache TTL (default: `10m`)
+- `SENTINEL_CACHE_MAX_SIZE`: Maximum cache size (default: `10000`)
+- `SENTINEL_CACHE_CLEANUP_INTERVAL`: Cache cleanup interval (default: `5m`)
+
+### Retry Configuration
+- `SENTINEL_MAX_RETRIES`: Maximum retry attempts (default: `3`)
+- `SENTINEL_INITIAL_BACKOFF`: Initial backoff duration (default: `100ms`)
+- `SENTINEL_MAX_BACKOFF`: Maximum backoff duration (default: `5s`)
+- `SENTINEL_BACKOFF_MULTIPLIER`: Backoff multiplier (default: `2.0`)
 
 ## Generating Secrets
 

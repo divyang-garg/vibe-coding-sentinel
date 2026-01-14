@@ -67,3 +67,14 @@ const query = "SELECT * FROM users WITH (NOLOCK)";
 
 module.exports = UserController;
 
+
+
+
+
+
+
+
+
+
+
+

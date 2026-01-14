@@ -44,6 +44,8 @@ type cacheEntry struct {
 var astCache = make(map[string]*cacheEntry)
 var cacheMutex sync.RWMutex
 var cacheTTL = 5 * time.Minute // Cache AST results for 5 minutes
+var lastCacheCleanup time.Time
+var cacheCleanupInterval = 5 * time.Minute
 
 // initParsers initializes Tree-sitter parsers for supported languages
 func initParsers() {
@@ -78,16 +80,16 @@ func initParsers() {
 func getParser(language string) (*sitter.Parser, error) {
 	// Normalize language name
 	lang := normalizeLanguage(language)
-	
+
 	// Initialize parsers if not already done
 	if len(parsers) == 0 {
 		initParsers()
 	}
-	
+
 	if parser, ok := parsers[lang]; ok {
 		return parser, nil
 	}
-	
+
 	return nil, fmt.Errorf("unsupported language: %s (supported: go, javascript, typescript, python)", language)
 }
 
@@ -128,13 +130,13 @@ func analyzeAST(code string, language string, analyses []string) ([]ASTFinding, 
 		delete(astCache, cacheKey)
 	}
 	cacheMutex.RUnlock()
-	
+
 	// Get parser for language
 	parser, err := getParser(language)
 	if err != nil {
 		return nil, AnalysisStats{}, fmt.Errorf("parser error: %w", err)
 	}
-	
+
 	// Parse code into AST
 	parseStart := time.Now()
 	ctx := context.Background()
@@ -143,21 +145,21 @@ func analyzeAST(code string, language string, analyses []string) ([]ASTFinding, 
 		return nil, AnalysisStats{}, fmt.Errorf("parse error: %w", err)
 	}
 	parseTime := time.Since(parseStart).Milliseconds()
-	
+
 	if tree == nil {
 		return nil, AnalysisStats{}, fmt.Errorf("failed to parse code")
 	}
 	defer tree.Close()
-	
+
 	rootNode := tree.RootNode()
 	if rootNode == nil {
 		return nil, AnalysisStats{}, fmt.Errorf("failed to get root node")
 	}
-	
+
 	// Perform requested analyses
 	analysisStart := time.Now()
 	findings := []ASTFinding{}
-	
+
 	// Track which analyses to perform
 	checkDuplicates := contains(analyses, "duplicates") || len(analyses) == 0
 	checkUnused := contains(analyses, "unused") || len(analyses) == 0
@@ -165,53 +167,53 @@ func analyzeAST(code string, language string, analyses []string) ([]ASTFinding, 
 	checkEmptyCatch := contains(analyses, "empty_catch") || contains(analyses, "vibe") || len(analyses) == 0
 	checkMissingAwait := contains(analyses, "missing_await") || contains(analyses, "vibe") || len(analyses) == 0
 	checkBraceMismatch := contains(analyses, "brace_mismatch") || contains(analyses, "vibe") || len(analyses) == 0
-	
+
 	if checkDuplicates {
 		duplicates := detectDuplicateFunctions(rootNode, code, language)
 		findings = append(findings, duplicates...)
 	}
-	
+
 	if checkUnused {
 		unused := detectUnusedVariables(rootNode, code, language)
 		findings = append(findings, unused...)
 	}
-	
+
 	if checkUnreachable {
 		unreachable := detectUnreachableCode(rootNode, code, language)
 		findings = append(findings, unreachable...)
 	}
-	
+
 	// Orphaned code detection (always enabled for vibe analysis)
 	if contains(analyses, "orphaned") || contains(analyses, "duplicates") {
 		orphaned := detectOrphanedCode(rootNode, code, language)
 		findings = append(findings, orphaned...)
 	}
-	
+
 	// Phase 7C: Additional AST detections
 	if checkEmptyCatch {
 		emptyCatch := detectEmptyCatchBlocks(rootNode, code, language)
 		findings = append(findings, emptyCatch...)
 	}
-	
+
 	if checkMissingAwait {
 		missingAwait := detectMissingAwait(rootNode, code, language)
 		findings = append(findings, missingAwait...)
 	}
-	
+
 	// Brace/bracket mismatch detection (check parse errors)
 	if checkBraceMismatch {
 		braceMismatch := detectBraceMismatch(tree, code, language)
 		findings = append(findings, braceMismatch...)
 	}
-	
+
 	analysisTime := time.Since(analysisStart).Milliseconds()
-	
+
 	stats := AnalysisStats{
 		ParseTime:    parseTime,
 		AnalysisTime: analysisTime,
 		NodesVisited: countNodes(rootNode),
 	}
-	
+
 	// Cache the results
 	cacheMutex.Lock()
 	astCache[cacheKey] = &cacheEntry{
@@ -219,12 +221,18 @@ func analyzeAST(code string, language string, analyses []string) ([]ASTFinding, 
 		Stats:    stats,
 		Expires:  time.Now().Add(cacheTTL),
 	}
-	// Clean up expired entries periodically (keep cache size reasonable)
+
+	// Clean up expired entries periodically (time-based, not size-based)
+	if time.Since(lastCacheCleanup) > cacheCleanupInterval {
+		cleanExpiredCacheEntries()
+		lastCacheCleanup = time.Now()
+	}
+	// Also clean if cache is too large
 	if len(astCache) > 1000 {
 		cleanExpiredCacheEntries()
 	}
 	cacheMutex.Unlock()
-	
+
 	return findings, stats, nil
 }
 
@@ -242,12 +250,12 @@ func cleanExpiredCacheEntries() {
 func detectDuplicateFunctions(root *sitter.Node, code string, language string) []ASTFinding {
 	findings := []ASTFinding{}
 	functionMap := make(map[string][]*sitter.Node)
-	
+
 	// Traverse AST to find all function definitions
 	traverseAST(root, func(node *sitter.Node) bool {
 		var funcName string
 		var isFunction bool
-		
+
 		switch language {
 		case "go":
 			if node.Type() == "function_declaration" || node.Type() == "method_declaration" {
@@ -313,14 +321,14 @@ func detectDuplicateFunctions(root *sitter.Node, code string, language string) [
 				}
 			}
 		}
-		
+
 		if isFunction && funcName != "" {
 			functionMap[funcName] = append(functionMap[funcName], node)
 		}
-		
+
 		return true // Continue traversal
 	})
-	
+
 	// Check for duplicates
 	for funcName, nodes := range functionMap {
 		if len(nodes) > 1 {
@@ -328,22 +336,22 @@ func detectDuplicateFunctions(root *sitter.Node, code string, language string) [
 			for _, node := range nodes {
 				startLine, startCol := getLineColumn(code, int(node.StartByte()))
 				endLine, endCol := getLineColumn(code, int(node.EndByte()))
-				
+
 				findings = append(findings, ASTFinding{
-					Type:      "duplicate_function",
-					Severity:  "error",
-					Line:      startLine,
-					Column:    startCol,
-					EndLine:   endLine,
-					EndColumn: endCol,
-					Message:   fmt.Sprintf("Duplicate function definition: '%s' is defined %d times", funcName, len(nodes)),
-					Code:      code[node.StartByte():node.EndByte()],
+					Type:       "duplicate_function",
+					Severity:   "error",
+					Line:       startLine,
+					Column:     startCol,
+					EndLine:    endLine,
+					EndColumn:  endCol,
+					Message:    fmt.Sprintf("Duplicate function definition: '%s' is defined %d times", funcName, len(nodes)),
+					Code:       code[node.StartByte():node.EndByte()],
 					Suggestion: fmt.Sprintf("Remove duplicate definition of '%s' or rename one of them", funcName),
 				})
 			}
 		}
 	}
-	
+
 	return findings
 }
 
@@ -352,12 +360,12 @@ func detectUnusedVariables(root *sitter.Node, code string, language string) []AS
 	findings := []ASTFinding{}
 	variableDeclarations := make(map[string]*sitter.Node)
 	variableUsages := make(map[string]bool)
-	
+
 	// First pass: collect all variable declarations
 	traverseAST(root, func(node *sitter.Node) bool {
 		var varName string
 		var isDeclaration bool
-		
+
 		switch language {
 		case "go":
 			if node.Type() == "short_var_declaration" || node.Type() == "var_declaration" {
@@ -403,26 +411,26 @@ func detectUnusedVariables(root *sitter.Node, code string, language string) []AS
 				}
 			}
 		}
-		
+
 		if isDeclaration && varName != "" {
 			variableDeclarations[varName] = node
 		}
-		
+
 		return true
 	})
-	
+
 	// Second pass: collect all variable usages (excluding declarations)
 	traverseAST(root, func(node *sitter.Node) bool {
 		if node.Type() == "identifier" {
 			varName := code[node.StartByte():node.EndByte()]
-			
+
 			// Check if this identifier is a usage (not a declaration)
 			if declNode, isDeclared := variableDeclarations[varName]; isDeclared {
 				// Only count as usage if it's not the declaration itself
 				// Also check parent to avoid counting declaration nodes
 				parent := node.Parent()
 				isInDeclaration := false
-				
+
 				// Check if this identifier is part of a declaration
 				if parent != nil {
 					parentType := parent.Type()
@@ -441,7 +449,7 @@ func detectUnusedVariables(root *sitter.Node, code string, language string) []AS
 						}
 					}
 				}
-				
+
 				if !isInDeclaration && node.StartByte() != declNode.StartByte() {
 					variableUsages[varName] = true
 				}
@@ -449,47 +457,47 @@ func detectUnusedVariables(root *sitter.Node, code string, language string) []AS
 		}
 		return true
 	})
-	
+
 	// Find unused variables
 	for varName, declNode := range variableDeclarations {
 		if !variableUsages[varName] {
 			startLine, startCol := getLineColumn(code, int(declNode.StartByte()))
 			endLine, endCol := getLineColumn(code, int(declNode.EndByte()))
-			
+
 			findings = append(findings, ASTFinding{
-				Type:      "unused_variable",
-				Severity:  "warning",
-				Line:      startLine,
-				Column:    startCol,
-				EndLine:   endLine,
-				EndColumn: endCol,
-				Message:   fmt.Sprintf("Unused variable: '%s' is declared but never used", varName),
-				Code:      code[declNode.StartByte():declNode.EndByte()],
+				Type:       "unused_variable",
+				Severity:   "warning",
+				Line:       startLine,
+				Column:     startCol,
+				EndLine:    endLine,
+				EndColumn:  endCol,
+				Message:    fmt.Sprintf("Unused variable: '%s' is declared but never used", varName),
+				Code:       code[declNode.StartByte():declNode.EndByte()],
 				Suggestion: fmt.Sprintf("Remove unused variable '%s' or use it in your code", varName),
 			})
 		}
 	}
-	
+
 	return findings
 }
 
 // detectUnreachableCode detects code after return/throw statements
 func detectUnreachableCode(root *sitter.Node, code string, language string) []ASTFinding {
 	findings := []ASTFinding{}
-	
+
 	// Track return/throw/raise statements and their parent blocks (Phase 7C enhancement)
 	type returnInfo struct {
-		node   *sitter.Node
-		parent *sitter.Node
+		node     *sitter.Node
+		parent   *sitter.Node
 		stmtType string // "return", "throw", "raise"
 	}
 	returns := []returnInfo{}
-	
+
 	// First pass: collect all return/throw/raise statements
 	traverseAST(root, func(node *sitter.Node) bool {
 		var stmtType string
 		isTerminal := false
-		
+
 		switch language {
 		case "go":
 			if node.Type() == "return_statement" || node.Type() == "return" {
@@ -513,7 +521,7 @@ func detectUnreachableCode(root *sitter.Node, code string, language string) []AS
 				isTerminal = true
 			}
 		}
-		
+
 		if isTerminal {
 			parent := node.Parent()
 			if parent != nil {
@@ -522,7 +530,7 @@ func detectUnreachableCode(root *sitter.Node, code string, language string) []AS
 		}
 		return true
 	})
-	
+
 	// Second pass: check for statements after returns
 	for _, ret := range returns {
 		returnIndex := -1
@@ -533,7 +541,7 @@ func detectUnreachableCode(root *sitter.Node, code string, language string) []AS
 				break
 			}
 		}
-		
+
 		// Check for statements after return
 		if returnIndex >= 0 {
 			for i := returnIndex + 1; i < int(ret.parent.ChildCount()); i++ {
@@ -544,43 +552,43 @@ func detectUnreachableCode(root *sitter.Node, code string, language string) []AS
 					if strings.TrimSpace(childCode) == "" || strings.HasPrefix(strings.TrimSpace(childCode), "//") {
 						continue
 					}
-					
+
 					startLine, startCol := getLineColumn(code, int(nextChild.StartByte()))
 					endLine, endCol := getLineColumn(code, int(nextChild.EndByte()))
-					
+
 					stmtTypeMsg := "return statement"
 					if ret.stmtType == "throw" {
 						stmtTypeMsg = "throw statement"
 					} else if ret.stmtType == "raise" {
 						stmtTypeMsg = "raise statement"
 					}
-					
+
 					findings = append(findings, ASTFinding{
-						Type:      "unreachable_code",
-						Severity:  "warning",
-						Line:      startLine,
-						Column:    startCol,
-						EndLine:   endLine,
-						EndColumn: endCol,
-						Message:   fmt.Sprintf("Unreachable code: statements after %s", stmtTypeMsg),
-						Code:      childCode,
+						Type:       "unreachable_code",
+						Severity:   "warning",
+						Line:       startLine,
+						Column:     startCol,
+						EndLine:    endLine,
+						EndColumn:  endCol,
+						Message:    fmt.Sprintf("Unreachable code: statements after %s", stmtTypeMsg),
+						Code:       childCode,
 						Suggestion: fmt.Sprintf("Remove unreachable code or move %s", stmtTypeMsg),
 					})
 				}
 			}
 		}
 	}
-	
+
 	return findings
 }
 
 // detectOrphanedCode detects code outside valid scope (e.g., statements outside functions/classes)
 func detectOrphanedCode(root *sitter.Node, code string, language string) []ASTFinding {
 	findings := []ASTFinding{}
-	
+
 	// Track valid scopes (functions, classes, modules)
 	validScopes := make(map[*sitter.Node]bool)
-	
+
 	// First pass: identify valid scopes
 	traverseAST(root, func(node *sitter.Node) bool {
 		switch language {
@@ -600,7 +608,7 @@ func detectOrphanedCode(root *sitter.Node, code string, language string) []ASTFi
 		}
 		return true
 	})
-	
+
 	// Helper to check if a node is within a valid scope
 	isInValidScope := func(node *sitter.Node) bool {
 		current := node
@@ -612,7 +620,7 @@ func detectOrphanedCode(root *sitter.Node, code string, language string) []ASTFi
 		}
 		return false
 	}
-	
+
 	// Second pass: find orphaned statements (statements not in valid scope)
 	traverseAST(root, func(node *sitter.Node) bool {
 		// Check for top-level statements that aren't in valid scopes
@@ -623,7 +631,7 @@ func detectOrphanedCode(root *sitter.Node, code string, language string) []ASTFi
 				// This is an orphaned top-level statement
 				startLine, startCol := getLineColumn(code, int(node.StartByte()))
 				endLine, endCol := getLineColumn(code, int(node.EndByte()))
-				
+
 				// Skip import/export statements (they're valid at top level)
 				nodeCode := code[node.StartByte():node.EndByte()]
 				if strings.Contains(strings.ToLower(nodeCode), "import") ||
@@ -631,23 +639,23 @@ func detectOrphanedCode(root *sitter.Node, code string, language string) []ASTFi
 					strings.Contains(strings.ToLower(nodeCode), "package") {
 					return true
 				}
-				
+
 				findings = append(findings, ASTFinding{
-					Type:      "orphaned_code",
-					Severity:  "error",
-					Line:      startLine,
-					Column:    startCol,
-					EndLine:   endLine,
-					EndColumn: endCol,
-					Message:   "Orphaned code: statement outside function/class scope",
-					Code:      nodeCode,
+					Type:       "orphaned_code",
+					Severity:   "error",
+					Line:       startLine,
+					Column:     startCol,
+					EndLine:    endLine,
+					EndColumn:  endCol,
+					Message:    "Orphaned code: statement outside function/class scope",
+					Code:       nodeCode,
 					Suggestion: "Move this code into a function or remove it if unnecessary",
 				})
 			}
 		}
 		return true
 	})
-	
+
 	return findings
 }
 
@@ -657,11 +665,11 @@ func traverseAST(node *sitter.Node, visitor func(*sitter.Node) bool) {
 	if node == nil {
 		return
 	}
-	
+
 	if !visitor(node) {
 		return
 	}
-	
+
 	for i := 0; i < int(node.ChildCount()); i++ {
 		child := node.Child(i)
 		if child != nil {
@@ -674,7 +682,7 @@ func countNodes(node *sitter.Node) int {
 	if node == nil {
 		return 0
 	}
-	
+
 	count := 1
 	for i := 0; i < int(node.ChildCount()); i++ {
 		child := node.Child(i)
@@ -682,14 +690,14 @@ func countNodes(node *sitter.Node) int {
 			count += countNodes(child)
 		}
 	}
-	
+
 	return count
 }
 
 func getLineColumn(code string, byteOffset int) (line, column int) {
 	line = 1
 	column = 0
-	
+
 	for i := 0; i < byteOffset && i < len(code); i++ {
 		if code[i] == '\n' {
 			line++
@@ -698,13 +706,13 @@ func getLineColumn(code string, byteOffset int) (line, column int) {
 			column++
 		}
 	}
-	
+
 	return line, column
 }
 
 func isStatementNode(node *sitter.Node, language string) bool {
 	var stmtTypes []string
-	
+
 	switch language {
 	case "go":
 		stmtTypes = []string{
@@ -750,14 +758,14 @@ func isStatementNode(node *sitter.Node, language string) bool {
 			"call_expression",
 		}
 	}
-	
+
 	nodeType := node.Type()
 	for _, stmtType := range stmtTypes {
 		if nodeType == stmtType {
 			return true
 		}
 	}
-	
+
 	return false
 }
 
@@ -773,11 +781,11 @@ func contains(slice []string, item string) bool {
 // detectEmptyCatchBlocks detects empty catch/except blocks (Phase 7C)
 func detectEmptyCatchBlocks(root *sitter.Node, code string, language string) []ASTFinding {
 	findings := []ASTFinding{}
-	
+
 	traverseAST(root, func(node *sitter.Node) bool {
 		var catchBlock *sitter.Node
 		var catchStart, catchEnd uint32
-		
+
 		switch language {
 		case "javascript", "typescript":
 			if node.Type() == "catch_clause" {
@@ -821,74 +829,74 @@ func detectEmptyCatchBlocks(root *sitter.Node, code string, language string) []A
 				}
 			}
 		}
-		
+
 		if catchBlock != nil {
 			// Check if catch block is empty (only whitespace/comments)
 			blockCode := code[catchStart:catchEnd]
 			trimmed := strings.TrimSpace(blockCode)
-			
+
 			// Remove catch/except keyword and braces to check if body is empty
 			bodyStart := strings.Index(trimmed, "{")
 			bodyEnd := strings.LastIndex(trimmed, "}")
 			if bodyStart >= 0 && bodyEnd > bodyStart {
 				bodyContent := trimmed[bodyStart+1 : bodyEnd]
 				bodyContent = strings.TrimSpace(bodyContent)
-				
+
 				// Check if body is empty or only contains comments
-				isEmpty := bodyContent == "" || 
-					strings.HasPrefix(bodyContent, "//") || 
+				isEmpty := bodyContent == "" ||
+					strings.HasPrefix(bodyContent, "//") ||
 					strings.HasPrefix(bodyContent, "/*") ||
 					strings.HasPrefix(bodyContent, "#")
-				
+
 				if isEmpty {
 					startLine, startCol := getLineColumn(code, int(catchStart))
 					endLine, endCol := getLineColumn(code, int(catchEnd))
-					
+
 					langSpecific := "catch"
 					if language == "python" {
 						langSpecific = "except"
 					} else if language == "go" {
 						langSpecific = "error handling"
 					}
-					
+
 					findings = append(findings, ASTFinding{
-						Type:      "empty_catch",
-						Severity:  "warning",
-						Line:      startLine,
-						Column:    startCol,
-						EndLine:   endLine,
-						EndColumn: endCol,
-						Message:   fmt.Sprintf("Empty %s block: errors are silently ignored", langSpecific),
-						Code:      blockCode,
+						Type:       "empty_catch",
+						Severity:   "warning",
+						Line:       startLine,
+						Column:     startCol,
+						EndLine:    endLine,
+						EndColumn:  endCol,
+						Message:    fmt.Sprintf("Empty %s block: errors are silently ignored", langSpecific),
+						Code:       blockCode,
 						Suggestion: fmt.Sprintf("Add error handling logic in %s block or log the error", langSpecific),
 					})
 				}
 			}
 		}
-		
+
 		return true
 	})
-	
+
 	return findings
 }
 
 // detectMissingAwait detects async function calls without await (Phase 7C)
 func detectMissingAwait(root *sitter.Node, code string, language string) []ASTFinding {
 	findings := []ASTFinding{}
-	
+
 	// Only for JavaScript/TypeScript and Python (async/await languages)
 	if language != "javascript" && language != "typescript" && language != "python" {
 		return findings
 	}
-	
+
 	// Track async function definitions
 	asyncFunctions := make(map[string]bool)
-	
+
 	// First pass: identify async functions
 	traverseAST(root, func(node *sitter.Node) bool {
 		var funcName string
 		isAsync := false
-		
+
 		switch language {
 		case "javascript", "typescript":
 			if node.Type() == "function_declaration" || node.Type() == "arrow_function" {
@@ -921,14 +929,14 @@ func detectMissingAwait(root *sitter.Node, code string, language string) []ASTFi
 				}
 			}
 		}
-		
+
 		if isAsync && funcName != "" {
 			asyncFunctions[funcName] = true
 		}
-		
+
 		return true
 	})
-	
+
 	// Second pass: find calls to async functions without await
 	traverseAST(root, func(node *sitter.Node) bool {
 		if node.Type() == "call_expression" {
@@ -948,7 +956,7 @@ func detectMissingAwait(root *sitter.Node, code string, language string) []ASTFi
 					}
 				}
 			}
-			
+
 			// Check if this is a call to an async function
 			if asyncFunctions[callName] {
 				// Check if parent has await
@@ -966,42 +974,42 @@ func detectMissingAwait(root *sitter.Node, code string, language string) []ASTFi
 					contextCode := code[contextStart:callStart]
 					hasAwait = strings.Contains(contextCode, "await") || strings.Contains(parentCode, "await")
 				}
-				
+
 				if !hasAwait {
 					startLine, startCol := getLineColumn(code, int(node.StartByte()))
 					endLine, endCol := getLineColumn(code, int(node.EndByte()))
-					
+
 					findings = append(findings, ASTFinding{
-						Type:      "missing_await",
-						Severity:  "warning",
-						Line:      startLine,
-						Column:    startCol,
-						EndLine:   endLine,
-						EndColumn: endCol,
-						Message:   fmt.Sprintf("Async function '%s' called without await", callName),
-						Code:      code[node.StartByte():node.EndByte()],
+						Type:       "missing_await",
+						Severity:   "warning",
+						Line:       startLine,
+						Column:     startCol,
+						EndLine:    endLine,
+						EndColumn:  endCol,
+						Message:    fmt.Sprintf("Async function '%s' called without await", callName),
+						Code:       code[node.StartByte():node.EndByte()],
 						Suggestion: "Add 'await' keyword before the async function call",
 					})
 				}
 			}
 		}
-		
+
 		return true
 	})
-	
+
 	return findings
 }
 
 // detectBraceMismatch detects brace/bracket mismatches from parser errors (Phase 7C)
 func detectBraceMismatch(tree *sitter.Tree, code string, language string) []ASTFinding {
 	findings := []ASTFinding{}
-	
+
 	// Check for parse errors (Tree-sitter marks errors in the tree)
 	rootNode := tree.RootNode()
 	if rootNode == nil {
 		return findings
 	}
-	
+
 	// Check if tree has errors (Tree-sitter includes ERROR nodes)
 	hasError := false
 	traverseAST(rootNode, func(node *sitter.Node) bool {
@@ -1009,15 +1017,15 @@ func detectBraceMismatch(tree *sitter.Tree, code string, language string) []ASTF
 			hasError = true
 			// Try to identify if it's a brace mismatch
 			errorCode := code[node.StartByte():node.EndByte()]
-			
+
 			// Count braces/brackets in the error region
 			openBraces := strings.Count(errorCode, "{") + strings.Count(errorCode, "[") + strings.Count(errorCode, "(")
 			closeBraces := strings.Count(errorCode, "}") + strings.Count(errorCode, "]") + strings.Count(errorCode, ")")
-			
+
 			if openBraces != closeBraces {
 				startLine, startCol := getLineColumn(code, int(node.StartByte()))
 				endLine, endCol := getLineColumn(code, int(node.EndByte()))
-				
+
 				diff := openBraces - closeBraces
 				var message string
 				if diff > 0 {
@@ -1025,16 +1033,16 @@ func detectBraceMismatch(tree *sitter.Tree, code string, language string) []ASTF
 				} else {
 					message = fmt.Sprintf("Extra %d closing brace(s)/bracket(s)", -diff)
 				}
-				
+
 				findings = append(findings, ASTFinding{
-					Type:      "brace_mismatch",
-					Severity:  "error",
-					Line:      startLine,
-					Column:    startCol,
-					EndLine:   endLine,
-					EndColumn: endCol,
-					Message:   message,
-					Code:      errorCode,
+					Type:       "brace_mismatch",
+					Severity:   "error",
+					Line:       startLine,
+					Column:     startCol,
+					EndLine:    endLine,
+					EndColumn:  endCol,
+					Message:    message,
+					Code:       errorCode,
 					Suggestion: "Check for mismatched braces, brackets, or parentheses",
 				})
 			}
@@ -1042,40 +1050,39 @@ func detectBraceMismatch(tree *sitter.Tree, code string, language string) []ASTF
 		}
 		return true
 	})
-	
+
 	// If no explicit ERROR nodes, check for unbalanced braces in the code
 	if !hasError {
 		// Simple brace counting (can be enhanced)
 		openCount := 0
 		closeCount := 0
 		lines := strings.Split(code, "\n")
-		
+
 		for lineNum, line := range lines {
 			openCount += strings.Count(line, "{") + strings.Count(line, "[") + strings.Count(line, "(")
 			closeCount += strings.Count(line, "}") + strings.Count(line, "]") + strings.Count(line, ")")
-			
+
 			// If we have a significant mismatch, report it
 			diff := openCount - closeCount
 			if diff > 3 || diff < -3 {
 				findings = append(findings, ASTFinding{
-					Type:      "brace_mismatch",
-					Severity:  "error",
-					Line:      lineNum + 1,
-					Column:    0,
-					EndLine:   lineNum + 1,
-					EndColumn: len(line),
-					Message:   fmt.Sprintf("Possible brace mismatch detected (difference: %d)", diff),
-					Code:      line,
+					Type:       "brace_mismatch",
+					Severity:   "error",
+					Line:       lineNum + 1,
+					Column:     0,
+					EndLine:    lineNum + 1,
+					EndColumn:  len(line),
+					Message:    fmt.Sprintf("Possible brace mismatch detected (difference: %d)", diff),
+					Code:       line,
 					Suggestion: "Check for missing or extra braces, brackets, or parentheses",
 				})
 				break // Report first significant mismatch
 			}
 		}
 	}
-	
+
 	return findings
 }
-
 
 // =============================================================================
 // Phase 6F: Cross-File Analysis Implementation
@@ -1111,32 +1118,32 @@ func buildSymbolTable(files []struct {
 		Imports: make(map[string][]string),
 		Exports: make(map[string][]string),
 	}
-	
+
 	for _, file := range files {
 		parser, err := getParser(file.Language)
 		if err != nil {
 			continue
 		}
-		
+
 		ctx := context.Background()
 		tree, err := parser.ParseCtx(ctx, nil, []byte(file.Code))
 		if err != nil || tree == nil {
 			continue
 		}
-		
+
 		rootNode := tree.RootNode()
 		if rootNode == nil {
 			tree.Close() // Close before continue to prevent resource leak
 			continue
 		}
-		
+
 		// Extract symbols from this file
 		extractSymbols(rootNode, file.Code, file.Path, file.Language, table)
 		// Extract imports/exports
 		extractImportsExports(rootNode, file.Code, file.Path, file.Language, table)
 		tree.Close() // Close after use to prevent resource leak
 	}
-	
+
 	return table
 }
 
@@ -1145,7 +1152,7 @@ func extractSymbols(root *sitter.Node, code string, filePath string, language st
 	traverseAST(root, func(node *sitter.Node) bool {
 		var symbol SymbolInfo
 		var found bool
-		
+
 		switch language {
 		case "go":
 			if node.Type() == "function_declaration" || node.Type() == "method_declaration" {
@@ -1223,7 +1230,7 @@ func extractSymbols(root *sitter.Node, code string, filePath string, language st
 				}
 			}
 		}
-		
+
 		if found && symbol.Name != "" {
 			startLine, startCol := getLineColumn(code, int(node.StartByte()))
 			symbol.File = filePath
@@ -1231,10 +1238,10 @@ func extractSymbols(root *sitter.Node, code string, filePath string, language st
 			symbol.Column = startCol
 			symbol.Language = language
 			symbol.Visibility = "public" // Default, can be enhanced
-			
+
 			table.Symbols[symbol.Name] = append(table.Symbols[symbol.Name], symbol)
 		}
-		
+
 		return true
 	})
 }
@@ -1242,7 +1249,7 @@ func extractSymbols(root *sitter.Node, code string, filePath string, language st
 // extractFunctionSignature extracts function signature (parameters, return type)
 func extractFunctionSignature(node *sitter.Node, code string, language string) string {
 	var signature strings.Builder
-	
+
 	// Find parameter list
 	for i := 0; i < int(node.ChildCount()); i++ {
 		child := node.Child(i)
@@ -1254,7 +1261,7 @@ func extractFunctionSignature(node *sitter.Node, code string, language string) s
 			}
 		}
 	}
-	
+
 	// For typed languages, try to find return type
 	if language == "go" || language == "typescript" {
 		// Look for return type annotation
@@ -1272,7 +1279,7 @@ func extractFunctionSignature(node *sitter.Node, code string, language string) s
 			}
 		}
 	}
-	
+
 	result := signature.String()
 	if result == "" {
 		return "()"
@@ -1284,7 +1291,7 @@ func extractFunctionSignature(node *sitter.Node, code string, language string) s
 func extractImportsExports(root *sitter.Node, code string, filePath string, language string, table *SymbolTable) {
 	var imports []string
 	var exports []string
-	
+
 	traverseAST(root, func(node *sitter.Node) bool {
 		switch language {
 		case "go":
@@ -1338,10 +1345,10 @@ func extractImportsExports(root *sitter.Node, code string, filePath string, lang
 				}
 			}
 		}
-		
+
 		return true
 	})
-	
+
 	if len(imports) > 0 {
 		table.Imports[filePath] = imports
 	}
@@ -1353,7 +1360,7 @@ func extractImportsExports(root *sitter.Node, code string, filePath string, lang
 // resolveCrossFileReferences resolves imports to actual definitions
 func resolveCrossFileReferences(table *SymbolTable) map[string]string {
 	resolutions := make(map[string]string) // import -> definition file
-	
+
 	for filePath, imports := range table.Imports {
 		for _, imp := range imports {
 			// Try to find this symbol in the symbol table
@@ -1368,20 +1375,20 @@ func resolveCrossFileReferences(table *SymbolTable) map[string]string {
 			}
 		}
 	}
-	
+
 	return resolutions
 }
 
 // detectSignatureMismatches detects function signature mismatches across files (Phase 6F)
 func detectSignatureMismatches(table *SymbolTable) []ASTFinding {
 	findings := []ASTFinding{}
-	
+
 	// Check for duplicate function names with different signatures
 	for funcName, definitions := range table.Symbols {
 		if len(definitions) < 2 {
 			continue // Need at least 2 definitions to compare
 		}
-		
+
 		// Group by signature
 		signatureGroups := make(map[string][]SymbolInfo)
 		for _, def := range definitions {
@@ -1393,7 +1400,7 @@ func detectSignatureMismatches(table *SymbolTable) []ASTFinding {
 				signatureGroups[sig] = append(signatureGroups[sig], def)
 			}
 		}
-		
+
 		// If we have multiple signature groups, we have mismatches
 		if len(signatureGroups) > 1 {
 			// Report all definitions with mismatched signatures
@@ -1406,17 +1413,19 @@ func detectSignatureMismatches(table *SymbolTable) []ASTFinding {
 							otherSigs = append(otherSigs, otherSig)
 						}
 					}
-					
+
 					for _, def := range defs {
+						// Include file path in message for cross-file findings
+						message := fmt.Sprintf("%s: Function '%s' has signature mismatch: '%s' vs '%s'", def.File, funcName, sig, strings.Join(otherSigs, ", "))
 						findings = append(findings, ASTFinding{
-							Type:      "signature_mismatch",
-							Severity:  "error",
-							Line:      def.Line,
-							Column:    def.Column,
-							EndLine:   def.Line,
-							EndColumn: def.Column + len(def.Name),
-							Message:   fmt.Sprintf("Function '%s' has signature mismatch: '%s' vs '%s'", funcName, sig, strings.Join(otherSigs, ", ")),
-							Code:      def.Name,
+							Type:       "signature_mismatch",
+							Severity:   "error",
+							Line:       def.Line,
+							Column:     def.Column,
+							EndLine:    def.Line,
+							EndColumn:  def.Column + len(def.Name),
+							Message:    message,
+							Code:       def.Name,
 							Suggestion: fmt.Sprintf("Ensure all definitions of '%s' have the same signature, or rename conflicting functions", funcName),
 						})
 					}
@@ -1424,14 +1433,14 @@ func detectSignatureMismatches(table *SymbolTable) []ASTFinding {
 			}
 		}
 	}
-	
+
 	return findings
 }
 
 // detectImportExportMismatches detects import/export mismatches (Phase 6F)
 func detectImportExportMismatches(table *SymbolTable) []ASTFinding {
 	findings := []ASTFinding{}
-	
+
 	// Check for imports that don't have corresponding exports
 	for filePath, imports := range table.Imports {
 		for _, imp := range imports {
@@ -1448,27 +1457,27 @@ func detectImportExportMismatches(table *SymbolTable) []ASTFinding {
 					break
 				}
 			}
-			
+
 			// Also check if it's defined in symbol table (might be internal)
 			if !foundExport {
 				if _, exists := table.Symbols[imp]; !exists {
 					// Imported but not exported and not defined
 					findings = append(findings, ASTFinding{
-						Type:      "import_mismatch",
-						Severity:  "warning",
-						Line:      1, // Import statements are usually at top
-						Column:    0,
-						EndLine:   1,
-						EndColumn: 0,
-						Message:   fmt.Sprintf("Import '%s' in %s has no corresponding export or definition", imp, filePath),
-						Code:      imp,
+						Type:       "import_mismatch",
+						Severity:   "warning",
+						Line:       1, // Import statements are usually at top
+						Column:     0,
+						EndLine:    1,
+						EndColumn:  0,
+						Message:    fmt.Sprintf("Import '%s' in %s has no corresponding export or definition", imp, filePath),
+						Code:       imp,
 						Suggestion: fmt.Sprintf("Check if '%s' is exported from the source file or remove the import", imp),
 					})
 				}
 			}
 		}
 	}
-	
+
 	return findings
 }
 
@@ -1479,30 +1488,30 @@ func analyzeCrossFile(files []struct {
 	Language string
 }) ([]ASTFinding, AnalysisStats, error) {
 	analysisStart := time.Now()
-	
+
 	// Build symbol table from all files
 	table := buildSymbolTable(files)
-	
+
 	// Resolve cross-file references
 	resolutions := resolveCrossFileReferences(table)
 	_ = resolutions // May be used for future enhancements
-	
+
 	// Detect signature mismatches
 	signatureFindings := detectSignatureMismatches(table)
-	
+
 	// Detect import/export mismatches
 	importFindings := detectImportExportMismatches(table)
-	
+
 	// Combine all findings
 	allFindings := append(signatureFindings, importFindings...)
-	
+
 	analysisTime := time.Since(analysisStart).Milliseconds()
-	
+
 	stats := AnalysisStats{
 		ParseTime:    0, // Cross-file doesn't track individual parse times
 		AnalysisTime: analysisTime,
 		NodesVisited: len(table.Symbols), // Approximate
 	}
-	
+
 	return allFindings, stats, nil
 }

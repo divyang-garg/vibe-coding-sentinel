@@ -38,10 +38,13 @@ coverage.out
 # Environment files
 .env
 .env.local
+.env.production
+.env.*.local
 *.key
 *.pem
 
-# Temporary files
+# Sentinel configuration (may contain API keys)
+.sentinelsrc# Temporary files
 *.tmp
 *.log
 /tmp/

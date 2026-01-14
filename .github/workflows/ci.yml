@@ -142,10 +142,51 @@ jobs:
         run: |
           ./sentinel --help || ./sentinel.exe --help
 
+  test-hub-api:
+    name: Test Hub API
+    runs-on: ubuntu-latest
+    services:
+      postgres:
+        image: postgres:15-alpine
+        env:
+          POSTGRES_USER: sentinel
+          POSTGRES_PASSWORD: sentinel
+          POSTGRES_DB: sentinel_test
+        options: >-
+          --health-cmd pg_isready
+          --health-interval 10s
+          --health-timeout 5s
+          --health-retries 5
+        ports:
+          - 5432:5432
+
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version: '1.21'
+
+      - name: Build Hub API
+        run: |
+          cd hub/api
+          go mod tidy
+          go build -o sentinel-hub .
+
+      - name: Run Hub API integration tests
+        run: |
+          cd hub/api
+          export TEST_DATABASE_URL="postgres://sentinel:sentinel@localhost:5432/sentinel_test?sslmode=disable"
+          go test -tags=integration ./tests/integration/... -v -timeout 60s
+        env:
+          TEST_DATABASE_URL: postgres://sentinel:sentinel@localhost:5432/sentinel_test?sslmode=disable
+
   release:
     name: Release Build
     runs-on: ubuntu-latest
-    needs: [build, test-fixtures, lint]
+    needs: [build, test-fixtures, test-hub-api, lint]
     if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     
     steps:
@@ -174,4 +215,11 @@ jobs:
         with:
           name: sentinel-release
           path: release/
+
+
+
+
+
+
+
 

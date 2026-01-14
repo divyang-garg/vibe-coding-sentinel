@@ -65,9 +65,9 @@ Sentinel uses a distributed architecture with local agents on developer machines
 │  │  │ API SERVER  │  │ DATABASE    │  │ DASHBOARD   │            │    │
 │  │  ├─────────────┤  ├─────────────┤  ├─────────────┤            │    │
 │  │  │ • Ingest    │  │ • Metrics   │  │ • Overview  │            │    │
-│  │  │ • Query     │  │ • Orgs      │  │ • Teams     │            │    │
-│  │  │ • Auth      │  │ • Teams     │  │ • Trends    │            │    │
-│  │  │ • Patterns  │  │ • Patterns  │  │ • Admin     │            │    │
+│  │  │ • Query     │  │ • Orgs      │  │ • Config    │            │    │
+│  │  │ • Auth      │  │ • Teams     │  │ • Usage     │            │    │
+│  │  │ • Patterns  │  │ • Patterns  │  │ • Optimize  │            │    │
 │  │  └─────────────┘  └─────────────┘  └─────────────┘            │    │
 │  │                                                                 │    │
 │  └────────────────────────────────────────────────────────────────┘    │
@@ -127,6 +127,48 @@ The agent is a compiled Go binary that runs on each developer machine.
 - Data sanitization
 - Hub communication
 
+### Test Enforcement System (Phase 10) ✅ IMPLEMENTED
+
+**Purpose**: Ensure business rules have corresponding tests that are systematically written, validated, and enforced.
+
+**Architecture**:
+```
+Agent (Local)                     Hub (Server)
+─────────────                     ─────────────
+Test Commands                ───►   Test Requirement Generator
+  ├─ --requirements                 Test Coverage Tracker
+  ├─ --coverage                     Test Validator
+  ├─ --validate                     Mutation Testing Engine
+  ├─ --mutation                     Test Execution Sandbox (Docker)
+  └─ --run                          Database (test_requirements, test_coverage, etc.)
+```
+
+**Components**:
+1. **Test Requirement Generation** (Hub): Extracts business rules from knowledge base, generates test requirements
+2. **Test Coverage Tracking** (Hub): Analyzes test files (content-based), maps to business rules, calculates coverage
+3. **Test Validation** (Hub): Validates test structure, assertions, completeness
+4. **Mutation Testing Engine** (Hub): Generates mutants, executes tests against mutants, calculates mutation score
+5. **Test Execution Sandbox** (Hub): Docker-based isolated test execution with resource limits
+6. **Agent Commands** (Local): CLI interface for all test enforcement features
+
+**Database Tables**:
+- `test_requirements` - Generated test requirements from business rules
+- `test_coverage` - Coverage tracking per business rule
+- `test_validations` - Test validation results
+- `mutation_results` - Mutation testing results
+- `test_executions` - Test execution records
+
+**API Endpoints**:
+- `POST /api/v1/test-requirements/generate` - Generate test requirements
+- `POST /api/v1/test-coverage/analyze` - Analyze test coverage
+- `GET /api/v1/test-coverage/{knowledge_item_id}` - Get coverage
+- `POST /api/v1/test-validations/validate` - Validate tests
+- `GET /api/v1/test-validations/{test_requirement_id}` - Get validation
+- `POST /api/v1/mutation-test/run` - Run mutation testing
+- `GET /api/v1/mutation-test/{test_requirement_id}` - Get mutation results
+- `POST /api/v1/test-execution/run` - Execute tests in sandbox
+- `GET /api/v1/test-execution/{execution_id}` - Get execution status
+
 ### Sentinel Hub
 
 The hub is a central server for organizational visibility.
@@ -143,13 +185,84 @@ The hub is a central server for organizational visibility.
 - Audit logging
 
 **Dashboard**
-- Organization overview
-- Team breakdown
-- Trend analysis
-- Documentation coverage
-- Administration
-- Comprehensive analysis results
-- LLM configuration interface
+- LLM provider configuration
+- Usage monitoring and analytics
+- Cost optimization recommendations
+- API key management
+
+### Task Dependency & Verification Module (Phase 14E)
+
+The task dependency and verification module tracks Cursor-generated tasks, verifies completion, and manages dependencies.
+
+**Architecture**:
+```
+Agent (Local)                     Hub (Server)
+─────────────                     ─────────────
+tasks scan command         ───►   Task Detection Engine
+tasks verify command              Dependency Analyzer
+tasks list command                Verification Engine
+                                  Auto-Completion System
+                                  Alert System
+                                  Database (tasks, task_dependencies, task_verifications)
+```
+
+**Components**:
+
+1. **Task Detection Engine**:
+   - Scans codebase for TODO comments, task markers, Cursor task format
+   - Extracts task metadata (title, description, file, line number)
+   - Identifies task source (cursor, manual, change_request, comprehensive_analysis)
+
+2. **Dependency Analyzer**:
+   - Explicit dependency parsing (from task descriptions)
+   - Implicit dependency detection (code analysis)
+   - Integration dependency detection (Phase 14A feature discovery)
+   - Feature-level dependency detection (Phase 14A comprehensive analysis)
+   - Dependency graph building and cycle detection
+
+3. **Verification Engine**:
+   - Multi-factor verification (code existence, usage, tests, integration)
+   - AST-based code verification (Phase 6)
+   - Test coverage verification (Phase 10)
+   - Integration verification (external APIs/services)
+   - Confidence scoring algorithm
+
+4. **Auto-Completion System**:
+   - High confidence (>0.8) → Auto-mark as completed
+   - Medium confidence (0.5-0.8) → Mark as in_progress, alert developer
+   - Low confidence (<0.5) → Keep as pending, require manual verification
+
+5. **Integration Layer**:
+   - Links tasks to change requests (Phase 12)
+   - Links tasks to knowledge items (Phase 4)
+   - Links tasks to comprehensive analysis results (Phase 14A)
+   - Links tasks to test requirements (Phase 10)
+   - Status synchronization
+
+**Database Tables**:
+- `tasks` - Task metadata and status
+- `task_dependencies` - Task dependency relationships
+- `task_verifications` - Verification results and evidence
+- `task_links` - Links to other systems (change requests, knowledge items, etc.)
+
+**API Endpoints**:
+- `POST /api/v1/tasks` - Create or update task
+- `GET /api/v1/tasks` - List tasks with filters
+- `GET /api/v1/tasks/{id}` - Get task details
+- `POST /api/v1/tasks/{id}/verify` - Verify task completion
+- `GET /api/v1/tasks/{id}/dependencies` - Get task dependencies
+- `POST /api/v1/tasks/{id}/dependencies` - Add dependency
+
+**Integration Points**:
+- Phase 11 (Doc-Sync): Reuse `detectBusinessRuleImplementation()` pattern
+- Phase 12 (Change Requests): Link tasks to change requests, auto-create tasks
+- Phase 14A (Comprehensive Analysis): Use feature discovery for dependencies
+- Phase 10 (Test Enforcement): Verify test-related tasks, link to test requirements
+- Phase 4 (Knowledge Base): Link tasks to business rules
+
+**Reference**: See [TASK_DEPENDENCY_SYSTEM.md](./TASK_DEPENDENCY_SYSTEM.md) for complete specification.
+
+---
 
 ### Comprehensive Analysis Module
 
@@ -394,14 +507,190 @@ The comprehensive analysis module provides end-to-end feature analysis across al
 }
 ```
 
-### Git (via Hooks)
+### Interactive Git Hooks Module (Phase 9.5)
+
+**Purpose**: Interactive git hooks with user warnings, options, and comprehensive integration with Hub for organizational governance.
+
+**Architecture**:
+```
+Git Hook (pre-commit/pre-push)
+    │
+    ▼
+sentinel hook <type> [--non-interactive]
+    │
+    ▼
+runInteractiveHook()
+    │
+    ├── performAuditForHook() → AuditReport
+    │
+    ├── Parse findings by severity
+    │
+    ├── Interactive Menu (if not --non-interactive)
+    │   ├── [v] View details
+    │   ├── [p] Proceed anyway (check policy)
+    │   ├── [b] Add to baseline (check policy)
+    │   ├── [e] Add exception (check policy)
+    │   └── [q] Quit
+    │
+    ├── Save audit history (with HookContext)
+    │
+    └── sendHookTelemetry() → Hub
+        │
+        ▼
+    Hub: POST /api/v1/telemetry/hook
+        │
+        ▼
+    Store in hook_executions table
+        │
+        ▼
+    Aggregate for metrics dashboard
+```
+
+**Components**:
+
+1. **Interactive Hook Handler** (`runInteractiveHook()`):
+   - Runs audit and captures report
+   - Parses findings by severity
+   - Displays interactive menu
+   - Handles user input
+   - Enforces policies
+   - Tracks user actions
+
+2. **Policy System**:
+   - Policies stored in Hub (`hook_policies` table)
+   - Cached locally (5 minutes)
+   - Checked before allowing overrides/baselines
+   - Configurable per organization
+
+3. **Telemetry System**:
+   - Hook execution events sent to Hub
+   - Aggregated metrics available via API
+   - Team-level breakdowns
+   - Trend analysis
+
+4. **Baseline Review Workflow**:
+   - Hook-added baselines marked "pending_review"
+   - Auto-approved after configured days
+   - Admin approval/rejection via Hub
+
+**Data Flow**:
+- Hook execution → Audit → Interactive menu → User action → Policy check → Save history → Send telemetry → Hub storage → Metrics aggregation
+
+**Hub Integration**:
+- `POST /api/v1/telemetry/hook` - Ingest hook events
+- `GET /api/v1/hooks/metrics` - Get aggregated metrics
+- `GET /api/v1/hooks/policies` - Get policy configuration
+- `POST /api/v1/hooks/policies` - Create/update policy
+
+**Database Schema**:
+- `hook_executions` - Hook execution events
+- `hook_baselines` - Baseline entries from hooks
+- `hook_policies` - Policy configurations
+
+**Reference**: See [INTERACTIVE_HOOKS_ANALYSIS.md](./INTERACTIVE_HOOKS_ANALYSIS.md) for complete analysis.
+
+---
+
+### Reliability Layer (Phase 9.5.1) ✅ IMPLEMENTED
+
+**Purpose**: Ensure system reliability, prevent resource leaks, and provide graceful error handling.
+
+**Components**:
+
+1. **Database Connection Management**:
+   - Connection pool health monitoring (`monitorDBHealth()`)
+   - Connection lifetime management (`SetConnMaxLifetime`)
+   - Pool metrics logging (open, idle, in-use connections)
+   - Exhaustion alerts
+   - Background health check goroutine (30-second intervals)
+
+2. **Database Query Timeouts**:
+   - Context-aware timeout helpers (`queryWithTimeout`, `queryRowWithTimeout`, `execWithTimeout`)
+   - 10-second default timeout
+   - Automatic context cancellation on timeout
+   - Prevents connection pool exhaustion
+   - Used in all Hub API handlers
+
+3. **HTTP Retry Logic**:
+   - Exponential backoff retry (`httpRequestWithRetry`)
+   - Retries on network errors and 5xx server errors
+   - No retry on 4xx client errors
+   - Configurable max retries (default: 3)
+   - Used for Hub communication, baseline submission, telemetry
+
+4. **Cache Management**:
+   - **Policy Cache**: RWMutex for thread-safe access, timestamp-based invalidation
+   - **Limits Cache**: Per-entry expiration, thread-safe map with RWMutex
+   - **AST Cache**: Time-based periodic cleanup to prevent resource leaks
+   - Cache corruption detection and automatic cleanup
+   - Cache invalidation based on Hub `updated_at` timestamps
+
+5. **Error Recovery System**:
+   - `CheckResult` struct tracks check status (enabled, success, error, findings count)
+   - `CheckResults` map in `AuditReport` tracks all check types
+   - Error wrapper functions with panic recovery
+   - Detailed panic logging with context
+   - Finding count tracking (before/after) for accurate reporting
+
+**Architecture**:
+```
+┌─────────────────────────────────────────────────────────┐
+│              RELIABILITY LAYER                           │
+├─────────────────────────────────────────────────────────┤
+│                                                          │
+│  Database Layer                                         │
+│  ┌──────────────────────────────────────────────┐     │
+│  │ queryWithTimeout()                            │     │
+│  │ queryRowWithTimeout()                         │     │
+│  │ execWithTimeout()                             │     │
+│  │ monitorDBHealth()                             │     │
+│  └──────────────────────────────────────────────┘     │
+│                                                          │
+│  HTTP Layer                                             │
+│  ┌──────────────────────────────────────────────┐     │
+│  │ httpRequestWithRetry()                        │     │
+│  │ - Exponential backoff                        │     │
+│  │ - Retry on 5xx errors                        │     │
+│  └──────────────────────────────────────────────┘     │
+│                                                          │
+│  Cache Layer                                            │
+│  ┌──────────────────────────────────────────────┐     │
+│  │ Policy Cache (RWMutex)                       │     │
+│  │ Limits Cache (per-entry expiration)           │     │
+│  │ AST Cache (time-based cleanup)                │     │
+│  └──────────────────────────────────────────────┘     │
+│                                                          │
+│  Error Recovery Layer                                   │
+│  ┌──────────────────────────────────────────────┐     │
+│  │ CheckResults map                              │     │
+│  │ Error wrapper functions                      │     │
+│  │ Panic recovery                               │     │
+│  └──────────────────────────────────────────────┘     │
+│                                                          │
+└─────────────────────────────────────────────────────────┘
+```
+
+**Integration Points**:
+- Hub API handlers use timeout helpers for all database queries
+- Agent uses retry logic for all Hub communication
+- Cache management integrated into policy and limits fetching
+- Error recovery integrated into hook execution and audit workflows
+
+### Git (via Hooks) ✅ ENHANCED (Phase 9.5)
 
 ```
 .git/hooks/
-├── pre-commit    # Runs audit + safe fixes
-├── pre-push      # Full audit
-└── commit-msg    # Message validation
+├── pre-commit    # ✅ Interactive hook (sentinel hook pre-commit)
+├── pre-push      # ✅ Interactive hook (sentinel hook pre-push)
+└── commit-msg    # Message validation (non-interactive)
 ```
+
+**Interactive Hooks** (Phase 9.5):
+- User warnings with options
+- Policy enforcement
+- Telemetry tracking
+- Baseline review workflow
+- CI/CD mode (`--non-interactive` flag)
 
 ### CI/CD (via CLI)
 

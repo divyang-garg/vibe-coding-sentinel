@@ -27,3 +27,14 @@ function searchUsersSafe(searchTerm) {
     return db.query("SELECT * FROM users WHERE name LIKE :search", { search: `%${searchTerm}%` });
 }
 
+
+
+
+
+
+
+
+
+
+
+

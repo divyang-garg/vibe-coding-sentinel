@@ -82,3 +82,14 @@ rm -f docs/knowledge/knowledge-store.json
 echo ""
 echo "✅ Business rules compliance tests completed"
 
+
+
+
+
+
+
+
+
+
+
+

@@ -63,3 +63,14 @@ curl -k https://api.example.com/data
 # Issue 15: wget without certificate verification
 wget --no-check-certificate https://api.example.com/file
 
+
+
+
+
+
+
+
+
+
+
+

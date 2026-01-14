@@ -14,8 +14,8 @@ import (
 
 // FileContent represents a file to be analyzed
 type FileContent struct {
-	Path    string `json:"path"`
-	Content string `json:"content"`
+	Path     string `json:"path"`
+	Content  string `json:"content"`
 	Language string `json:"language"`
 }
 
@@ -34,10 +34,10 @@ type ArchitectureAnalysisResponse struct {
 
 // FileAnalysisResult represents analysis result for a single file
 type FileAnalysisResult struct {
-	File           string           `json:"file"`
-	Lines          int              `json:"lines"`
-	Status         string           `json:"status"` // ok, warning, critical, oversized
-	Sections       []FileSection    `json:"sections,omitempty"`
+	File            string           `json:"file"`
+	Lines           int              `json:"lines"`
+	Status          string           `json:"status"` // ok, warning, critical, oversized
+	Sections        []FileSection    `json:"sections,omitempty"`
 	SplitSuggestion *SplitSuggestion `json:"splitSuggestion,omitempty"`
 }
 
@@ -53,7 +53,7 @@ type FileSection struct {
 // SplitSuggestion represents a suggestion for splitting a file
 type SplitSuggestion struct {
 	Reason                string         `json:"reason"`
-	ProposedFiles         []ProposedFile  `json:"proposedFiles"`
+	ProposedFiles         []ProposedFile `json:"proposedFiles"`
 	MigrationInstructions []string       `json:"migrationInstructions"` // Text instructions only, not executable
 	EstimatedEffort       string         `json:"estimatedEffort"`
 }
@@ -87,7 +87,7 @@ type ModuleEdge struct {
 
 // DependencyIssue represents a dependency issue found in the codebase
 type DependencyIssue struct {
-	Type        string   `json:"type"`    // circular, tight_coupling, god_module
+	Type        string   `json:"type"` // circular, tight_coupling, god_module
 	Severity    string   `json:"severity"`
 	Files       []string `json:"files"`
 	Description string   `json:"description"`
@@ -130,10 +130,10 @@ func analyzeArchitecture(files []FileContent) ArchitectureAnalysisResponse {
 			}
 
 			oversizedFiles = append(oversizedFiles, FileAnalysisResult{
-				File:           file.Path,
-				Lines:          lineCount,
-				Status:         status,
-				Sections:       sections,
+				File:            file.Path,
+				Lines:           lineCount,
+				Status:          status,
+				Sections:        sections,
 				SplitSuggestion: splitSuggestion,
 			})
 		}
@@ -193,7 +193,7 @@ func extractSectionsFromAST(node *sitter.Node, content string) []FileSection {
 		nodeType := n.Type()
 		if nodeType == "function_declaration" || nodeType == "method_declaration" ||
 			nodeType == "class_declaration" || nodeType == "type_declaration" {
-			
+
 			startLine := int(n.StartPoint().Row) + 1
 			endLine := int(n.EndPoint().Row) + 1
 			lines := endLine - startLine + 1
@@ -269,7 +269,7 @@ func detectGoSections(lines []string) []FileSection {
 
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		
+
 		// Function declaration
 		if strings.HasPrefix(trimmed, "func ") {
 			if currentSection.StartLine > 0 {
@@ -277,7 +277,7 @@ func detectGoSections(lines []string) []FileSection {
 				currentSection.Lines = currentSection.EndLine - currentSection.StartLine + 1
 				sections = append(sections, currentSection)
 			}
-			
+
 			// Extract function name
 			funcName := extractFunctionName(trimmed, "func ")
 			currentSection = FileSection{
@@ -293,7 +293,7 @@ func detectGoSections(lines []string) []FileSection {
 				currentSection.Lines = currentSection.EndLine - currentSection.StartLine + 1
 				sections = append(sections, currentSection)
 			}
-			
+
 			typeName := extractFunctionName(trimmed, "type ")
 			currentSection = FileSection{
 				StartLine:   i + 1,
@@ -320,7 +320,7 @@ func detectJSSections(lines []string) []FileSection {
 
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		
+
 		// Function declaration
 		if strings.HasPrefix(trimmed, "function ") || strings.HasPrefix(trimmed, "const ") && strings.Contains(trimmed, "= (") ||
 			strings.HasPrefix(trimmed, "export function ") || strings.HasPrefix(trimmed, "export const ") {
@@ -329,7 +329,7 @@ func detectJSSections(lines []string) []FileSection {
 				currentSection.Lines = currentSection.EndLine - currentSection.StartLine + 1
 				sections = append(sections, currentSection)
 			}
-			
+
 			funcName := extractFunctionName(trimmed, "")
 			currentSection = FileSection{
 				StartLine:   i + 1,
@@ -344,7 +344,7 @@ func detectJSSections(lines []string) []FileSection {
 				currentSection.Lines = currentSection.EndLine - currentSection.StartLine + 1
 				sections = append(sections, currentSection)
 			}
-			
+
 			className := extractFunctionName(trimmed, "class ")
 			currentSection = FileSection{
 				StartLine:   i + 1,
@@ -371,7 +371,7 @@ func detectPythonSections(lines []string) []FileSection {
 
 	for i, line := range lines {
 		trimmed := strings.TrimSpace(line)
-		
+
 		// Function definition
 		if strings.HasPrefix(trimmed, "def ") {
 			if currentSection.StartLine > 0 {
@@ -379,7 +379,7 @@ func detectPythonSections(lines []string) []FileSection {
 				currentSection.Lines = currentSection.EndLine - currentSection.StartLine + 1
 				sections = append(sections, currentSection)
 			}
-			
+
 			funcName := extractFunctionName(trimmed, "def ")
 			currentSection = FileSection{
 				StartLine:   i + 1,
@@ -394,7 +394,7 @@ func detectPythonSections(lines []string) []FileSection {
 				currentSection.Lines = currentSection.EndLine - currentSection.StartLine + 1
 				sections = append(sections, currentSection)
 			}
-			
+
 			className := extractFunctionName(trimmed, "class ")
 			currentSection = FileSection{
 				StartLine:   i + 1,
@@ -441,7 +441,7 @@ func extractFunctionName(line string, prefix string) string {
 	if prefix != "" {
 		line = strings.TrimPrefix(line, prefix)
 	}
-	
+
 	// Extract name (first word after prefix)
 	parts := strings.Fields(line)
 	if len(parts) > 0 {
@@ -497,7 +497,7 @@ func generateSplitSuggestion(file FileContent, sections []FileSection) *SplitSug
 
 		fileNum := i + 1
 		newPath := filepath.Join(dir, fmt.Sprintf("%s_part%d%s", baseName, fileNum, ext))
-		
+
 		proposedFiles = append(proposedFiles, ProposedFile{
 			Path:     newPath,
 			Lines:    calculateTotalLines(sections[startIdx:min(endIdx, len(sections))]),
@@ -612,4 +612,3 @@ func generateRecommendations(oversizedFiles []FileAnalysisResult, issues []Depen
 
 	return recommendations
 }
-

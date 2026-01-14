@@ -67,3 +67,14 @@ VOLUME ["/data/documents"]
 
 CMD ["sentinel-processor"]
 
+
+
+
+
+
+
+
+
+
+
+

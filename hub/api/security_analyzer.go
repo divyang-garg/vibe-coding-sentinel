@@ -85,22 +85,22 @@ type SecurityDetection struct {
 
 // ASTSecurityCheck defines AST-based checks
 type ASTSecurityCheck struct {
-	FunctionContains     []string // Functions that trigger this check
-	MustHaveBefore       string   // Required check before response
-	RouteMiddleware      []string // Required middleware names
+	FunctionContains []string // Functions that trigger this check
+	MustHaveBefore   string   // Required check before response
+	RouteMiddleware  []string // Required middleware names
 }
 
 // FrameworkType represents detected web framework
 type FrameworkType string
 
 const (
-	FrameworkExpress  FrameworkType = "express"
-	FrameworkFastAPI  FrameworkType = "fastapi"
-	FrameworkGin      FrameworkType = "gin"
-	FrameworkFlask    FrameworkType = "flask"
-	FrameworkDjango   FrameworkType = "django"
-	FrameworkRails    FrameworkType = "rails"
-	FrameworkUnknown  FrameworkType = "unknown"
+	FrameworkExpress FrameworkType = "express"
+	FrameworkFastAPI FrameworkType = "fastapi"
+	FrameworkGin     FrameworkType = "gin"
+	FrameworkFlask   FrameworkType = "flask"
+	FrameworkDjango  FrameworkType = "django"
+	FrameworkRails   FrameworkType = "rails"
+	FrameworkUnknown FrameworkType = "unknown"
 )
 
 // FrameworkDetection represents framework detection with confidence scoring
@@ -255,11 +255,11 @@ func verifyFrameworkUsage(rootNode *sitter.Node, code string, language string, d
 		Confidence: "low",
 		Evidence:   []string{},
 	}
-	
+
 	if detectedFramework == FrameworkUnknown {
 		return detection
 	}
-	
+
 	// Check for route definitions (high confidence)
 	hasRoutes := false
 	traverseAST(rootNode, func(n *sitter.Node) bool {
@@ -295,12 +295,12 @@ func verifyFrameworkUsage(rootNode *sitter.Node, code string, language string, d
 		}
 		return true
 	})
-	
+
 	if hasRoutes {
 		detection.Confidence = "high"
 		return detection
 	}
-	
+
 	// Check for middleware usage (medium confidence)
 	hasMiddleware := false
 	traverseAST(rootNode, func(n *sitter.Node) bool {
@@ -335,12 +335,12 @@ func verifyFrameworkUsage(rootNode *sitter.Node, code string, language string, d
 		}
 		return true
 	})
-	
+
 	if hasMiddleware {
 		detection.Confidence = "medium"
 		return detection
 	}
-	
+
 	// Only imports found (low confidence)
 	detection.Evidence = append(detection.Evidence, "Only imports found, no route/middleware usage")
 	return detection
@@ -350,7 +350,7 @@ func verifyFrameworkUsage(rootNode *sitter.Node, code string, language string, d
 func detectFramework(code string, language string, rootNode *sitter.Node) FrameworkDetection {
 	codeLower := strings.ToLower(code)
 	var detectedFramework FrameworkType
-	
+
 	switch language {
 	case "javascript", "typescript":
 		if strings.Contains(codeLower, "express") || strings.Contains(codeLower, "require('express')") || strings.Contains(codeLower, "import express") {
@@ -375,7 +375,7 @@ func detectFramework(code string, language string, rootNode *sitter.Node) Framew
 			detectedFramework = FrameworkRails
 		}
 	}
-	
+
 	if detectedFramework == FrameworkUnknown {
 		return FrameworkDetection{
 			Framework:  FrameworkUnknown,
@@ -383,12 +383,12 @@ func detectFramework(code string, language string, rootNode *sitter.Node) Framew
 			Evidence:   []string{"No framework imports detected"},
 		}
 	}
-	
+
 	// Verify actual usage if AST is available
 	if rootNode != nil {
 		return verifyFrameworkUsage(rootNode, code, language, detectedFramework)
 	}
-	
+
 	// Fallback: only imports detected (low confidence)
 	return FrameworkDetection{
 		Framework:  detectedFramework,
@@ -397,12 +397,11 @@ func detectFramework(code string, language string, rootNode *sitter.Node) Framew
 	}
 }
 
-
 // Security cache for performance
 var (
-	securityCache     = make(map[string]*securityCacheEntry)
+	securityCache      = make(map[string]*securityCacheEntry)
 	securityCacheMutex sync.RWMutex
-	securityCacheTTL  = 5 * time.Minute
+	securityCacheTTL   = 5 * time.Minute
 )
 
 type securityCacheEntry struct {
@@ -414,6 +413,7 @@ func getSecurityCacheKey(code string, language string, rulesToCheck []string) st
 	hash := sha256.Sum256([]byte(code + language + strings.Join(rulesToCheck, ",")))
 	return hex.EncodeToString(hash[:])
 }
+
 // countASTNodes counts the number of nodes in the AST (for size validation)
 func countASTNodes(node *sitter.Node) int {
 	if node == nil {
@@ -433,13 +433,13 @@ func countASTNodes(node *sitter.Node) int {
 func analyzeSecurity(code string, language string, filename string, rulesToCheck []string) ([]SecurityFinding, error) {
 	startTime := time.Now()
 	log.Printf("Starting security analysis for file: %s (language: %s, rules: %v)", filename, language, rulesToCheck)
-	
+
 	// Edge case: Empty code
 	if len(code) == 0 {
 		log.Printf("Security analysis skipped: empty code for file %s", filename)
 		return []SecurityFinding{}, nil
 	}
-	
+
 	// Edge case: File size limit (10MB)
 	const maxFileSize = 10 * 1024 * 1024
 	if len(code) > maxFileSize {
@@ -456,7 +456,7 @@ func analyzeSecurity(code string, language string, filename string, rulesToCheck
 			},
 		}, nil
 	}
-	
+
 	// Check cache first
 	cacheKey := getSecurityCacheKey(code, language, rulesToCheck)
 	securityCacheMutex.RLock()
@@ -470,7 +470,7 @@ func analyzeSecurity(code string, language string, filename string, rulesToCheck
 	}
 	securityCacheMutex.RUnlock()
 	var findings []SecurityFinding
-	
+
 	// Get parser for AST analysis
 	parser, err := getParser(language)
 	if err != nil {
@@ -478,7 +478,7 @@ func analyzeSecurity(code string, language string, filename string, rulesToCheck
 		// Fallback to pattern-only analysis if AST not available
 		return analyzeSecurityPatterns(code, language, filename, rulesToCheck, nil), nil
 	}
-	
+
 	// Parse code to AST with error handling
 	ctx := context.Background()
 	tree, err := parser.ParseCtx(ctx, nil, []byte(code))
@@ -489,13 +489,13 @@ func analyzeSecurity(code string, language string, filename string, rulesToCheck
 		return analyzeSecurityPatterns(code, language, filename, rulesToCheck, nil), nil
 	}
 	defer tree.Close()
-	
+
 	rootNode := tree.RootNode()
 	if rootNode == nil {
 		log.Printf("AST root node is nil for file %s, falling back to pattern-only analysis", filename)
 		return analyzeSecurityPatterns(code, language, filename, rulesToCheck, nil), nil
 	}
-	
+
 	// Edge case: Very large AST (>100k nodes) - use sampling to prevent performance issues
 	const maxASTNodes = 100000
 	nodeCount := countASTNodes(rootNode)
@@ -505,12 +505,12 @@ func analyzeSecurity(code string, language string, filename string, rulesToCheck
 		// In practice, this is rare but we handle it gracefully
 		// The analysis will proceed but may be slower
 	}
-	
+
 	// Detect framework with confidence scoring
 	frameworkDetection := detectFramework(code, language, rootNode)
 	framework := frameworkDetection.Framework
 	log.Printf("Detected framework: %s (confidence: %s) for file %s", framework, frameworkDetection.Confidence, filename)
-	
+
 	// Determine which rules to check
 	rules := rulesToCheck
 	if len(rules) == 0 {
@@ -522,7 +522,7 @@ func analyzeSecurity(code string, language string, filename string, rulesToCheck
 	} else {
 		log.Printf("Checking %d specific security rules for file %s: %v", len(rules), filename, rules)
 	}
-	
+
 	// Check each rule
 	for _, ruleID := range rules {
 		rule, exists := SecurityRules[ruleID]
@@ -530,7 +530,7 @@ func analyzeSecurity(code string, language string, filename string, rulesToCheck
 			log.Printf("Warning: Security rule %s not found, skipping", ruleID)
 			continue
 		}
-		
+
 		log.Printf("Checking security rule %s (%s) for file %s", ruleID, rule.Name, filename)
 		ruleFindings := checkSecurityRule(rule, code, language, filename, rootNode, framework)
 		if len(ruleFindings) > 0 {
@@ -538,7 +538,7 @@ func analyzeSecurity(code string, language string, filename string, rulesToCheck
 		}
 		findings = append(findings, ruleFindings...)
 	}
-	
+
 	// Store in cache
 	securityCacheMutex.Lock()
 	securityCache[cacheKey] = &securityCacheEntry{
@@ -546,7 +546,7 @@ func analyzeSecurity(code string, language string, filename string, rulesToCheck
 		Expires:  time.Now().Add(securityCacheTTL),
 	}
 	securityCacheMutex.Unlock()
-	
+
 	duration := time.Since(startTime)
 	log.Printf("Security analysis completed for file %s: %d findings in %v", filename, len(findings), duration)
 	return findings, nil
@@ -557,7 +557,7 @@ func checkSecurityRule(rule SecurityRule, code string, language string, filename
 	log.Printf("Checking rule %s (%s) using AST-based detection", rule.ID, rule.Name)
 	var findings []SecurityFinding
 	lines := strings.Split(code, "\n")
-	
+
 	// Pattern-based checks
 	if len(rule.Detection.PatternsForbidden) > 0 {
 		for _, pattern := range rule.Detection.PatternsForbidden {
@@ -581,19 +581,19 @@ func checkSecurityRule(rule SecurityRule, code string, language string, filename
 			}
 		}
 	}
-	
+
 	// AST-based checks
 	if rule.ASTCheck != nil {
 		astFindings := checkASTSecurityRule(rule, code, language, rootNode, framework)
 		findings = append(findings, astFindings...)
 	}
-	
+
 	// Data flow analysis for SEC-005 (Password Hashing)
 	if rule.ID == "SEC-005" {
 		dataFlowFindings := verifyPasswordFlow(rootNode, code, language)
 		findings = append(findings, dataFlowFindings...)
 	}
-	
+
 	return findings
 }
 
@@ -601,11 +601,11 @@ func checkSecurityRule(rule SecurityRule, code string, language string, filename
 func checkASTSecurityRule(rule SecurityRule, code string, language string, rootNode *sitter.Node, framework FrameworkType) []SecurityFinding {
 	var findings []SecurityFinding
 	lines := strings.Split(code, "\n")
-	
+
 	if rule.ASTCheck == nil {
 		return findings
 	}
-	
+
 	// Check for required functions
 	if len(rule.ASTCheck.FunctionContains) > 0 {
 		for _, funcName := range rule.ASTCheck.FunctionContains {
@@ -636,7 +636,7 @@ func checkASTSecurityRule(rule SecurityRule, code string, language string, rootN
 			}
 		}
 	}
-	
+
 	// Check for required middleware
 	if len(rule.ASTCheck.RouteMiddleware) > 0 && framework != FrameworkUnknown {
 		hasMiddleware := findMiddlewareInAST(rootNode, code, rule.ASTCheck.RouteMiddleware, language, framework)
@@ -659,7 +659,7 @@ func checkASTSecurityRule(rule SecurityRule, code string, language string, rootN
 			}
 		}
 	}
-	
+
 	return findings
 }
 
@@ -669,26 +669,26 @@ func verifyPatternInContext(rootNode *sitter.Node, code string, language string,
 		// No AST available, fallback to simple pattern matching
 		return regexp.MustCompile(pattern).MatchString(code)
 	}
-	
+
 	// Get function scope
 	funcScope := getFunctionScope(rootNode, code, funcName, language)
 	if funcScope == nil {
 		// Function not found, pattern check not applicable
 		return false
 	}
-	
+
 	// Check if pattern exists within function scope
 	found := false
 	traverseAST(rootNode, func(n *sitter.Node) bool {
 		if found {
 			return false
 		}
-		
+
 		// Only check nodes within the function scope
 		if !isNodeWithinScope(n, funcScope) {
 			return true
 		}
-		
+
 		// Check if pattern matches in this node
 		nodeText := code[n.StartByte():n.EndByte()]
 		re := regexp.MustCompile(pattern)
@@ -698,7 +698,7 @@ func verifyPatternInContext(rootNode *sitter.Node, code string, language string,
 		}
 		return true
 	})
-	
+
 	return found
 }
 
@@ -707,7 +707,7 @@ func verifyPatternInContext(rootNode *sitter.Node, code string, language string,
 func analyzeSecurityPatterns(code string, language string, filename string, rulesToCheck []string, rootNode *sitter.Node) []SecurityFinding {
 	var findings []SecurityFinding
 	lines := strings.Split(code, "\n")
-	
+
 	// Determine which rules to check
 	rules := rulesToCheck
 	if len(rules) == 0 {
@@ -715,13 +715,13 @@ func analyzeSecurityPatterns(code string, language string, filename string, rule
 			rules = append(rules, ruleID)
 		}
 	}
-	
+
 	for _, ruleID := range rules {
 		rule, exists := SecurityRules[ruleID]
 		if !exists {
 			continue
 		}
-		
+
 		// Check forbidden patterns
 		for _, pattern := range rule.Detection.PatternsForbidden {
 			re := regexp.MustCompile(pattern)
@@ -742,7 +742,7 @@ func analyzeSecurityPatterns(code string, language string, filename string, rule
 				}
 			}
 		}
-		
+
 		// Check for required patterns (if function contains trigger)
 		// For SEC-005 (password hashing), verify patterns are within function scope
 		if rule.ASTCheck != nil && len(rule.ASTCheck.FunctionContains) > 0 {
@@ -764,7 +764,7 @@ func analyzeSecurityPatterns(code string, language string, filename string, rule
 							break
 						}
 					}
-					
+
 					if !hasRequired && len(rule.Detection.PatternsRequired) > 0 {
 						funcMatches := funcPattern.FindAllStringSubmatchIndex(code, -1)
 						for _, match := range funcMatches {
@@ -787,7 +787,7 @@ func analyzeSecurityPatterns(code string, language string, filename string, rule
 			}
 		}
 	}
-	
+
 	return findings
 }
 
@@ -845,14 +845,14 @@ func findFunctionInAST(node *sitter.Node, code string, funcName string, language
 		if found {
 			return false
 		}
-		
+
 		// Use AST node type matching instead of string matching
 		extractedName := getFunctionNameNode(n, code, language)
 		if extractedName == funcName {
 			found = true
 			return false
 		}
-		
+
 		// Also check call expressions for function calls
 		if n.Type() == "call_expression" {
 			for i := 0; i < int(n.ChildCount()); i++ {
@@ -866,7 +866,7 @@ func findFunctionInAST(node *sitter.Node, code string, funcName string, language
 				}
 			}
 		}
-		
+
 		return true
 	})
 	return found
@@ -879,7 +879,7 @@ func getFunctionScope(rootNode *sitter.Node, code string, funcName string, langu
 		if funcNode != nil {
 			return false
 		}
-		
+
 		// Check if this is a function node matching the name
 		extractedName := getFunctionNameNode(n, code, language)
 		if extractedName == funcName {
@@ -912,7 +912,7 @@ func isNodeWithinScope(node *sitter.Node, scopeNode *sitter.Node) bool {
 	if scopeNode == nil {
 		return true // No scope restriction
 	}
-	
+
 	current := node
 	for current != nil {
 		if current == scopeNode {
@@ -929,12 +929,12 @@ func findSecurityCheckInAST(node *sitter.Node, code string, checkName string, la
 		if found {
 			return false
 		}
-		
+
 		// If scope is specified, only check nodes within that scope
 		if scopeNode != nil && !isNodeWithinScope(n, scopeNode) {
 			return true // Continue traversal but skip this branch
 		}
-		
+
 		nodeText := code[n.StartByte():n.EndByte()]
 		if strings.Contains(nodeText, checkName) {
 			found = true
@@ -980,19 +980,19 @@ func findMiddlewareInAST(node *sitter.Node, code string, middlewareNames []strin
 		}
 		return true
 	})
-	
+
 	// If no routes found, middleware check is not applicable
 	if len(routeNodes) == 0 {
 		return false
 	}
-	
+
 	// Now check if middleware is applied before routes
 	middlewareApplied := false
 	traverseAST(node, func(n *sitter.Node) bool {
 		if middlewareApplied {
 			return false
 		}
-		
+
 		// Check if this is a middleware application (not just import)
 		switch framework {
 		case FrameworkExpress:
@@ -1068,7 +1068,7 @@ func findMiddlewareInAST(node *sitter.Node, code string, middlewareNames []strin
 		}
 		return true
 	})
-	
+
 	return middlewareApplied
 }
 
@@ -1151,7 +1151,7 @@ func findFunctionLine(node *sitter.Node, code string, funcName string, language 
 		if lineNum > 0 {
 			return false
 		}
-		
+
 		nodeText := code[n.StartByte():n.EndByte()]
 		if strings.Contains(nodeText, funcName) {
 			if n.Type() == "function_declaration" || n.Type() == "function" || n.Type() == "method_definition" {
@@ -1198,11 +1198,11 @@ func calculateSecurityScore(findings []SecurityFinding) (int, string) {
 	if len(findings) == 0 {
 		return 100, "A"
 	}
-	
+
 	// Weight findings by severity
 	totalPenalty := 0
 	criticalCount := 0
-	
+
 	for _, finding := range findings {
 		switch finding.Severity {
 		case "critical":
@@ -1216,17 +1216,17 @@ func calculateSecurityScore(findings []SecurityFinding) (int, string) {
 			totalPenalty += 2
 		}
 	}
-	
+
 	// Cap penalty at 100
 	if totalPenalty > 100 {
 		totalPenalty = 100
 	}
-	
+
 	score := 100 - totalPenalty
 	if score < 0 {
 		score = 0
 	}
-	
+
 	// Determine grade
 	var grade string
 	switch {
@@ -1241,7 +1241,7 @@ func calculateSecurityScore(findings []SecurityFinding) (int, string) {
 	default:
 		grade = "F"
 	}
-	
+
 	// Adjust grade down if critical issues exist
 	if criticalCount > 0 && grade == "A" {
 		grade = "B"
@@ -1249,7 +1249,7 @@ func calculateSecurityScore(findings []SecurityFinding) (int, string) {
 	if criticalCount >= 3 {
 		grade = "F"
 	}
-	
+
 	return score, grade
 }
 
@@ -1264,18 +1264,18 @@ func calculateSecuritySummary(findings []SecurityFinding) struct {
 	Low        int `json:"low"`
 } {
 	totalRules := len(SecurityRules)
-	
+
 	// Count findings by severity
 	criticalCount := 0
 	highCount := 0
 	mediumCount := 0
 	lowCount := 0
-	
+
 	// Track which rules failed
 	failedRules := make(map[string]bool)
 	for _, finding := range findings {
 		failedRules[finding.RuleID] = true
-		
+
 		switch finding.Severity {
 		case "critical":
 			criticalCount++
@@ -1287,10 +1287,10 @@ func calculateSecuritySummary(findings []SecurityFinding) struct {
 			lowCount++
 		}
 	}
-	
+
 	failedCount := len(failedRules)
 	passedCount := totalRules - failedCount
-	
+
 	return struct {
 		TotalRules int `json:"totalRules"`
 		Passed     int `json:"passed"`
@@ -1317,7 +1317,7 @@ func buildDataFlowGraph(rootNode *sitter.Node, code string, language string) *Da
 		variables: make(map[string]*VariableInfo),
 		functions: make(map[string]*FunctionInfo),
 	}
-	
+
 	traverseAST(rootNode, func(node *sitter.Node) bool {
 		switch language {
 		case "javascript", "typescript":
@@ -1328,7 +1328,7 @@ func buildDataFlowGraph(rootNode *sitter.Node, code string, language string) *Da
 					if child != nil && (child.Type() == "variable_declarator" || child.Type() == "identifier") {
 						varName := ""
 						var lineNum int
-						
+
 						// Extract variable name
 						for j := 0; j < int(child.ChildCount()); j++ {
 							grandchild := child.Child(j)
@@ -1338,7 +1338,7 @@ func buildDataFlowGraph(rootNode *sitter.Node, code string, language string) *Da
 								break
 							}
 						}
-						
+
 						if varName != "" {
 							// Check if it's a password-related variable
 							varType := "other"
@@ -1346,7 +1346,7 @@ func buildDataFlowGraph(rootNode *sitter.Node, code string, language string) *Da
 							if strings.Contains(varNameLower, "password") || strings.Contains(varNameLower, "passwd") || strings.Contains(varNameLower, "pwd") {
 								varType = "password"
 							}
-							
+
 							if analyzer.variables[varName] == nil {
 								analyzer.variables[varName] = &VariableInfo{
 									Name:        varName,
@@ -1356,7 +1356,7 @@ func buildDataFlowGraph(rootNode *sitter.Node, code string, language string) *Da
 									Line:        lineNum,
 								}
 							}
-							
+
 							// Track assignment
 							analyzer.variables[varName].Assignments = append(analyzer.variables[varName].Assignments, Assignment{
 								Line:    lineNum,
@@ -1368,7 +1368,7 @@ func buildDataFlowGraph(rootNode *sitter.Node, code string, language string) *Da
 					}
 				}
 			}
-			
+
 			// Track function calls that might be password hashing
 			if node.Type() == "call_expression" {
 				for i := 0; i < int(node.ChildCount()); i++ {
@@ -1376,15 +1376,15 @@ func buildDataFlowGraph(rootNode *sitter.Node, code string, language string) *Da
 					if child != nil && child.Type() == "identifier" {
 						funcName := code[child.StartByte():child.EndByte()]
 						funcNameLower := strings.ToLower(funcName)
-						
+
 						// Check for secure hashing functions
-						if strings.Contains(funcNameLower, "bcrypt") || strings.Contains(funcNameLower, "argon2") || 
-						   strings.Contains(funcNameLower, "scrypt") || strings.Contains(funcNameLower, "pbkdf2") {
+						if strings.Contains(funcNameLower, "bcrypt") || strings.Contains(funcNameLower, "argon2") ||
+							strings.Contains(funcNameLower, "scrypt") || strings.Contains(funcNameLower, "pbkdf2") {
 							// Track this as a secure hashing usage
 							// We'll link this to password variables in verifyPasswordFlow
 							_ = getLineNumber(code, int(node.StartByte()))
 						}
-						
+
 						// Check for insecure hashing functions
 						if strings.Contains(funcNameLower, "md5") || strings.Contains(funcNameLower, "sha1") {
 							// Will be used in verifyPasswordFlow
@@ -1393,7 +1393,7 @@ func buildDataFlowGraph(rootNode *sitter.Node, code string, language string) *Da
 					}
 				}
 			}
-			
+
 		case "python":
 			// Track variable assignments
 			if node.Type() == "assignment" {
@@ -1402,13 +1402,13 @@ func buildDataFlowGraph(rootNode *sitter.Node, code string, language string) *Da
 					if child != nil && child.Type() == "identifier" {
 						varName := code[child.StartByte():child.EndByte()]
 						lineNum := getLineNumber(code, int(child.StartByte()))
-						
+
 						varType := "other"
 						varNameLower := strings.ToLower(varName)
 						if strings.Contains(varNameLower, "password") || strings.Contains(varNameLower, "passwd") {
 							varType = "password"
 						}
-						
+
 						if analyzer.variables[varName] == nil {
 							analyzer.variables[varName] = &VariableInfo{
 								Name:        varName,
@@ -1418,7 +1418,7 @@ func buildDataFlowGraph(rootNode *sitter.Node, code string, language string) *Da
 								Line:        lineNum,
 							}
 						}
-						
+
 						analyzer.variables[varName].Assignments = append(analyzer.variables[varName].Assignments, Assignment{
 							Line:    lineNum,
 							Value:   code[node.StartByte():node.EndByte()],
@@ -1428,7 +1428,7 @@ func buildDataFlowGraph(rootNode *sitter.Node, code string, language string) *Da
 					}
 				}
 			}
-			
+
 		case "go":
 			// Track variable declarations
 			if node.Type() == "short_var_declaration" || node.Type() == "var_declaration" {
@@ -1437,13 +1437,13 @@ func buildDataFlowGraph(rootNode *sitter.Node, code string, language string) *Da
 					if child != nil && child.Type() == "identifier" {
 						varName := code[child.StartByte():child.EndByte()]
 						lineNum := getLineNumber(code, int(child.StartByte()))
-						
+
 						varType := "other"
 						varNameLower := strings.ToLower(varName)
 						if strings.Contains(varNameLower, "password") || strings.Contains(varNameLower, "passwd") {
 							varType = "password"
 						}
-						
+
 						if analyzer.variables[varName] == nil {
 							analyzer.variables[varName] = &VariableInfo{
 								Name:        varName,
@@ -1457,25 +1457,25 @@ func buildDataFlowGraph(rootNode *sitter.Node, code string, language string) *Da
 				}
 			}
 		}
-		
+
 		return true
 	})
-	
+
 	return analyzer
 }
 
 // trackVariableFlow tracks how a variable flows through the code
 func trackVariableFlow(analyzer *DataFlowAnalyzer, varName string, code string, language string) []Usage {
 	usages := []Usage{}
-	
+
 	if analyzer.variables[varName] == nil {
 		return usages
 	}
-	
+
 	// This is a simplified version - full implementation would track
 	// all usages of the variable through assignments, function calls, etc.
 	// For now, we'll rely on verifyPasswordFlow to do the actual checking
-	
+
 	return usages
 }
 
@@ -1484,12 +1484,12 @@ func verifyPasswordFlow(rootNode *sitter.Node, code string, language string) []S
 	log.Printf("Starting password flow analysis (SEC-005 data flow check)")
 	var findings []SecurityFinding
 	lines := strings.Split(code, "\n")
-	
+
 	// Build data flow graph
 	log.Printf("Building data flow graph for password variables")
 	analyzer := buildDataFlowGraph(rootNode, code, language)
 	log.Printf("Data flow graph built: %d variables, %d functions tracked", len(analyzer.variables), len(analyzer.functions))
-	
+
 	// Find all password-related variables
 	passwordVars := []string{}
 	for varName, varInfo := range analyzer.variables {
@@ -1497,37 +1497,37 @@ func verifyPasswordFlow(rootNode *sitter.Node, code string, language string) []S
 			passwordVars = append(passwordVars, varName)
 		}
 	}
-	
+
 	if len(passwordVars) == 0 {
 		log.Printf("No password variables found in data flow graph")
 		return findings // No password variables found
 	}
-	
+
 	log.Printf("Found %d password variables to analyze: %v", len(passwordVars), passwordVars)
-	
+
 	// Check if password variables are used with insecure hashing
 	// Look for patterns like: md5(password), sha1(password), etc.
 	insecurePatterns := []string{
 		"md5", "sha1", "crypto\\.createHash.*md5", "crypto\\.createHash.*sha1",
 		"hashlib\\.md5", "hashlib\\.sha1",
 	}
-	
+
 	securePatterns := []string{
 		"bcrypt", "argon2", "scrypt", "pbkdf2",
 		"bcrypt\\.hash", "bcrypt\\.hashSync", "argon2\\.hash",
 	}
-	
+
 	// Check each password variable
 	for _, varName := range passwordVars {
 		varInfo := analyzer.variables[varName]
-		
+
 		// Check if password is used with insecure hashing
 		for _, assignment := range varInfo.Assignments {
 			lineCode := ""
 			if assignment.Line > 0 && assignment.Line <= len(lines) {
 				lineCode = lines[assignment.Line-1]
 			}
-			
+
 			// Check for insecure patterns
 			for _, pattern := range insecurePatterns {
 				re := regexp.MustCompile("(?i)" + pattern)
@@ -1548,7 +1548,7 @@ func verifyPasswordFlow(rootNode *sitter.Node, code string, language string) []S
 				}
 			}
 		}
-		
+
 		// Check if password is used with secure hashing (positive check)
 		hasSecureHash := false
 		for _, assignment := range varInfo.Assignments {
@@ -1556,7 +1556,7 @@ func verifyPasswordFlow(rootNode *sitter.Node, code string, language string) []S
 			if assignment.Line > 0 && assignment.Line <= len(lines) {
 				lineCode = lines[assignment.Line-1]
 			}
-			
+
 			for _, pattern := range securePatterns {
 				re := regexp.MustCompile("(?i)" + pattern)
 				if re.MatchString(lineCode) && strings.Contains(lineCode, varName) {
@@ -1565,7 +1565,7 @@ func verifyPasswordFlow(rootNode *sitter.Node, code string, language string) []S
 				}
 			}
 		}
-		
+
 		// If password variable exists but no secure hashing is found, flag it
 		if !hasSecureHash && len(varInfo.Assignments) > 0 {
 			// Only flag if it's actually being used (not just declared)
@@ -1575,14 +1575,14 @@ func verifyPasswordFlow(rootNode *sitter.Node, code string, language string) []S
 				"request\\.body", "request\\.query", "request\\.params",
 				"form\\.get", "form\\[", "body\\[",
 			}
-			
+
 			hasUserInput := false
 			for _, assignment := range varInfo.Assignments {
 				lineCode := ""
 				if assignment.Line > 0 && assignment.Line <= len(lines) {
 					lineCode = lines[assignment.Line-1]
 				}
-				
+
 				for _, pattern := range userInputPatterns {
 					re := regexp.MustCompile("(?i)" + pattern)
 					if re.MatchString(lineCode) {
@@ -1591,7 +1591,7 @@ func verifyPasswordFlow(rootNode *sitter.Node, code string, language string) []S
 					}
 				}
 			}
-			
+
 			if hasUserInput {
 				// Password from user input but no secure hashing found
 				firstAssignment := varInfo.Assignments[0]
@@ -1608,10 +1608,9 @@ func verifyPasswordFlow(rootNode *sitter.Node, code string, language string) []S
 			}
 		}
 	}
-	
+
 	return findings
 }
-
 
 // DetectionMetrics tracks detection rate validation metrics
 type DetectionMetrics struct {
@@ -1632,17 +1631,17 @@ func calculateDetectionRate(findings []SecurityFinding, expectedFindings map[str
 		FalseNegatives: 0,
 		TrueNegatives:  0,
 	}
-	
+
 	// Track which rules were detected
 	detectedRules := make(map[string]bool)
 	for _, finding := range findings {
 		detectedRules[finding.RuleID] = true
 	}
-	
+
 	// Compare against expected findings
 	for ruleID, shouldDetect := range expectedFindings {
 		wasDetected := detectedRules[ruleID]
-		
+
 		if shouldDetect && wasDetected {
 			metrics.TruePositives++
 		} else if !shouldDetect && wasDetected {
@@ -1653,22 +1652,22 @@ func calculateDetectionRate(findings []SecurityFinding, expectedFindings map[str
 			metrics.TrueNegatives++
 		}
 	}
-	
+
 	// Calculate detection rate
 	total := metrics.TruePositives + metrics.FalsePositives + metrics.FalseNegatives + metrics.TrueNegatives
 	if total > 0 {
 		metrics.DetectionRate = float64(metrics.TruePositives+metrics.TrueNegatives) / float64(total) * 100.0
 	}
-	
+
 	// Calculate precision
 	if metrics.TruePositives+metrics.FalsePositives > 0 {
 		metrics.Precision = float64(metrics.TruePositives) / float64(metrics.TruePositives+metrics.FalsePositives) * 100.0
 	}
-	
+
 	// Calculate recall
 	if metrics.TruePositives+metrics.FalseNegatives > 0 {
 		metrics.Recall = float64(metrics.TruePositives) / float64(metrics.TruePositives+metrics.FalseNegatives) * 100.0
 	}
-	
+
 	return metrics
 }

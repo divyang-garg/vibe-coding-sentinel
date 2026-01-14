@@ -79,24 +79,23 @@ Starting a new project from scratch with best practices from day one.
 │  │ ✅ Git hooks installed                                          │    │
 │  └────────────────────────────────────────────────────────────────┘    │
 │                                                                          │
-│  Step 3: Ingest project documents (KEY STEP!)                           │
+│  Step 3: Upload project documents to Hub (KEY STEP!)                 │
 │  ┌────────────────────────────────────────────────────────────────┐    │
-│  │ $ ./sentinel ingest /project-docs/                             │    │
+│  │ # Via Hub API or Dashboard:                                   │    │
+│  │ $ curl -X POST https://hub.example.com/api/v1/documents/ingest │    │
+│  │   -H "Authorization: Bearer YOUR_API_KEY"                     │    │
+│  │   -F "files=@Scope_Document.pdf"                              │    │
+│  │   -F "files=@Requirements.docx"                               │    │
+│  │   -F "files=@Data_Model.xlsx"                                 │    │
 │  │                                                                 │    │
-│  │ Found 6 documents:                                             │    │
-│  │ ├── Scope_Document.pdf (2.3 MB)                                │    │
-│  │ ├── Requirements.docx (156 KB)                                 │    │
-│  │ ├── Data_Model.xlsx (89 KB)                                    │    │
-│  │ ├── wireframe_login.png (340 KB)                               │    │
-│  │ ├── wireframe_dashboard.png (520 KB)                           │    │
-│  │ └── client_kickoff.eml (23 KB)                                 │    │
+│  │ # Or use Hub Dashboard:                                        │    │
+│  │ # 1. Login to https://hub.example.com                         │    │
+│  │ # 2. Navigate to Documents section                            │    │
+│  │ # 3. Upload project documents                                 │    │
+│  │ # 4. Wait for processing                                      │    │
 │  │                                                                 │    │
-│  │ Processing mode:                                                │    │
-│  │ 1. Hybrid (text local, structure via cloud) - Recommended      │    │
-│  │ Selection: 1                                                    │    │
-│  │                                                                 │    │
-│  │ 🔍 Parsing documents locally...                                │    │
-│  │ 🤖 Extracting knowledge with LLM (Azure Claude Opus 4.5 or Ollama)...                            │    │
+│  │ 📄 Documents uploaded and processing...                       │    │
+│  │ 🤖 Extracting knowledge with LLM...                           │    │
 │  │                                                                 │    │
 │  │ EXTRACTED:                                                      │    │
 │  │ ├── 15 entities (User, Order, Product, etc.)                   │    │
@@ -104,50 +103,48 @@ Starting a new project from scratch with best practices from day one.
 │  │ ├── 5 user journeys                                            │    │
 │  │ └── 3 objectives                                               │    │
 │  │                                                                 │    │
-│  │ ✅ Drafts created - REVIEW REQUIRED                            │    │
+│  │ ✅ Knowledge extracted and available in Hub                    │    │
 │  └────────────────────────────────────────────────────────────────┘    │
 │                                                                          │
 │  Step 4: Review and approve extracted knowledge                         │
 │  ┌────────────────────────────────────────────────────────────────┐    │
-│  │ $ ./sentinel review                                             │    │
+│  │ # Via Hub Dashboard:                                           │    │
+│  │ # 1. Login to https://hub.example.com                          │    │
+│  │ # 2. Navigate to Knowledge section                             │    │
+│  │ # 3. Review extracted entities, rules, and journeys            │    │
+│  │ # 4. Approve or edit each item                                 │    │
 │  │                                                                 │    │
-│  │ REVIEWING: domain-glossary.draft.md                            │    │
+│  │ REVIEWING EXTRACTED KNOWLEDGE:                                  │    │
 │  │                                                                 │    │
 │  │ 1. User                                                        │    │
 │  │    Definition: A registered customer who can place orders      │    │
 │  │    Source: Scope_Document.pdf, page 5                          │    │
 │  │    Confidence: 95%                                              │    │
-│  │    [A]ccept  [E]dit  [R]eject  [S]kip: A                       │    │
+│  │    [✓] Approved                                                 │    │
 │  │                                                                 │    │
 │  │ 2. Order                                                       │    │
 │  │    Definition: A purchase request containing products          │    │
 │  │    Confidence: 92%                                              │    │
-│  │    [A]ccept  [E]dit  [R]eject  [S]kip: A                       │    │
+│  │    [✓] Approved                                                 │    │
 │  │                                                                 │    │
-│  │ ... (review all items)                                         │    │
+│  │ ... (review all items via Hub interface)                       │    │
 │  │                                                                 │    │
-│  │ ✅ domain-glossary.md APPROVED                                  │    │
-│  │ ✅ business-rules.md APPROVED                                   │    │
-│  │ ✅ user-journeys.md APPROVED                                    │    │
-│  │                                                                 │    │
-│  │ Knowledge is now active for Cursor! 🎉                          │    │
+│  │ ✅ Knowledge approved and synced to project                    │    │
+│  │ ✅ Available for Cursor integration                             │    │
 │  └────────────────────────────────────────────────────────────────┘    │
 │                                                                          │
-│  Step 5: Verify everything is ready                                     │
+│  Step 5: Verify project setup is complete                             │
 │  ┌────────────────────────────────────────────────────────────────┐    │
-│  │ $ ./sentinel status                                             │    │
+│  │ $ ./sentinel audit                                              │    │
 │  │                                                                 │    │
-│  │ PROJECT STATUS                                                  │    │
-│  │ ══════════════                                                  │    │
-│  │ Code: ✅ Clean (no code yet)                                    │    │
-│  │ Patterns: ✅ Configured                                         │    │
-│  │ Hooks: ✅ Installed                                             │    │
-│  │ Documentation: ✅ Complete                                      │    │
-│  │   ├── 15 entities defined                                      │    │
-│  │   ├── 12 business rules documented                             │    │
-│  │   └── 5 user journeys mapped                                   │    │
+│  │ PROJECT VERIFICATION                                            │    │
+│  │ ═══════════════════                                             │    │
+│  │ ✅ Rules configured (.cursor/rules/)                           │    │
+│  │ ✅ Business docs created (docs/knowledge/)                     │    │
+│  │ ✅ Hub connection configured                                   │    │
+│  │ ✅ Knowledge uploaded and approved                             │    │
 │  │                                                                 │    │
-│  │ Ready to start coding! 🚀                                       │    │
+│  │ Ready to start coding with business context! 🚀                 │    │
 │  └────────────────────────────────────────────────────────────────┘    │
 │                                                                          │
 ├─────────────────────────────────────────────────────────────────────────┤
@@ -244,27 +241,39 @@ Adopting Sentinel on a project that's already in development.
 │  │ ⛔ Audit FAILED (3 critical issues)                             │    │
 │  └────────────────────────────────────────────────────────────────┘    │
 │                                                                          │
-│  Step 4: Baseline known issues (can't fix everything today)             │
+│  Step 3.5: Check project status (get overview)                           │
 │  ┌────────────────────────────────────────────────────────────────┐    │
-│  │ $ ./sentinel baseline add src/api/config.js 42 "secret" \      │    │
-│  │     "Known issue, JIRA-1234"                                    │    │
+│  │ $ ./sentinel status                                             │    │
 │  │                                                                 │    │
-│  │ ✅ Finding baselined                                            │    │
+│  │ 📊 PROJECT STATUS:                                               │    │
+│  │ ├── Compliance: 62%                                              │    │
+│  │ ├── Critical Issues: 3                                           │    │
+│  │ ├── Warning Issues: 47                                          │    │
+│  │ ├── Test Coverage: 45%                                           │    │
+│  │ ├── Business Rules: 0 documented                                │    │
+│  │ └── Last Updated: 2026-01-08 13:42                               │    │
 │  └────────────────────────────────────────────────────────────────┘    │
 │                                                                          │
-│  Step 5: Apply safe fixes (quick wins)                                  │
+│  Step 4: Document known issues (can't fix everything today)             │
 │  ┌────────────────────────────────────────────────────────────────┐    │
-│  │ $ ./sentinel fix --safe                                         │    │
+│  │ # Document known issues for future resolution:                 │    │
+│  │ # 1. Create issue in project tracker (JIRA, GitHub, etc.)      │    │
+│  │ # 2. Add TODO comments in code for temporary workarounds       │    │
+│  │ # 3. Update team documentation                                  │    │
 │  │                                                                 │    │
-│  │ SAFE FIXES AVAILABLE:                                           │    │
-│  │ ├── Remove 28 console.log statements                           │    │
-│  │ ├── Fix 4 trailing whitespace issues                           │    │
-│  │ └── Sort imports in 12 files                                   │    │
+│  │ ✅ Issues documented for future resolution                      │    │
+│  └────────────────────────────────────────────────────────────────┘    │
+│                                                                          │
+│  Step 5: Address critical issues manually                               │
+│  ┌────────────────────────────────────────────────────────────────┐    │
+│  │ # Manually fix critical issues:                                │    │
+│  │ # 1. Remove hardcoded secrets from config.js                   │    │
+│  │ # 2. Fix SQL injection vulnerabilities                         │    │
+│  │ # 3. Add input validation for user data                        │    │
+│  │ # 4. Update dependencies to fix known CVEs                     │    │
 │  │                                                                 │    │
-│  │ Apply all? [Y/n]: Y                                             │    │
-│  │                                                                 │    │
-│  │ 💾 Backup created                                               │    │
-│  │ ✅ Applied 44 safe fixes                                        │    │
+│  │ 💾 Create git commit with fixes                                │    │
+│  │ ✅ Critical security issues resolved                           │    │
 │  │                                                                 │    │
 │  │ COMPLIANCE: 78% (was 62%)                                       │    │
 │  └────────────────────────────────────────────────────────────────┘    │
@@ -314,9 +323,11 @@ Adopting Sentinel on a project that's already in development.
 │                                                                          │
 │  Step 9: Review and approve                                             │
 │  ┌────────────────────────────────────────────────────────────────┐    │
-│  │ $ ./sentinel review                                             │    │
-│  │                                                                 │    │
-│  │ [Review each item, accept/edit/reject]                         │    │
+│  │ # Via Hub Dashboard:                                           │    │
+│  │ # 1. Login to https://hub.example.com                          │    │
+│  │ # 2. Navigate to Knowledge section                             │    │
+│  │ # 3. Review extracted patterns and knowledge                   │    │
+│  │ # 4. Accept, edit, or reject each item                         │    │
 │  │                                                                 │    │
 │  │ REVIEW SUMMARY:                                                │    │
 │  │ ├── Accepted: 35 items                                         │    │
@@ -324,7 +335,7 @@ Adopting Sentinel on a project that's already in development.
 │  │ ├── Rejected: 3 items (hallucinated)                           │    │
 │  │ └── Skipped: 2 items (need team input)                         │    │
 │  │                                                                 │    │
-│  │ ✅ Knowledge approved and active                                │    │
+│  │ ✅ Knowledge approved and synced to project                    │    │
 │  └────────────────────────────────────────────────────────────────┘    │
 │                                                                          │
 ├─────────────────────────────────────────────────────────────────────────┤
@@ -397,6 +408,251 @@ Adopting Sentinel on a project that's already in development.
 
 ---
 
+## Task Dependency & Verification (Phase 14E)
+
+### Overview
+
+The task dependency and verification system tracks Cursor-generated tasks, verifies completion, and manages dependencies. This ensures tasks are completed and dependencies are properly managed.
+
+### Quick Start
+
+```bash
+# Scan codebase for tasks
+sentinel tasks scan
+
+# List all tasks
+sentinel tasks list
+
+# Verify a specific task
+sentinel tasks verify TASK-123
+
+# Show dependency graph
+sentinel tasks dependencies
+```
+
+### Task Scanning
+
+Scan your codebase to detect tasks from TODO comments, task markers, and Cursor task format:
+
+```bash
+# Scan entire codebase
+sentinel tasks scan
+
+# Scan specific directory
+sentinel tasks scan --dir src/
+
+# Scan with filters
+sentinel tasks scan --source cursor --status pending
+```
+
+**Example Output**:
+```
+🔍 Scanning codebase for tasks...
+✅ Found 15 tasks:
+  TASK-001: Implement user authentication (pending, high)
+    File: src/auth/middleware.js:45
+    Source: cursor
+  TASK-002: Add JWT token refresh (pending, medium)
+    File: src/auth/token.js:23
+    Source: cursor
+  TASK-003: Add payment processing (in_progress, critical)
+    File: src/payments/processor.js:67
+    Source: change_request
+  ...
+```
+
+### Task Listing
+
+List tasks with various filters:
+
+```bash
+# List all tasks
+sentinel tasks list
+
+# List pending tasks
+sentinel tasks list --status pending
+
+# List high priority tasks
+sentinel tasks list --priority high
+
+# List with dependencies
+sentinel tasks list --show-dependencies
+```
+
+**Example Output**:
+```
+📋 Tasks (15 total)
+══════════════════════════════════════════════════════════════
+
+PENDING (8):
+  TASK-001: Implement user authentication [high]
+    Depends on: TASK-002, TASK-003
+    File: src/auth/middleware.js:45
+  
+  TASK-002: Add JWT token refresh [medium]
+    File: src/auth/token.js:23
+
+IN_PROGRESS (5):
+  TASK-003: Add payment processing [critical]
+    Verification: 0.69 confidence
+    File: src/payments/processor.js:67
+
+COMPLETED (2):
+  TASK-004: Setup database schema [high]
+    Completed: 2024-12-10 14:30:00
+```
+
+### Task Verification
+
+Verify task completion using multi-factor verification:
+
+```bash
+# Verify specific task
+sentinel tasks verify TASK-123
+
+# Verify all pending tasks
+sentinel tasks verify --all
+
+# Verify with force (ignore cache)
+sentinel tasks verify TASK-123 --force
+```
+
+**Example Output**:
+```
+🔍 Verifying task TASK-001: Implement user authentication
+  ✓ Code existence: 0.95 (verified)
+    Found: src/auth/middleware.js:45 (authenticateUser function)
+  ✓ Code usage: 0.88 (verified)
+    Call sites: src/routes/users.js:23, src/routes/orders.js:45
+  ✓ Test coverage: 0.92 (verified)
+    Test file: tests/auth/middleware.test.js
+    Coverage: 95%
+  ✗ Integration: 0.0 (pending)
+    Missing: External service configuration
+  
+Overall confidence: 0.69 → Status: in_progress
+⚠️  Task needs integration verification
+```
+
+### Dependency Management
+
+View and manage task dependencies:
+
+```bash
+# Show dependency graph
+sentinel tasks dependencies
+
+# Show dependencies for specific task
+sentinel tasks dependencies TASK-123
+
+# Export dependency graph
+sentinel tasks dependencies --export graph.json
+```
+
+**Example Output**:
+```
+📊 Dependency Graph for TASK-003: Add payment processing
+  │
+  ├── TASK-001: Implement user authentication [explicit]
+  │   └── TASK-002: Add JWT token refresh [implicit]
+  │       └── TASK-005: Add token validation [explicit]
+  │
+  └── TASK-004: Setup payment gateway [integration]
+      └── TASK-006: Configure API keys [explicit]
+
+⚠️  Circular dependency detected: TASK-007 ↔ TASK-008
+```
+
+### Task Completion
+
+Manually mark tasks as complete or use auto-completion:
+
+```bash
+# Manually mark task complete
+sentinel tasks complete TASK-123
+
+# Mark with reason
+sentinel tasks complete TASK-123 --reason "Implemented manually"
+
+# Auto-complete verified tasks
+sentinel tasks complete --auto
+```
+
+**Example Output**:
+```
+🔍 Verifying all pending tasks...
+  TASK-001: 0.69 confidence → in_progress
+  TASK-002: 0.92 confidence → ✅ auto-completed
+  TASK-003: 0.45 confidence → pending
+  TASK-004: 0.88 confidence → ✅ auto-completed
+  TASK-005: 0.91 confidence → ✅ auto-completed
+  
+✅ 3 tasks auto-completed
+⚠️  2 tasks need attention
+```
+
+### Integration with Other Commands
+
+Task verification integrates with other Sentinel commands:
+
+```bash
+# Include task verification in audit
+sentinel audit --tasks
+
+# Link tasks to change requests
+sentinel knowledge track CR-001 --create-tasks
+
+# Verify tasks from comprehensive analysis
+sentinel analyze feature "Order Cancellation" --create-tasks
+```
+
+### Troubleshooting
+
+**Tasks not detected**:
+- Ensure files are in scanned directories (check `.sentinelsrc`)
+- Check task format matches supported patterns (TODO, FIXME, Cursor markers)
+- Run with `--verbose` flag for detailed output
+
+**Verification fails**:
+- Check code exists in expected locations
+- Verify test files match naming conventions
+- Check integration configuration files exist
+
+**Dependencies not detected**:
+- Ensure tasks have explicit dependencies in descriptions
+- Run comprehensive analysis (Phase 14A) for feature-level dependencies
+- Check code analysis for implicit dependencies
+
+**Auto-completion not working**:
+- Check verification confidence scores (need >0.8)
+- Verify all verification factors are checked
+- Check for blocking dependencies
+
+### Best Practices
+
+1. **Task Format**: Use consistent task format for better detection
+   ```javascript
+   // TASK: TASK-123 - Description
+   // DEPENDS: TASK-122, TASK-121
+   ```
+
+2. **Regular Verification**: Run `sentinel tasks verify --all` regularly
+   - Before commits: Verify tasks are complete
+   - Before releases: Ensure all critical tasks done
+   - Weekly: Review pending tasks
+
+3. **Dependency Management**: Keep dependencies explicit
+   - Document dependencies in task descriptions
+   - Review dependency graph regularly
+   - Resolve circular dependencies quickly
+
+4. **Integration**: Link tasks to related systems
+   - Link to change requests (Phase 12)
+   - Link to knowledge items (Phase 4)
+   - Link to comprehensive analysis (Phase 14A)
+
+---
+
 ## Command Reference
 
 ### `sentinel init`
@@ -450,39 +706,6 @@ Scan for issues.
 ./sentinel audit --ci
 ```
 
-### `sentinel status`
-
-View project health dashboard.
-
-```bash
-# Show project health
-./sentinel status
-```
-
-Output:
-```
-📊 PROJECT HEALTH
-══════════════════════════════════════════════════════════════
-
-✅ Compliance:    92% (↑3% from last)
-   Last audit:     2 hours ago
-   Findings:       0 critical, 3 warning, 0 info
-
-🔧 CONFIGURATION
-──────────────────────────────────────────────────────────────
-✅ Config:         .sentinelsrc found
-✅ Cursor Rules:   3 files in .cursor/rules/
-📋 Patterns:       Not learned yet (run: sentinel learn)
-✅ Git Hooks:      Installed
-
-⚡ QUICK ACTIONS
-──────────────────────────────────────────────────────────────
-   [AUTO] 5 safe fixes available (run: sentinel fix --safe)
-
-📈 OVERALL HEALTH
-──────────────────────────────────────────────────────────────
-   Score: [████████░░] 80% - Good
-```
 
 ### `sentinel fix`
 
@@ -548,53 +771,82 @@ Process project documents (server-side by default).
 | .png, .jpg | ✅ | ⚠️ Requires tesseract |
 | LLM extraction | ✅ | ❌ |
 
-### `sentinel review`
 
-Review extracted knowledge.
 
-```bash
-# Interactive review
-./sentinel review
 
-# List pending items
-./sentinel review --list
+### `sentinel test`
 
-# Approve specific file
-./sentinel review --approve domain-glossary.draft.md
-
-# Reject specific file
-./sentinel review --reject user-journeys.draft.md
-```
-
-### `sentinel baseline`
-
-Manage accepted findings.
+Run comprehensive test suites for your project.
 
 ```bash
-# Add to baseline
-./sentinel baseline add src/file.js 42 "pattern" "reason"
+# Generate and run all tests
+./sentinel test
 
-# List baselined items
-./sentinel baseline list
+# Test requirements generation
+./sentinel test requirements
 
-# Remove from baseline
-./sentinel baseline remove src/file.js 42
+# Test coverage analysis
+./sentinel test coverage
+
+# Test validation
+./sentinel test validate
+
+# Run tests
+./sentinel test run
+
+# Mutation testing
+./sentinel test mutation
 ```
 
 ### `sentinel status`
 
-View project health.
+Display project health and status information.
 
 ```bash
+# Show project overview
 ./sentinel status
 
-# Output:
-# PROJECT STATUS
-# ══════════════
-# Compliance: 92%
-# Pending drafts: 3
-# Last audit: 2 hours ago
-# Documentation: 85% coverage
+# Include detailed metrics
+./sentinel status --detailed
+
+# JSON output for CI/CD
+./sentinel status --json
+```
+
+### `sentinel baseline`
+
+Manage baseline exceptions for known issues.
+
+```bash
+# Create baseline from current issues
+./sentinel baseline create
+
+# Update existing baseline
+./sentinel baseline update
+
+# Show baseline contents
+./sentinel baseline show
+
+# Clear baseline (reset to no exceptions)
+./sentinel baseline clear
+```
+
+### `sentinel tasks`
+
+Manage development tasks and track progress.
+
+```bash
+# Scan codebase for tasks
+./sentinel tasks scan
+
+# List all tasks
+./sentinel tasks list
+
+# Verify task completion
+./sentinel tasks verify <task-id>
+
+# Analyze task dependencies
+./sentinel tasks dependencies <task-id>
 ```
 
 ---
@@ -647,6 +899,64 @@ Telemetry is automatically enabled when Hub is configured. The Agent sends metri
 - File contents
 - Actual patterns or code snippets
 - Any sensitive data
+
+### MCP Integration (Phase 14B)
+
+Sentinel provides MCP (Model Context Protocol) integration for Cursor IDE, enabling comprehensive feature analysis directly from your IDE.
+
+**Status**: ✅ 15/19 MCP tools fully functional (79% complete)
+
+#### Available MCP Tools
+
+The following tools are fully functional:
+
+- `sentinel_analyze_feature_comprehensive` - Comprehensive feature analysis across all layers
+- `sentinel_check_intent` - Analyze unclear prompts and generate clarifying questions
+- `sentinel_get_context` - Get recent activity context (git status, recent commits, errors)
+- `sentinel_get_patterns` - Get learned patterns and project conventions
+- `sentinel_get_business_context` - Get business rules, entities, and journeys
+- `sentinel_get_security_context` - Get security rules, compliance status, and security score
+- `sentinel_get_test_requirements` - Get test requirements and coverage status
+- `sentinel_check_file_size` - Check file size and get warnings/split suggestions
+- `sentinel_validate_security` - Validate code for security compliance
+- `sentinel_validate_business` - Validate code against business rules
+- `sentinel_validate_tests` - Validate test quality and coverage
+- `sentinel_generate_tests` - Generate test cases for a feature
+- `sentinel_run_tests` - Execute tests in sandbox
+
+#### Available Tools (Complete)
+
+- `sentinel_analyze_intent` - ✅ Analyze user intent and return context, rules, security, and test requirements
+- `sentinel_validate_code` - ✅ Validate code using AST analysis
+- `sentinel_apply_fix` - ✅ Apply security, style, or performance fixes to code
+
+#### Known Limitations
+
+- Task management tools (`sentinel_get_task_status`, `sentinel_verify_task`, `sentinel_list_tasks`) - Require Phase 14E completion
+
+**Setup**:
+1. Configure Cursor MCP settings in `~/.cursor/mcp.json`
+2. Restart Cursor IDE
+3. Use `sentinel_analyze_feature_comprehensive` tool in Cursor chat
+
+**For detailed setup and usage, see [Phase 14B Guide](./PHASE_14B_GUIDE.md)**
+
+### Intent Analysis (Phase 15)
+
+Phase 15 adds intent analysis to handle unclear prompts gracefully. When you provide a vague request, Sentinel analyzes the intent and generates clarifying questions.
+
+**Usage in Cursor**:
+```
+Use sentinel_check_intent to analyze: "add a button"
+```
+
+**Features**:
+- Detects unclear prompts (location, entity, action confirmation)
+- Generates clarifying questions with options
+- Gathers context (recent files, git status, business rules)
+- Learns from your choices to improve future suggestions
+
+**For detailed setup and usage, see [Phase 15 Guide](./PHASE_15_GUIDE.md)**
 
 ### Cursor MCP Configuration (`~/.cursor/mcp.json`)
 

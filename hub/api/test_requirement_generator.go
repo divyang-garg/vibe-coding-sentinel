@@ -17,34 +17,45 @@ import (
 )
 
 // TestRequirement represents a test requirement generated from a business rule
-type TestRequirement struct {
-	ID              string    `json:"id"`
-	KnowledgeItemID string    `json:"knowledge_item_id"`
-	RuleTitle       string    `json:"rule_title"`
-	RequirementType string    `json:"requirement_type"` // happy_path, edge_case, error_case
-	Description     string    `json:"description"`
-	CodeFunction    string    `json:"code_function,omitempty"`
-	Priority        string    `json:"priority"` // critical, high, medium, low
-	CreatedAt       time.Time `json:"created_at"`
-	UpdatedAt       time.Time `json:"updated_at"`
-}
+// TestRequirement is defined in types.go
 
 // GenerateTestRequirementsRequest represents the request to generate test requirements
 type GenerateTestRequirementsRequest struct {
-	ProjectID      string   `json:"projectId"`
+	ProjectID        string   `json:"project_id"`
 	KnowledgeItemIDs []string `json:"knowledgeItemIds,omitempty"` // Optional: specific items, empty = all approved
 }
 
 // GenerateTestRequirementsResponse represents the response
 type GenerateTestRequirementsResponse struct {
-	Success       bool                `json:"success"`
-	Requirements  []TestRequirement   `json:"requirements"`
-	Count         int                 `json:"count"`
-	Message       string              `json:"message,omitempty"`
+	Success      bool              `json:"success"`
+	Requirements []TestRequirement `json:"requirements"`
+	Count        int               `json:"count"`
+	Message      string            `json:"message,omitempty"`
 }
 
 // extractBusinessRules extracts approved business rules from knowledge_items table
-func extractBusinessRules(ctx context.Context, projectID string, knowledgeItemIDs []string) ([]KnowledgeItem, error) {
+// Phase 14D: Now supports caching via codebaseHash parameter
+func extractBusinessRules(ctx context.Context, projectID string, knowledgeItemIDs []string, codebaseHash string, config *LLMConfig) ([]KnowledgeItem, error) {
+	// Phase 14D: Check cache first if codebaseHash is provided
+	if codebaseHash != "" && config != nil {
+		cached, ok := getCachedBusinessContext(projectID, codebaseHash, config)
+		if ok {
+			if rules, ok := cached["rules"].([]interface{}); ok {
+				// Convert []interface{} to []KnowledgeItem
+				result := make([]KnowledgeItem, 0, len(rules))
+				for _, r := range rules {
+					if rule, ok := r.(KnowledgeItem); ok {
+						result = append(result, rule)
+					}
+				}
+				if len(result) > 0 {
+					recordCacheHit(projectID)
+					return result, nil
+				}
+			}
+		}
+	}
+
 	query := `
 		SELECT ki.id, ki.document_id, ki.type, ki.title, ki.content, ki.confidence, 
 		       ki.source_page, ki.status, ki.approved_by, ki.approved_at, ki.created_at
@@ -54,31 +65,31 @@ func extractBusinessRules(ctx context.Context, projectID string, knowledgeItemID
 		  AND ki.type = 'business_rule'
 		  AND ki.status = 'approved'
 	`
-	
+
 	args := []interface{}{projectID}
 	argIndex := 2
-	
+
 	// If specific knowledge item IDs provided, filter by them
 	if len(knowledgeItemIDs) > 0 {
 		query += fmt.Sprintf(" AND ki.id = ANY($%d)", argIndex)
 		args = append(args, knowledgeItemIDs)
 		argIndex++
 	}
-	
+
 	query += " ORDER BY ki.created_at DESC"
-	
+
 	rows, err := queryWithTimeout(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query business rules: %w", err)
 	}
 	defer rows.Close()
-	
+
 	var rules []KnowledgeItem
 	for rows.Next() {
 		var rule KnowledgeItem
 		var approvedBy sql.NullString
 		var approvedAt sql.NullTime
-		
+
 		err := rows.Scan(
 			&rule.ID, &rule.DocumentID, &rule.Type, &rule.Title, &rule.Content,
 			&rule.Confidence, &rule.SourcePage, &rule.Status,
@@ -88,18 +99,201 @@ func extractBusinessRules(ctx context.Context, projectID string, knowledgeItemID
 			log.Printf("Error scanning business rule: %v", err)
 			continue
 		}
-		
+
 		if approvedBy.Valid {
 			rule.ApprovedBy = &approvedBy.String
 		}
 		if approvedAt.Valid {
 			rule.ApprovedAt = &approvedAt.Time
 		}
-		
+
 		rules = append(rules, rule)
 	}
-	
+
+	// Phase 14D: Cache the results if codebaseHash is provided
+	if codebaseHash != "" && config != nil && len(rules) > 0 {
+		// Convert []KnowledgeItem to []interface{} for caching
+		rulesInterface := make([]interface{}, len(rules))
+		for i, r := range rules {
+			rulesInterface[i] = r
+		}
+		// Get existing cached context to preserve entities and journeys
+		cached, _ := getCachedBusinessContext(projectID, codebaseHash, config)
+		var entities, journeys []interface{}
+		if cached != nil {
+			if e, ok := cached["entities"].([]interface{}); ok {
+				entities = e
+			}
+			if j, ok := cached["journeys"].([]interface{}); ok {
+				journeys = j
+			}
+		}
+		setCachedBusinessContext(projectID, codebaseHash, rulesInterface, entities, journeys, config)
+		recordCacheMiss(projectID)
+	}
+
 	return rules, nil
+}
+
+// extractUserJourneys extracts approved user journeys from knowledge_items table
+// Phase 14D: Now supports caching via codebaseHash parameter
+func extractUserJourneys(ctx context.Context, projectID string, journeyIDs []string, codebaseHash string, config *LLMConfig) ([]KnowledgeItem, error) {
+	// Phase 14D: Check cache first if codebaseHash is provided
+	if codebaseHash != "" && config != nil {
+		cached, ok := getCachedBusinessContext(projectID, codebaseHash, config)
+		if ok {
+			if journeys, ok := cached["journeys"].([]interface{}); ok {
+				// Convert []interface{} to []KnowledgeItem
+				result := make([]KnowledgeItem, 0, len(journeys))
+				for _, j := range journeys {
+					if journey, ok := j.(KnowledgeItem); ok {
+						result = append(result, journey)
+					}
+				}
+				if len(result) > 0 {
+					recordCacheHit(projectID)
+					return result, nil
+				}
+			}
+		}
+	}
+
+	query := `
+		SELECT ki.id, ki.document_id, ki.type, ki.title, ki.content, ki.confidence, 
+		       ki.source_page, ki.status, ki.approved_by, ki.approved_at, ki.created_at
+		FROM knowledge_items ki
+		INNER JOIN documents d ON ki.document_id = d.id
+		WHERE d.project_id = $1
+		  AND ki.type = 'journey'
+		  AND ki.status = 'approved'
+	`
+
+	args := []interface{}{projectID}
+	argIndex := 2
+
+	// If specific journey IDs provided, filter by them
+	if len(journeyIDs) > 0 {
+		query += fmt.Sprintf(" AND ki.id = ANY($%d)", argIndex)
+		args = append(args, journeyIDs)
+		argIndex++
+	}
+
+	query += " ORDER BY ki.created_at DESC"
+
+	rows, err := queryWithTimeout(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query user journeys: %w", err)
+	}
+	defer rows.Close()
+
+	var journeys []KnowledgeItem
+	for rows.Next() {
+		var journey KnowledgeItem
+		var approvedBy sql.NullString
+		var approvedAt sql.NullTime
+
+		err := rows.Scan(
+			&journey.ID, &journey.DocumentID, &journey.Type, &journey.Title, &journey.Content,
+			&journey.Confidence, &journey.SourcePage, &journey.Status,
+			&approvedBy, &approvedAt, &journey.CreatedAt,
+		)
+		if err != nil {
+			log.Printf("Error scanning user journey: %v", err)
+			continue
+		}
+
+		if approvedBy.Valid {
+			journey.ApprovedBy = &approvedBy.String
+		}
+		if approvedAt.Valid {
+			journey.ApprovedAt = &approvedAt.Time
+		}
+
+		journeys = append(journeys, journey)
+	}
+
+	// Phase 14D: Cache the results if codebaseHash is provided
+	if codebaseHash != "" && config != nil && len(journeys) > 0 {
+		// Convert []KnowledgeItem to []interface{} for caching
+		journeysInterface := make([]interface{}, len(journeys))
+		for i, j := range journeys {
+			journeysInterface[i] = j
+		}
+		// Get existing cached context to preserve rules and entities
+		cached, _ := getCachedBusinessContext(projectID, codebaseHash, config)
+		var rules, entities []interface{}
+		if cached != nil {
+			if r, ok := cached["rules"].([]interface{}); ok {
+				rules = r
+			}
+			if e, ok := cached["entities"].([]interface{}); ok {
+				entities = e
+			}
+		}
+		setCachedBusinessContext(projectID, codebaseHash, rules, entities, journeysInterface, config)
+		recordCacheMiss(projectID)
+	}
+
+	return journeys, nil
+}
+
+// extractEntities extracts approved entities from knowledge_items table
+func extractEntities(ctx context.Context, projectID string, entityIDs []string) ([]KnowledgeItem, error) {
+	query := `
+		SELECT ki.id, ki.document_id, ki.type, ki.title, ki.content, ki.confidence, 
+		       ki.source_page, ki.status, ki.approved_by, ki.approved_at, ki.created_at
+		FROM knowledge_items ki
+		INNER JOIN documents d ON ki.document_id = d.id
+		WHERE d.project_id = $1
+		  AND ki.type = 'entity'
+		  AND ki.status = 'approved'
+	`
+
+	args := []interface{}{projectID}
+	argIndex := 2
+
+	// If specific entity IDs provided, filter by them
+	if len(entityIDs) > 0 {
+		query += fmt.Sprintf(" AND ki.id = ANY($%d)", argIndex)
+		args = append(args, entityIDs)
+		argIndex++
+	}
+
+	query += " ORDER BY ki.created_at DESC"
+
+	rows, err := queryWithTimeout(ctx, query, args...)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query entities: %w", err)
+	}
+	defer rows.Close()
+
+	var entities []KnowledgeItem
+	for rows.Next() {
+		var entity KnowledgeItem
+		var approvedBy sql.NullString
+		var approvedAt sql.NullTime
+
+		err := rows.Scan(
+			&entity.ID, &entity.DocumentID, &entity.Type, &entity.Title, &entity.Content,
+			&entity.Confidence, &entity.SourcePage, &entity.Status,
+			&approvedBy, &approvedAt, &entity.CreatedAt,
+		)
+		if err != nil {
+			log.Printf("Error scanning entity: %v", err)
+			continue
+		}
+
+		if approvedBy.Valid {
+			entity.ApprovedBy = &approvedBy.String
+		}
+		if approvedAt.Valid {
+			entity.ApprovedAt = &approvedAt.Time
+		}
+
+		entities = append(entities, entity)
+	}
+
+	return entities, nil
 }
 
 // mapRuleToCode attempts to map a business rule to code functions using AST analysis
@@ -108,7 +302,7 @@ func mapRuleToCode(rule KnowledgeItem, projectCode []string) string {
 	// Simple heuristic: look for function names that match rule title keywords
 	ruleTitleLower := strings.ToLower(rule.Title)
 	keywords := extractKeywords(ruleTitleLower)
-	
+
 	// Search for functions containing keywords
 	for _, code := range projectCode {
 		codeLower := strings.ToLower(code)
@@ -121,34 +315,18 @@ func mapRuleToCode(rule KnowledgeItem, projectCode []string) string {
 			}
 		}
 	}
-	
+
 	return "" // No mapping found
 }
 
-// extractKeywords extracts meaningful keywords from a title
-func extractKeywords(title string) []string {
-	// Remove common words
-	stopWords := map[string]bool{
-		"the": true, "a": true, "an": true, "and": true, "or": true,
-		"but": true, "in": true, "on": true, "at": true, "to": true,
-		"for": true, "of": true, "with": true, "by": true, "from": true,
-	}
-	
-	words := strings.Fields(title)
-	var keywords []string
-	for _, word := range words {
-		word = strings.Trim(word, ".,!?;:")
-		if len(word) > 2 && !stopWords[strings.ToLower(word)] {
-			keywords = append(keywords, strings.ToLower(word))
-		}
-	}
-	
-	return keywords
-}
+// extractKeywords is defined in utils.go - using shared implementation
 
 // extractFunctionNameFromCode attempts to extract a function name from code (simplified)
+// TODO: Use AST analysis (Phase 6) for more accurate function extraction
 func extractFunctionNameFromCode(code, keyword string) string {
-	// This is a placeholder - in production, use AST analysis
+	// CURRENT IMPLEMENTATION: Uses pattern matching to find function definitions
+	// FUTURE ENHANCEMENT: Use AST analysis (Phase 6) for more accurate function extraction
+	// This would provide better accuracy and handle complex code structures
 	// Look for function definitions containing the keyword
 	lines := strings.Split(code, "\n")
 	for _, line := range lines {
@@ -175,7 +353,7 @@ func extractFunctionNameFromCode(code, keyword string) string {
 func generateTestRequirements(rule KnowledgeItem, codeFunction string) []TestRequirement {
 	var requirements []TestRequirement
 	now := time.Now()
-	
+
 	// Generate happy path requirement
 	requirements = append(requirements, TestRequirement{
 		ID:              uuid.New().String(),
@@ -188,7 +366,7 @@ func generateTestRequirements(rule KnowledgeItem, codeFunction string) []TestReq
 		CreatedAt:       now,
 		UpdatedAt:       now,
 	})
-	
+
 	// Generate edge case requirement
 	requirements = append(requirements, TestRequirement{
 		ID:              uuid.New().String(),
@@ -201,7 +379,7 @@ func generateTestRequirements(rule KnowledgeItem, codeFunction string) []TestReq
 		CreatedAt:       now,
 		UpdatedAt:       now,
 	})
-	
+
 	// Generate error case requirement
 	requirements = append(requirements, TestRequirement{
 		ID:              uuid.New().String(),
@@ -214,7 +392,7 @@ func generateTestRequirements(rule KnowledgeItem, codeFunction string) []TestReq
 		CreatedAt:       now,
 		UpdatedAt:       now,
 	})
-	
+
 	return requirements
 }
 
@@ -230,7 +408,7 @@ func saveTestRequirements(ctx context.Context, requirements []TestRequirement) e
 			priority = EXCLUDED.priority,
 			updated_at = EXCLUDED.updated_at
 	`
-	
+
 	for _, req := range requirements {
 		_, err := execWithTimeout(ctx, query,
 			req.ID, req.KnowledgeItemID, req.RuleTitle, req.RequirementType,
@@ -240,7 +418,7 @@ func saveTestRequirements(ctx context.Context, requirements []TestRequirement) e
 			return fmt.Errorf("failed to save test requirement %s: %w", req.ID, err)
 		}
 	}
-	
+
 	return nil
 }
 
@@ -250,30 +428,30 @@ func generateTestRequirementsHandler(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "Method not allowed", http.StatusMethodNotAllowed)
 		return
 	}
-	
+
 	var req GenerateTestRequirementsRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		http.Error(w, fmt.Sprintf("Invalid request body: %v", err), http.StatusBadRequest)
 		return
 	}
-	
+
 	// Validate project ID
 	if req.ProjectID == "" {
 		http.Error(w, "projectId is required", http.StatusBadRequest)
 		return
 	}
-	
+
 	ctx, cancel := context.WithTimeout(r.Context(), 30*time.Second)
 	defer cancel()
-	
+
 	// Extract business rules
-	rules, err := extractBusinessRules(ctx, req.ProjectID, req.KnowledgeItemIDs)
+	rules, err := extractBusinessRules(ctx, req.ProjectID, req.KnowledgeItemIDs, "", nil)
 	if err != nil {
 		log.Printf("Error extracting business rules: %v", err)
 		http.Error(w, fmt.Sprintf("Failed to extract business rules: %v", err), http.StatusInternalServerError)
 		return
 	}
-	
+
 	if len(rules) == 0 {
 		response := GenerateTestRequirementsResponse{
 			Success:      true,
@@ -285,33 +463,33 @@ func generateTestRequirementsHandler(w http.ResponseWriter, r *http.Request) {
 		json.NewEncoder(w).Encode(response)
 		return
 	}
-	
+
 	// Generate test requirements for each rule
 	var allRequirements []TestRequirement
 	for _, rule := range rules {
-		// TODO: In production, use AST analysis to map rules to code functions
-		// For now, use empty code function (manual mapping can be done later)
+		// CURRENT IMPLEMENTATION: Uses empty code function (manual mapping can be done later)
+		// FUTURE ENHANCEMENT: Use AST analysis (Phase 6) to automatically map rules to code functions
+		// This would enable automatic detection of which code implements which business rule
 		codeFunction := ""
-		
+
 		requirements := generateTestRequirements(rule, codeFunction)
 		allRequirements = append(allRequirements, requirements...)
 	}
-	
+
 	// Save to database
 	if err := saveTestRequirements(ctx, allRequirements); err != nil {
 		log.Printf("Error saving test requirements: %v", err)
 		http.Error(w, fmt.Sprintf("Failed to save test requirements: %v", err), http.StatusInternalServerError)
 		return
 	}
-	
+
 	response := GenerateTestRequirementsResponse{
 		Success:      true,
 		Requirements: allRequirements,
 		Count:        len(allRequirements),
 		Message:      fmt.Sprintf("Generated %d test requirements from %d business rules", len(allRequirements), len(rules)),
 	}
-	
+
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(response)
 }
-

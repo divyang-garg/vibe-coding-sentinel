@@ -1,0 +1,90 @@
+# Test Docker Compose Configuration
+# Use: docker-compose -f docker-compose.yml -f docker-compose.test.yml up -d
+# This provides test database infrastructure for integration tests
+
+version: '3.8'
+
+services:
+  test-db:
+    image: postgres:15-alpine
+    environment:
+      - POSTGRES_USER=sentinel
+      - POSTGRES_PASSWORD=sentinel
+      - POSTGRES_DB=sentinel_test
+    ports:
+      - "127.0.0.1:5433:5432"  # Use different port to avoid conflicts
+    volumes:
+      - test_db_data:/var/lib/postgresql/data
+      - ./init-test-db.sql:/docker-entrypoint-initdb.d/01-init.sql  # Initialize users
+      - ./migrations:/docker-entrypoint-initdb.d/02-migrations  # Run migrations on startup
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U sentinel -d sentinel_test"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    networks:
+      - test-network
+
+  # Test API server (for integration tests that need a real server)
+  test-api:
+    build:
+      context: ./api
+      dockerfile: Dockerfile
+    environment:
+      - DATABASE_URL=postgres://sentinel:sentinel@test-db:5432/sentinel_test?sslmode=disable
+      - PORT=8081  # Different port for tests
+      - DOCUMENT_STORAGE=/data/test-documents
+      - BINARY_STORAGE=/data/test-binaries
+      - RULES_STORAGE=/data/test-rules
+      - OLLAMA_HOST=http://test-ollama:11434
+      - CORS_ORIGIN=*
+      - LOG_LEVEL=debug
+      - ENVIRONMENT=test
+      # Test secrets (not for production)
+      - ADMIN_API_KEY=test-admin-key-12345
+      - JWT_SECRET=test-jwt-secret-12345
+    ports:
+      - "127.0.0.1:8081:8081"
+    volumes:
+      - test_document_storage:/data/test-documents
+      - test_binary_storage:/data/test-binaries
+      - test_rules_storage:/data/test-rules
+    depends_on:
+      test-db:
+        condition: service_healthy
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8081/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 3
+    networks:
+      - test-network
+
+  # Test Ollama (optional, for tests that need LLM)
+  test-ollama:
+    image: ollama/ollama:latest
+    ports:
+      - "127.0.0.1:11435:11434"  # Different port
+    volumes:
+      - test_ollama_models:/root/.ollama
+    restart: unless-stopped
+    networks:
+      - test-network
+
+volumes:
+  test_db_data:
+    driver: local
+  test_document_storage:
+    driver: local
+  test_binary_storage:
+    driver: local
+  test_rules_storage:
+    driver: local
+  test_ollama_models:
+    driver: local
+
+networks:
+  test-network:
+    name: sentinel-test-network

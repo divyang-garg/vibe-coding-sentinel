@@ -1,0 +1,41 @@
+{
+  "task_id": "550e8400-e29b-41d4-a716-446655440000",
+  "overall_confidence": 0.85,
+  "status": "completed",
+  "verifications": [
+    {
+      "verification_type": "code_existence",
+      "status": "passed",
+      "confidence": 0.9,
+      "details": "Code found in src/auth.js"
+    },
+    {
+      "verification_type": "code_usage",
+      "status": "passed",
+      "confidence": 0.8,
+      "details": "Used in 3 files"
+    },
+    {
+      "verification_type": "test_coverage",
+      "status": "passed",
+      "confidence": 0.85,
+      "details": "Test file exists: src/auth.test.js"
+    },
+    {
+      "verification_type": "integration",
+      "status": "pending",
+      "confidence": 0.7,
+      "details": "Integration endpoint not verified"
+    }
+  ],
+  "verified_at": "2024-01-16T15:00:00Z"
+}
+
+
+
+
+
+
+
+
+
