@@ -1,0 +1,40 @@
+#!/bin/bash
+# Sentinel Quality Control Gate - Pre-commit Hook
+# Ensures CODING_STANDARDS.md compliance before commits
+
+set -e
+
+echo "🔍 Sentinel Quality Control Gate - Pre-commit Validation"
+
+ERRORS=0
+
+# Build Check
+if ! go build -o /tmp/sentinel-test ./cmd/sentinel 2>/dev/null; then
+    echo "❌ Build failed"
+    ((ERRORS++))
+fi
+
+# Static Analysis Check
+if ! go vet ./... 2>/dev/null; then
+    echo "❌ Static analysis failed"
+    ((ERRORS++))
+fi
+
+# Code Formatting Check
+if [ -n "$(gofmt -l .)" ]; then
+    echo "❌ Code formatting issues found"
+    ((ERRORS++))
+fi
+
+# File Size Check
+if [ "$(find . -name "*.go" -exec wc -l {} \; | awk '$1 > 500 {print}' | wc -l)" -gt 0 ]; then
+    echo "❌ File size limits exceeded"
+    ((ERRORS++))
+fi
+
+if [ $ERRORS -gt 0 ]; then
+    echo "🚫 COMMIT REJECTED - $ERRORS issue(s) found"
+    exit 1
+else
+    echo "✅ COMMIT APPROVED"
+fi
