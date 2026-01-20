@@ -80,6 +80,17 @@ func SetLLMUsageRepository(repo repository.LLMUsageRepository) {
 	llmUsageRepo = repo
 }
 
+// GetTrackUsageFunction returns the trackUsage function for bridge pattern
+// This allows main package to set up a bridge to services.TrackUsage
+// Returns a function that accepts *models.LLMUsage for type compatibility
+func GetTrackUsageFunction() func(ctx context.Context, usage *models.LLMUsage) error {
+	return func(ctx context.Context, usage *models.LLMUsage) error {
+		// Convert *models.LLMUsage to *services.LLMUsage (both are aliases, safe conversion)
+		servicesUsage := (*LLMUsage)(usage)
+		return TrackUsage(ctx, servicesUsage)
+	}
+}
+
 // trackUsage tracks LLM usage and persists to database if repository is available
 func trackUsage(ctx context.Context, usage *LLMUsage) error {
 	if usage == nil {
@@ -112,6 +123,12 @@ func trackUsage(ctx context.Context, usage *LLMUsage) error {
 	}
 
 	return llmUsageRepo.SaveUsage(ctx, modelsUsage)
+}
+
+// TrackUsage is an exported wrapper for trackUsage to allow cross-package access
+// This function should be used via the bridge pattern from main package
+func TrackUsage(ctx context.Context, usage *LLMUsage) error {
+	return trackUsage(ctx, usage)
 }
 
 // listLLMConfigs lists LLM configurations for a project by delegating to llm package

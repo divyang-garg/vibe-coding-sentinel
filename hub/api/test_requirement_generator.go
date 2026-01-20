@@ -14,6 +14,7 @@ import (
 	"time"
 
 	"github.com/google/uuid"
+	"sentinel-hub-api/ast"
 )
 
 // TestRequirement represents a test requirement generated from a business rule
@@ -321,17 +322,28 @@ func mapRuleToCode(rule KnowledgeItem, projectCode []string) string {
 
 // extractKeywords is defined in utils.go - using shared implementation
 
-// extractFunctionNameFromCode attempts to extract a function name from code (simplified)
-// Current implementation uses pattern matching for function extraction.
-// See docs/development/PHASE6_AST_INTEGRATION.md for planned AST-based enhancement.
-// TODO(Phase 6): Use AST analysis for more accurate function extraction
-//   - Better handling of complex code structures
-//   - Improved accuracy for nested functions
-//   - Support for multiple languages
+// extractFunctionNameFromCode attempts to extract a function name from code
+// Uses AST analysis for accurate function extraction with fallback to pattern matching
+// Supports Go, JavaScript, TypeScript, and Python
 func extractFunctionNameFromCode(code, keyword string) string {
-	// CURRENT IMPLEMENTATION: Uses pattern matching to find function definitions
-	// FUTURE ENHANCEMENT: Use AST analysis (Phase 6) for more accurate function extraction
-	// This would provide better accuracy and handle complex code structures
+	// Try AST extraction first
+	language := ast.DetectLanguage(code, "")
+	if language != "unknown" {
+		functions, err := ast.ExtractFunctions(code, language, keyword)
+		if err == nil && len(functions) > 0 {
+			// Return first matching function
+			return functions[0].Name
+		}
+	}
+
+	// Fallback to pattern matching for backward compatibility
+	// This ensures we don't break existing functionality
+	return extractFunctionNameFromCodePattern(code, keyword)
+}
+
+// extractFunctionNameFromCodePattern is the original regex implementation
+// Kept as fallback for backward compatibility
+func extractFunctionNameFromCodePattern(code, keyword string) string {
 	// Look for function definitions containing the keyword
 	lines := strings.Split(code, "\n")
 	for _, line := range lines {

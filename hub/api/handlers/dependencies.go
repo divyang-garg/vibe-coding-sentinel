@@ -38,6 +38,10 @@ func NewDependencies(db *sql.DB) *Dependencies {
 	projectRepo := repository.NewProjectRepository(dbWrapper)
 	workflowRepo := repository.NewWorkflowRepository(dbWrapper)
 	errorReportRepo := repository.NewErrorReportRepository(dbWrapper)
+	llmUsageRepo := repository.NewLLMUsageRepository(dbWrapper)
+
+	// Set up LLM usage tracking in services package
+	services.SetLLMUsageRepository(llmUsageRepo)
 
 	// Initialize analyzers
 	dependencyAnalyzer := repository.NewDependencyAnalyzer()

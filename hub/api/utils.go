@@ -9,6 +9,8 @@ import (
 	"fmt"
 	"path/filepath"
 	"strings"
+
+	"sentinel-hub-api/models"
 )
 
 // marshalJSONB marshals a value to JSON string for JSONB storage
@@ -168,13 +170,29 @@ func calculateEstimatedCost(provider, model string, tokens int) float64 {
 	return 0.0
 }
 
+// servicesTrackUsage is a bridge function to delegate to services.TrackUsage
+// This allows main package to use the services package implementation with database persistence
+// Uses *models.LLMUsage to ensure type compatibility across packages
+var servicesTrackUsage func(ctx context.Context, usage *models.LLMUsage) error
+
+// SetServicesTrackUsage sets the bridge function for trackUsage
+// This should be called during application startup in main_minimal.go
+func SetServicesTrackUsage(f func(ctx context.Context, usage *models.LLMUsage) error) {
+	servicesTrackUsage = f
+}
+
 // trackUsage tracks LLM usage
-// Note: This function is kept for backward compatibility but should be replaced
-// with calls to services.trackUsage which has database persistence support.
-// This stub implementation returns nil to maintain existing behavior.
+// This function delegates to services.TrackUsage for database persistence
+// Falls back to no-op if bridge is not initialized (backward compatibility)
 func trackUsage(ctx context.Context, usage *LLMUsage) error {
-	// TODO: Remove this function and update all callers to use services.trackUsage
-	// The actual implementation with database persistence is in services/helpers_stubs.go
+	if servicesTrackUsage != nil {
+		// Convert main.LLMUsage (alias to models.LLMUsage) to *models.LLMUsage
+		// Since both are aliases, this is a safe conversion
+		modelsUsage := (*models.LLMUsage)(usage)
+		return servicesTrackUsage(ctx, modelsUsage)
+	}
+	// Fallback: return nil if bridge not initialized (maintains backward compatibility)
+	// In production, this should be initialized during app startup
 	return nil
 }
 

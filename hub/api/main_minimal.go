@@ -16,6 +16,7 @@ import (
 	"sentinel-hub-api/pkg"
 	"sentinel-hub-api/pkg/metrics"
 	"sentinel-hub-api/router"
+	"sentinel-hub-api/services"
 )
 
 func main() {
@@ -23,7 +24,7 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
-	
+
 	// Initialize database connection
 	var db *sql.DB
 	if dsn := os.Getenv("DATABASE_URL"); dsn != "" {
@@ -35,15 +36,20 @@ func main() {
 		log.Fatalf("Failed to open database connection: %v", err)
 	}
 	defer db.Close()
-	
+
 	// Test database connection
 	if err := db.Ping(); err != nil {
 		log.Fatalf("Failed to ping database: %v", err)
 	}
-	
+
 	m := metrics.NewMetrics("sentinel_hub_api")
 	go metrics.StartSystemMetricsCollection(m)
 	deps := handlers.NewDependencies(db)
+	
+	// Set up bridge for trackUsage to delegate to services.TrackUsage
+	// This ensures LLM usage from main package files is persisted to database
+	SetServicesTrackUsage(services.GetTrackUsageFunction())
+	
 	r := router.NewRouter(deps, m)
 	server := &http.Server{
 		Addr:         cfg.GetServerAddr(),

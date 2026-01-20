@@ -3,6 +3,7 @@
 package ast
 
 import (
+	"path/filepath"
 	"strings"
 	"unicode"
 
@@ -119,4 +120,69 @@ func shouldExcludeFunction(funcName string, config DetectionConfig) bool {
 		return true
 	}
 	return false
+}
+
+// DetectLanguage detects programming language from code or file path
+// Returns: "go", "javascript", "typescript", "python", or "unknown"
+// Priority: 1) File extension (most reliable), 2) Code patterns, 3) "unknown"
+func DetectLanguage(code string, filePath string) string {
+	// 1. Try file extension first (most reliable)
+	if filePath != "" {
+		ext := strings.ToLower(filepath.Ext(filePath))
+		switch ext {
+		case ".go":
+			return "go"
+		case ".js", ".jsx":
+			return "javascript"
+		case ".ts", ".tsx":
+			return "typescript"
+		case ".py":
+			return "python"
+		}
+	}
+
+	// 2. Try code patterns (shebang, imports, syntax)
+	codeLower := strings.ToLower(code)
+	codeTrimmed := strings.TrimSpace(code)
+
+	// Check for Go: "package", "func ", "import ("
+	if strings.HasPrefix(codeTrimmed, "package ") ||
+		strings.Contains(code, "func ") ||
+		strings.Contains(code, "import (") {
+		return "go"
+	}
+
+	// Check for JavaScript: "function ", "const ", "let ", "var ", "=>"
+	if strings.Contains(code, "function ") ||
+		strings.Contains(code, "const ") ||
+		strings.Contains(code, "let ") ||
+		strings.Contains(code, "var ") ||
+		strings.Contains(code, "=>") {
+		// Check if it's TypeScript (has type annotations)
+		if strings.Contains(code, ": ") && (strings.Contains(code, "interface ") ||
+			strings.Contains(code, "type ") ||
+			strings.Contains(code, "export ")) {
+			return "typescript"
+		}
+		return "javascript"
+	}
+
+	// Check for TypeScript: "interface ", "type ", "export type"
+	if strings.Contains(code, "interface ") ||
+		strings.Contains(code, "type ") ||
+		strings.Contains(code, "export type") {
+		return "typescript"
+	}
+
+	// Check for Python: "def ", "import ", "class ", shebang
+	if strings.HasPrefix(codeTrimmed, "#!/usr/bin/env python") ||
+		strings.HasPrefix(codeTrimmed, "#!/usr/bin/python") ||
+		strings.Contains(code, "def ") ||
+		strings.Contains(code, "import ") ||
+		strings.Contains(code, "class ") {
+		return "python"
+	}
+
+	// 3. Default to "unknown" if cannot detect
+	return "unknown"
 }

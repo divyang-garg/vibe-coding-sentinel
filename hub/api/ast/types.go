@@ -132,3 +132,25 @@ type SecurityVulnerability struct {
 	Confidence  float64 `json:"confidence"` // 0.0-1.0
 	FilePath    string  `json:"file_path,omitempty"`
 }
+
+// FunctionInfo represents extracted function information
+type FunctionInfo struct {
+	Name         string            `json:"name"`
+	Language     string            `json:"language"`
+	Line         int               `json:"line"`
+	Column       int               `json:"column"`
+	EndLine      int               `json:"endLine"`
+	EndColumn    int               `json:"endColumn"`
+	Parameters   []ParameterInfo   `json:"parameters,omitempty"`
+	ReturnType   string            `json:"returnType,omitempty"`
+	Visibility   string            `json:"visibility"` // "public", "private", "exported"
+	Documentation string           `json:"documentation,omitempty"`
+	Code         string            `json:"code"` // Full function code
+	Metadata     map[string]string `json:"metadata,omitempty"`
+}
+
+// ParameterInfo represents a function parameter
+type ParameterInfo struct {
+	Name string `json:"name"`
+	Type string `json:"type,omitempty"`
+}
