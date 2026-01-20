@@ -17,25 +17,25 @@ type MetricsCollector interface {
 
 // ExtractionMetrics contains aggregated metrics
 type ExtractionMetrics struct {
-	TotalExtractions   int64
+	TotalExtractions      int64
 	SuccessfulExtractions int64
-	FailedExtractions  int64
-	TotalTokens        int64
-	CacheHits          int64
-	CacheMisses        int64
-	AverageDuration    time.Duration
+	FailedExtractions     int64
+	TotalTokens           int64
+	CacheHits             int64
+	CacheMisses           int64
+	AverageDuration       time.Duration
 }
 
 // simpleMetricsCollector implements MetricsCollector
 type simpleMetricsCollector struct {
-	mu                sync.RWMutex
-	totalExtractions  int64
+	mu                    sync.RWMutex
+	totalExtractions      int64
 	successfulExtractions int64
-	failedExtractions int64
-	totalTokens       int64
-	cacheHits         int64
-	cacheMisses       int64
-	totalDuration     time.Duration
+	failedExtractions     int64
+	totalTokens           int64
+	cacheHits             int64
+	cacheMisses           int64
+	totalDuration         time.Duration
 }
 
 // NewMetricsCollector creates a new metrics collector
@@ -74,19 +74,19 @@ func (m *simpleMetricsCollector) RecordCacheHit(hit bool) {
 func (m *simpleMetricsCollector) GetMetrics() ExtractionMetrics {
 	m.mu.RLock()
 	defer m.mu.RUnlock()
-	
+
 	avgDuration := time.Duration(0)
 	if m.totalExtractions > 0 {
 		avgDuration = m.totalDuration / time.Duration(m.totalExtractions)
 	}
 
 	return ExtractionMetrics{
-		TotalExtractions:   m.totalExtractions,
+		TotalExtractions:      m.totalExtractions,
 		SuccessfulExtractions: m.successfulExtractions,
-		FailedExtractions:  m.failedExtractions,
-		TotalTokens:        m.totalTokens,
-		CacheHits:          m.cacheHits,
-		CacheMisses:        m.cacheMisses,
-		AverageDuration:    avgDuration,
+		FailedExtractions:     m.failedExtractions,
+		TotalTokens:           m.totalTokens,
+		CacheHits:             m.cacheHits,
+		CacheMisses:           m.cacheMisses,
+		AverageDuration:       avgDuration,
 	}
 }

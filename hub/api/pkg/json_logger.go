@@ -88,7 +88,7 @@ func (l *JSONLogger) Log(ctx context.Context, level LogLevel, msg string, fields
 	if !shouldLogLevel(level, l.level) {
 		return
 	}
-	
+
 	entry := LogEntry{
 		Timestamp:   time.Now().UTC().Format(time.RFC3339Nano),
 		Level:       string(level),
@@ -98,7 +98,7 @@ func (l *JSONLogger) Log(ctx context.Context, level LogLevel, msg string, fields
 		Environment: l.environment,
 		Fields:      fields,
 	}
-	
+
 	// Extract context values
 	if requestID, ok := ctx.Value(RequestIDKey).(string); ok {
 		entry.RequestID = requestID
@@ -112,10 +112,10 @@ func (l *JSONLogger) Log(ctx context.Context, level LogLevel, msg string, fields
 	if userID, ok := ctx.Value(UserIDKey).(string); ok {
 		entry.UserID = userID
 	}
-	
+
 	l.mu.Lock()
 	defer l.mu.Unlock()
-	
+
 	data, _ := json.Marshal(entry)
 	l.writer.Write(data)
 	l.writer.Write([]byte("\n"))
@@ -134,7 +134,7 @@ func (l *JSONLogger) Error(ctx context.Context, msg string, err error, fields ..
 		stackTrace := getStackTrace()
 		f["error"] = map[string]interface{}{
 			"type":        fmt.Sprintf("%T", err),
-			"message":    err.Error(),
+			"message":     err.Error(),
 			"stack_trace": stackTrace,
 		}
 		entry := LogEntry{
@@ -180,9 +180,8 @@ func (l *JSONLogger) Debug(ctx context.Context, msg string, fields ...map[string
 }
 
 // Warn logs at WARN level
-func (l *JSONLogger) Warn(ctx context.Context, msg string, fields ...map[string]interface{}) {
-	f := mergeFields(fields)
-	l.Log(ctx, LogLevelWarn, msg, f)
+func (l *JSONLogger) Warn(ctx context.Context, msg string, fields map[string]interface{}) {
+	l.Log(ctx, LogLevelWarn, msg, fields)
 }
 
 func mergeFields(fields []map[string]interface{}) map[string]interface{} {

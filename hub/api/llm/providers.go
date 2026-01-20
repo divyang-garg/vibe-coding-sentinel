@@ -9,8 +9,11 @@ import (
 	"fmt"
 	"io"
 	"net/http"
+	"os"
 	"strings"
 	"time"
+
+	"sentinel-hub-api/pkg"
 )
 
 // Global instances for rate limiting and cost optimization
@@ -111,8 +114,8 @@ func CallLLM(ctx context.Context, config *LLMConfig, prompt string, taskType str
 		return "", 0, fmt.Errorf("rate limit exceeded, please try again later")
 	}
 
-	// Check quota (assuming project ID is available, using a default for now)
-	projectID := "default" // TODO: Extract from context or config
+	// Extract projectID from context, fallback to config, then default
+	projectID := getProjectID(ctx)
 	if !quotaManager.CheckQuota(projectID, estimatedTokens) {
 		return "", 0, fmt.Errorf("quota exceeded for project %s", projectID)
 	}
@@ -220,6 +223,22 @@ func callOpenAI(ctx context.Context, config *LLMConfig, prompt string) (string, 
 	}
 
 	return apiResponse.Choices[0].Message.Content, apiResponse.Usage.TotalTokens, nil
+}
+
+// getProjectID extracts projectID from context with fallback to config and default
+func getProjectID(ctx context.Context) string {
+	// Try to get from context first
+	if projectID, ok := ctx.Value(pkg.ProjectIDKey).(string); ok && projectID != "" {
+		return projectID
+	}
+
+	// Fallback to environment variable
+	if projectID := os.Getenv("SENTINEL_PROJECT_ID"); projectID != "" {
+		return projectID
+	}
+
+	// Last resort: default
+	return "default"
 }
 
 // callOllama makes an API call to local Ollama instance

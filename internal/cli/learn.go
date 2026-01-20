@@ -15,15 +15,15 @@ func runLearn(args []string) error {
 	hubURL, hubAPIKey := config.GetHubConfig()
 
 	opts := patterns.LearnOptions{
-		NamingOnly:          false,
-		ImportsOnly:         false,
-		StructureOnly:       false,
-		CodebasePath:        ".",
-		OutputJSON:          false,
+		NamingOnly:           false,
+		ImportsOnly:          false,
+		StructureOnly:        false,
+		CodebasePath:         ".",
+		OutputJSON:           false,
 		IncludeBusinessRules: false,
-		HubURL:              hubURL,
-		HubAPIKey:           hubAPIKey,
-		ProjectID:           "",
+		HubURL:               hubURL,
+		HubAPIKey:            hubAPIKey,
+		ProjectID:            "",
 	}
 
 	// Parse flags

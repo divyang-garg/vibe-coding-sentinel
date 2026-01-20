@@ -25,7 +25,7 @@ func NewCodeAnalysisHandler(codeAnalysisService services.CodeAnalysisService) *C
 
 // AnalyzeCode handles POST /api/v1/analyze/code
 func (h *CodeAnalysisHandler) AnalyzeCode(w http.ResponseWriter, r *http.Request) {
-	var req models.ASTAnalysisRequest
+	var req models.CodeAnalysisRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.WriteErrorResponse(w, &models.ValidationError{
 			Field:   "body",
@@ -193,7 +193,7 @@ func (h *CodeAnalysisHandler) AnalyzeSecurity(w http.ResponseWriter, r *http.Req
 
 // AnalyzeVibe handles POST /api/v1/analyze/vibe
 func (h *CodeAnalysisHandler) AnalyzeVibe(w http.ResponseWriter, r *http.Request) {
-	var req models.ASTAnalysisRequest
+	var req models.CodeAnalysisRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
 		h.WriteErrorResponse(w, &models.ValidationError{
 			Field:   "body",
@@ -294,14 +294,7 @@ func (h *CodeAnalysisHandler) AnalyzeDocSync(w http.ResponseWriter, r *http.Requ
 		return
 	}
 
-	if req.CodebasePath == "" {
-		h.WriteErrorResponse(w, &models.ValidationError{
-			Field:   "codebase_path",
-			Message: "codebase_path is required",
-		}, http.StatusBadRequest)
-		return
-	}
-
+	// CodebasePath is optional in DocSyncRequest, using ProjectID as identifier
 	result, err := h.CodeAnalysisService.AnalyzeDocSync(r.Context(), req)
 	if err != nil {
 		h.WriteErrorResponse(w, err, http.StatusInternalServerError)

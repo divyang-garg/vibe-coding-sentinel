@@ -17,20 +17,20 @@ type FileInput struct {
 
 // CrossFileAnalysisResult contains results from cross-file analysis
 type CrossFileAnalysisResult struct {
-	Findings           []ASTFinding
-	UnusedExports      []*FileSymbol
-	UndefinedRefs      []*SymbolReference
-	CircularDeps       [][]string
+	Findings            []ASTFinding
+	UnusedExports       []*FileSymbol
+	UndefinedRefs       []*SymbolReference
+	CircularDeps        [][]string
 	CrossFileDuplicates []ASTFinding
-	Stats              CrossFileStats
+	Stats               CrossFileStats
 }
 
 // CrossFileStats tracks cross-file analysis metrics
 type CrossFileStats struct {
-	FilesAnalyzed      int
-	SymbolsFound       int
-	DependenciesFound  int
-	AnalysisTime       int64
+	FilesAnalyzed     int
+	SymbolsFound      int
+	DependenciesFound int
+	AnalysisTime      int64
 }
 
 // AnalyzeCrossFile performs cross-file analysis on multiple files
@@ -119,17 +119,17 @@ func AnalyzeCrossFile(ctx context.Context, files []FileInput, analyses []string)
 		// Convert to findings
 		for _, symbol := range result.UnusedExports {
 			finding := ASTFinding{
-				Type:      "unused_export",
-				Severity:  "medium",
-				Line:      symbol.Line,
-				Column:    symbol.Column,
-				Message:   fmt.Sprintf("Exported %s '%s' is never used outside this file", symbol.Kind, symbol.Name),
-				Code:      "",
-				Suggestion: fmt.Sprintf("Consider removing export or using this %s elsewhere", symbol.Kind),
-				Confidence: 0.9,
+				Type:        "unused_export",
+				Severity:    "medium",
+				Line:        symbol.Line,
+				Column:      symbol.Column,
+				Message:     fmt.Sprintf("Exported %s '%s' is never used outside this file", symbol.Kind, symbol.Name),
+				Code:        "",
+				Suggestion:  fmt.Sprintf("Consider removing export or using this %s elsewhere", symbol.Kind),
+				Confidence:  0.9,
 				AutoFixSafe: false,
-				FixType:   "remove",
-				Reasoning: "Exported symbol has no external references",
+				FixType:     "remove",
+				Reasoning:   "Exported symbol has no external references",
 			}
 			result.Findings = append(result.Findings, finding)
 		}
@@ -140,17 +140,17 @@ func AnalyzeCrossFile(ctx context.Context, files []FileInput, analyses []string)
 		// Convert to findings
 		for _, ref := range result.UndefinedRefs {
 			finding := ASTFinding{
-				Type:      "undefined_reference",
-				Severity:  "high",
-				Line:      ref.Line,
-				Column:    ref.Column,
-				Message:   fmt.Sprintf("Reference to undefined symbol '%s'", ref.Name),
-				Code:      "",
-				Suggestion: fmt.Sprintf("Import or define '%s' before use", ref.Name),
-				Confidence: 0.95,
+				Type:        "undefined_reference",
+				Severity:    "high",
+				Line:        ref.Line,
+				Column:      ref.Column,
+				Message:     fmt.Sprintf("Reference to undefined symbol '%s'", ref.Name),
+				Code:        "",
+				Suggestion:  fmt.Sprintf("Import or define '%s' before use", ref.Name),
+				Confidence:  0.95,
 				AutoFixSafe: false,
-				FixType:   "error",
-				Reasoning: "Symbol is referenced but not defined",
+				FixType:     "error",
+				Reasoning:   "Symbol is referenced but not defined",
 			}
 			result.Findings = append(result.Findings, finding)
 		}
@@ -162,17 +162,17 @@ func AnalyzeCrossFile(ctx context.Context, files []FileInput, analyses []string)
 		for _, cycle := range result.CircularDeps {
 			if len(cycle) > 0 {
 				finding := ASTFinding{
-					Type:      "circular_dependency",
-					Severity:  "high",
-					Line:      1,
-					Column:    1,
-					Message:   fmt.Sprintf("Circular dependency detected: %v", cycle),
-					Code:      "",
-					Suggestion: "Refactor to break circular dependency",
-					Confidence: 1.0,
+					Type:        "circular_dependency",
+					Severity:    "high",
+					Line:        1,
+					Column:      1,
+					Message:     fmt.Sprintf("Circular dependency detected: %v", cycle),
+					Code:        "",
+					Suggestion:  "Refactor to break circular dependency",
+					Confidence:  1.0,
 					AutoFixSafe: false,
-					FixType:   "refactor",
-					Reasoning: "Circular dependencies can cause initialization issues",
+					FixType:     "refactor",
+					Reasoning:   "Circular dependencies can cause initialization issues",
 				}
 				result.Findings = append(result.Findings, finding)
 			}
@@ -222,17 +222,17 @@ func detectCrossFileDuplicates(files []FileInput, symbolTable *SymbolTable) []AS
 				// Duplicate across files
 				for _, symbol := range symbols {
 					finding := ASTFinding{
-						Type:      "cross_file_duplicate",
-						Severity:  "medium",
-						Line:      symbol.Line,
-						Column:    symbol.Column,
-						Message:   fmt.Sprintf("Function '%s' is duplicated across multiple files", funcName),
-						Code:      "",
-						Suggestion: "Consider consolidating duplicate functions",
-						Confidence: 0.8,
+						Type:        "cross_file_duplicate",
+						Severity:    "medium",
+						Line:        symbol.Line,
+						Column:      symbol.Column,
+						Message:     fmt.Sprintf("Function '%s' is duplicated across multiple files", funcName),
+						Code:        "",
+						Suggestion:  "Consider consolidating duplicate functions",
+						Confidence:  0.8,
 						AutoFixSafe: false,
-						FixType:   "refactor",
-						Reasoning: "Duplicate function found in multiple files",
+						FixType:     "refactor",
+						Reasoning:   "Duplicate function found in multiple files",
 					}
 					findings = append(findings, finding)
 				}

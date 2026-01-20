@@ -11,15 +11,15 @@ import (
 
 // LearnOptions configures pattern learning
 type LearnOptions struct {
-	NamingOnly         bool
-	ImportsOnly        bool
-	StructureOnly       bool
-	CodebasePath       string
-	OutputJSON         bool
+	NamingOnly           bool
+	ImportsOnly          bool
+	StructureOnly        bool
+	CodebasePath         string
+	OutputJSON           bool
 	IncludeBusinessRules bool
-	HubURL             string
-	HubAPIKey          string
-	ProjectID          string
+	HubURL               string
+	HubAPIKey            string
+	ProjectID            string
 }
 
 // Learn analyzes the codebase and learns patterns

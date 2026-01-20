@@ -7,7 +7,7 @@ import (
 	"strconv"
 	"strings"
 	"time"
-	
+
 	"sentinel-hub-api/pkg/metrics"
 )
 
@@ -16,25 +16,25 @@ func MetricsMiddleware(m *metrics.Metrics) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			start := time.Now()
-			
+
 			// Wrap response writer to capture status
 			wrapper := &responseWrapper{ResponseWriter: w, status: http.StatusOK}
-			
+
 			m.ActiveConnections.Inc()
 			defer m.ActiveConnections.Dec()
-			
+
 			// Calculate request size
 			requestSize := r.ContentLength
 			if requestSize < 0 {
 				requestSize = 0
 			}
-			
+
 			next.ServeHTTP(wrapper, r)
-			
+
 			duration := time.Since(start).Seconds()
 			status := strconv.Itoa(wrapper.status)
 			path := normalizePath(r.URL.Path)
-			
+
 			m.HTTPRequestsTotal.WithLabelValues(r.Method, path, status).Inc()
 			m.HTTPRequestDuration.WithLabelValues(r.Method, path, status).Observe(duration)
 			m.HTTPRequestSize.WithLabelValues(r.Method, path).Observe(float64(requestSize))

@@ -51,7 +51,7 @@ module.exports = app;`
 	content := string(data)
 	t.Logf("File content:\n%s", content)
 
-	parsedEndpoints := parseExpressRoutes(content, routePath, "user")
+	parsedEndpoints := parseExpressRoutesFromContent(content, routePath, "user")
 	t.Logf("Parsed endpoints: %d", len(parsedEndpoints))
 
 	// Check if parsing worked

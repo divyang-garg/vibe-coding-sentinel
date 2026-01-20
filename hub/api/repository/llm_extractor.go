@@ -30,7 +30,7 @@ func NewLLMExtractor() *LLMExtractor {
 	if model == "" {
 		model = "llama3.2"
 	}
-	
+
 	return &LLMExtractor{
 		baseURL: baseURL,
 		model:   model,
@@ -46,7 +46,7 @@ func (e *LLMExtractor) ExtractWithLLM(ctx context.Context, text string, docID st
 	if !e.enabled {
 		return nil, fmt.Errorf("LLM extraction not enabled")
 	}
-	
+
 	prompt := fmt.Sprintf(`Extract business rules from this text in JSON format:
 {
   "business_rules": [
@@ -60,7 +60,7 @@ func (e *LLMExtractor) ExtractWithLLM(ctx context.Context, text string, docID st
 }
 
 Text: %s`, text)
-	
+
 	reqBody := map[string]interface{}{
 		"model":  e.model,
 		"prompt": prompt,
@@ -70,35 +70,35 @@ Text: %s`, text)
 			"num_predict": 4096,
 		},
 	}
-	
+
 	body, err := json.Marshal(reqBody)
 	if err != nil {
 		return nil, fmt.Errorf("failed to marshal request: %w", err)
 	}
-	
+
 	req, err := http.NewRequestWithContext(ctx, "POST", e.baseURL+"/api/generate", bytes.NewReader(body))
 	if err != nil {
 		return nil, fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	resp, err := e.httpClient.Do(req)
 	if err != nil {
 		return nil, fmt.Errorf("LLM request failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return nil, fmt.Errorf("LLM returned status %d", resp.StatusCode)
 	}
-	
+
 	var result struct {
 		Response string `json:"response"`
 	}
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return nil, fmt.Errorf("failed to decode response: %w", err)
 	}
-	
+
 	// Parse JSON from response
 	var parsed struct {
 		BusinessRules []map[string]interface{} `json:"business_rules"`
@@ -106,6 +106,6 @@ Text: %s`, text)
 	if err := json.Unmarshal([]byte(result.Response), &parsed); err != nil {
 		return nil, fmt.Errorf("failed to parse LLM response: %w", err)
 	}
-	
+
 	return parsed.BusinessRules, nil
 }

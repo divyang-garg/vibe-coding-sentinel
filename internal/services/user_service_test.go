@@ -352,6 +352,163 @@ func (suite *UserServiceTestSuite) TestAuthenticateUser_InactiveAccount() {
 	suite.mockRepo.AssertExpectations(suite.T())
 }
 
+func (suite *UserServiceTestSuite) TestCreateUser_GetByEmailError() {
+	// Given: Request with valid data but GetByEmail returns non-NotFound error
+	req := &services.CreateUserRequest{
+		Email:    "test@example.com",
+		Name:     "Test User",
+		Password: "password123",
+	}
+
+	dbError := errors.New("database connection error")
+	suite.mockRepo.On("GetByEmail", mock.Anything, "test@example.com").Return(nil, dbError)
+
+	// When: Creating user
+	user, err := suite.service.CreateUser(context.Background(), req)
+
+	// Then: Should return error
+	suite.Error(err)
+	suite.Nil(user)
+	suite.Contains(err.Error(), "failed to check existing user")
+	suite.mockRepo.AssertExpectations(suite.T())
+}
+
+func (suite *UserServiceTestSuite) TestUpdateUser_GetByIDError() {
+	// Given: Update request but GetByID fails with non-NotFound error
+	req := &services.UpdateUserRequest{
+		Name: stringPtr("Updated Name"),
+	}
+
+	dbError := errors.New("database connection error")
+	suite.mockRepo.On("GetByID", mock.Anything, 1).Return(nil, dbError)
+
+	// When: Updating user
+	user, err := suite.service.UpdateUser(context.Background(), 1, req)
+
+	// Then: Should return error
+	suite.Error(err)
+	suite.Nil(user)
+	suite.mockRepo.AssertExpectations(suite.T())
+}
+
+func (suite *UserServiceTestSuite) TestUpdateUser_OnlyNameUpdate() {
+	// Given: Update request with only name (no email check needed)
+	req := &services.UpdateUserRequest{
+		Name: stringPtr("Updated Name Only"),
+	}
+
+	existingUser := &models.User{
+		ID:    1,
+		Email: "test@example.com",
+		Name:  "Old Name",
+	}
+
+	suite.mockRepo.On("GetByID", mock.Anything, 1).Return(existingUser, nil)
+	suite.mockRepo.On("Update", mock.Anything, mock.MatchedBy(func(user *models.User) bool {
+		return user.ID == 1 && user.Name == "Updated Name Only" && user.Email == "test@example.com"
+	})).Return(nil)
+
+	// When: Updating user
+	user, err := suite.service.UpdateUser(context.Background(), 1, req)
+
+	// Then: Should succeed without email check
+	suite.NoError(err)
+	suite.NotNil(user)
+	suite.Equal("Updated Name Only", user.Name)
+	suite.Equal("test@example.com", user.Email)
+	suite.Equal("", user.Password) // Password should be cleared
+	suite.mockRepo.AssertExpectations(suite.T())
+}
+
+func (suite *UserServiceTestSuite) TestUpdateUser_RepositoryUpdateError() {
+	// Given: Valid update request but repository.Update fails
+	req := &services.UpdateUserRequest{
+		Name: stringPtr("Updated Name"),
+	}
+
+	existingUser := &models.User{
+		ID:    1,
+		Email: "test@example.com",
+		Name:  "Old Name",
+	}
+
+	updateError := errors.New("update failed")
+	suite.mockRepo.On("GetByID", mock.Anything, 1).Return(existingUser, nil)
+	suite.mockRepo.On("Update", mock.Anything, mock.Anything).Return(updateError)
+
+	// When: Updating user
+	user, err := suite.service.UpdateUser(context.Background(), 1, req)
+
+	// Then: Should return error
+	suite.Error(err)
+	suite.Nil(user)
+	suite.Contains(err.Error(), "failed to update user")
+	suite.mockRepo.AssertExpectations(suite.T())
+}
+
+func (suite *UserServiceTestSuite) TestUpdateUser_GetByEmailError() {
+	// Given: Update request with email but GetByEmail fails with non-NotFound error
+	req := &services.UpdateUserRequest{
+		Email: stringPtr("new@example.com"),
+	}
+
+	existingUser := &models.User{
+		ID:    1,
+		Email: "old@example.com",
+		Name:  "Test User",
+	}
+
+	dbError := errors.New("database connection error")
+	suite.mockRepo.On("GetByID", mock.Anything, 1).Return(existingUser, nil)
+	suite.mockRepo.On("GetByEmail", mock.Anything, "new@example.com").Return(nil, dbError)
+
+	// When: Updating user
+	user, err := suite.service.UpdateUser(context.Background(), 1, req)
+
+	// Then: Should return error
+	suite.Error(err)
+	suite.Nil(user)
+	suite.Contains(err.Error(), "failed to check email availability")
+	suite.mockRepo.AssertExpectations(suite.T())
+}
+
+func (suite *UserServiceTestSuite) TestAuthenticateUser_GetByEmailError() {
+	// Given: Authentication request but GetByEmail fails with non-NotFound error
+	email := "test@example.com"
+	password := "password123"
+
+	dbError := errors.New("database connection error")
+	suite.mockRepo.On("GetByEmail", mock.Anything, email).Return(nil, dbError)
+
+	// When: Authenticating user
+	authenticatedUser, err := suite.service.AuthenticateUser(context.Background(), email, password)
+
+	// Then: Should return error
+	suite.Error(err)
+	suite.Nil(authenticatedUser)
+	suite.Contains(err.Error(), "failed to get user")
+	suite.mockRepo.AssertExpectations(suite.T())
+}
+
+func (suite *UserServiceTestSuite) TestAuthenticateUser_UserNotFound() {
+	// Given: Authentication request for non-existent user
+	email := "nonexistent@example.com"
+	password := "password123"
+
+	suite.mockRepo.On("GetByEmail", mock.Anything, email).Return(nil, &models.NotFoundError{Resource: "user"})
+
+	// When: Authenticating user
+	authenticatedUser, err := suite.service.AuthenticateUser(context.Background(), email, password)
+
+	// Then: Should return authentication error
+	suite.Error(err)
+	suite.Nil(authenticatedUser)
+	var authErr *models.AuthenticationError
+	suite.ErrorAs(err, &authErr)
+	suite.Equal("invalid credentials", authErr.Message)
+	suite.mockRepo.AssertExpectations(suite.T())
+}
+
 // Helper function
 func stringPtr(s string) *string {
 	return &s

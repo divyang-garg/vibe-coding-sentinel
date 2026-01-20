@@ -86,10 +86,10 @@ func (r *InMemoryWorkflowRepository) List(ctx context.Context, limit, offset int
 	for _, w := range r.workflows {
 		all = append(all, *w)
 	}
-	
+
 	// Get total count before applying pagination
 	total := len(all)
-	
+
 	// Apply pagination
 	start := offset
 	if start > len(all) {
@@ -99,11 +99,11 @@ func (r *InMemoryWorkflowRepository) List(ctx context.Context, limit, offset int
 	if end > len(all) {
 		end = len(all)
 	}
-	
+
 	if start >= len(all) {
 		return []models.WorkflowDefinition{}, total, nil
 	}
-	
+
 	return all[start:end], total, nil
 }
 

@@ -133,13 +133,13 @@ type IntentAnalysisResponse struct {
 
 // ComprehensiveAnalysisRequest represents a request for comprehensive feature analysis
 type ComprehensiveAnalysisRequest struct {
-	ProjectID             string   `json:"project_id"`
-	Feature              string   `json:"feature,omitempty"`
-	CodebasePath         string   `json:"codebase_path,omitempty"`
-	Mode                 string   `json:"mode,omitempty"` // "auto" or "manual"
-	Depth                string   `json:"depth,omitempty"` // "shallow" or "deep"
-	IncludeBusinessContext bool   `json:"include_business_context,omitempty"`
-	Files                []string `json:"files,omitempty"`
+	ProjectID              string   `json:"project_id"`
+	Feature                string   `json:"feature,omitempty"`
+	CodebasePath           string   `json:"codebase_path,omitempty"`
+	Mode                   string   `json:"mode,omitempty"`  // "auto" or "manual"
+	Depth                  string   `json:"depth,omitempty"` // "shallow" or "deep"
+	IncludeBusinessContext bool     `json:"include_business_context,omitempty"`
+	Files                  []string `json:"files,omitempty"`
 }
 
 // IntentAnalysisRequest represents a request for intent analysis
@@ -180,11 +180,11 @@ type GapAnalysisRequest struct {
 
 // ListKnowledgeItemsRequest represents a request to list knowledge items
 type ListKnowledgeItemsRequest struct {
-	ProjectID string   `json:"project_id"`
-	Type      string   `json:"type,omitempty"`
-	Status    string   `json:"status,omitempty"`
-	Limit     int      `json:"limit,omitempty"`
-	Offset    int      `json:"offset,omitempty"`
+	ProjectID string `json:"project_id"`
+	Type      string `json:"type,omitempty"`
+	Status    string `json:"status,omitempty"`
+	Limit     int    `json:"limit,omitempty"`
+	Offset    int    `json:"offset,omitempty"`
 }
 
 // BusinessContextRequest represents a request for business context
@@ -197,30 +197,30 @@ type BusinessContextRequest struct {
 
 // BusinessContextResponse represents business context response
 type BusinessContextResponse struct {
-	Rules         []KnowledgeItem            `json:"rules"`
-	Entities      []KnowledgeItem            `json:"entities"`
-	UserJourneys  []KnowledgeItem            `json:"user_journeys"`
-	Constraints   []string                   `json:"constraints"`
-	SideEffects   []string                   `json:"side_effects"`
-	SecurityRules []string                   `json:"security_rules"`
-	TestRequirements int                     `json:"test_requirements"`
-	Context      map[string]interface{}     `json:"context,omitempty"`
+	Rules            []KnowledgeItem        `json:"rules"`
+	Entities         []KnowledgeItem        `json:"entities"`
+	UserJourneys     []KnowledgeItem        `json:"user_journeys"`
+	Constraints      []string               `json:"constraints"`
+	SideEffects      []string               `json:"side_effects"`
+	SecurityRules    []string               `json:"security_rules"`
+	TestRequirements int                    `json:"test_requirements"`
+	Context          map[string]interface{} `json:"context,omitempty"`
 }
 
 // SyncKnowledgeRequest represents a request to sync knowledge items
 type SyncKnowledgeRequest struct {
-	ProjectID       string   `json:"project_id"`
+	ProjectID        string   `json:"project_id"`
 	KnowledgeItemIDs []string `json:"knowledge_item_ids,omitempty"`
-	Force          bool     `json:"force,omitempty"`
+	Force            bool     `json:"force,omitempty"`
 }
 
 // SyncKnowledgeResponse represents the result of knowledge sync
 type SyncKnowledgeResponse struct {
-	SyncedCount    int      `json:"synced_count"`
-	FailedCount    int      `json:"failed_count"`
-	SyncedItems    []string `json:"synced_items,omitempty"`
-	FailedItems    []string `json:"failed_items,omitempty"`
-	Message        string   `json:"message"`
+	SyncedCount int      `json:"synced_count"`
+	FailedCount int      `json:"failed_count"`
+	SyncedItems []string `json:"synced_items,omitempty"`
+	FailedItems []string `json:"failed_items,omitempty"`
+	Message     string   `json:"message"`
 }
 
 // IntentPattern represents a learned pattern

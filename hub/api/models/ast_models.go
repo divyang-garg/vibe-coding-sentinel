@@ -4,10 +4,10 @@ package models
 
 // ASTAnalysisRequest represents a request for single-file AST analysis
 type ASTAnalysisRequest struct {
-	Code      string   `json:"code" validate:"required"`
-	Language  string   `json:"language" validate:"required"`
-	Analyses  []string `json:"analyses,omitempty"` // e.g., ["duplicates", "unused", "unreachable"]
-	FilePath  string   `json:"file_path,omitempty"`
+	Code     string   `json:"code" validate:"required"`
+	Language string   `json:"language" validate:"required"`
+	Analyses []string `json:"analyses,omitempty"` // e.g., ["duplicates", "unused", "unreachable"]
+	FilePath string   `json:"file_path,omitempty"`
 }
 
 // MultiFileASTRequest represents a request for multi-file AST analysis
@@ -26,9 +26,9 @@ type FileInput struct {
 
 // SecurityASTRequest represents a request for security-focused AST analysis
 type SecurityASTRequest struct {
-	Code     string   `json:"code" validate:"required"`
-	Language string   `json:"language" validate:"required"`
-	Severity string   `json:"severity,omitempty"` // "critical", "high", "medium", "low", "all"
+	Code     string `json:"code" validate:"required"`
+	Language string `json:"language" validate:"required"`
+	Severity string `json:"severity,omitempty"` // "critical", "high", "medium", "low", "all"
 }
 
 // CrossFileASTRequest represents a request for cross-file dependency analysis
@@ -39,35 +39,35 @@ type CrossFileASTRequest struct {
 
 // ASTAnalysisResponse represents the response from AST analysis
 type ASTAnalysisResponse struct {
-	Findings []ASTFinding      `json:"findings"`
-	Stats    ASTAnalysisStats  `json:"stats"`
-	Language string            `json:"language"`
-	FilePath string            `json:"file_path,omitempty"`
+	Findings []ASTFinding     `json:"findings"`
+	Stats    ASTAnalysisStats `json:"stats"`
+	Language string           `json:"language"`
+	FilePath string           `json:"file_path,omitempty"`
 }
 
 // MultiFileASTResponse represents the response from multi-file AST analysis
 type MultiFileASTResponse struct {
-	Findings []ASTFinding      `json:"findings"`
-	Stats    ASTAnalysisStats  `json:"stats"`
-	Files    []string          `json:"files"`
+	Findings []ASTFinding     `json:"findings"`
+	Stats    ASTAnalysisStats `json:"stats"`
+	Files    []string         `json:"files"`
 }
 
 // SecurityASTResponse represents the response from security AST analysis
 type SecurityASTResponse struct {
-	Findings    []ASTFinding     `json:"findings"`
-	Stats       ASTAnalysisStats  `json:"stats"`
-	Vulnerabilities []Vulnerability `json:"vulnerabilities"`
-	RiskScore   float64          `json:"risk_score"`
+	Findings        []ASTFinding     `json:"findings"`
+	Stats           ASTAnalysisStats `json:"stats"`
+	Vulnerabilities []Vulnerability  `json:"vulnerabilities"`
+	RiskScore       float64          `json:"risk_score"`
 }
 
 // CrossFileASTResponse represents the response from cross-file analysis
 type CrossFileASTResponse struct {
-	Findings          []ASTFinding     `json:"findings"`
-	UnusedExports     []ExportSymbol   `json:"unused_exports,omitempty"`
-	UndefinedRefs     []SymbolRef      `json:"undefined_refs,omitempty"`
-	CircularDeps      [][]string       `json:"circular_deps,omitempty"`
+	Findings            []ASTFinding   `json:"findings"`
+	UnusedExports       []ExportSymbol `json:"unused_exports,omitempty"`
+	UndefinedRefs       []SymbolRef    `json:"undefined_refs,omitempty"`
+	CircularDeps        [][]string     `json:"circular_deps,omitempty"`
 	CrossFileDuplicates []ASTFinding   `json:"cross_file_duplicates,omitempty"`
-	Stats             CrossFileStats   `json:"stats"`
+	Stats               CrossFileStats `json:"stats"`
 }
 
 // ASTFinding represents a single finding from AST analysis
@@ -129,9 +129,9 @@ type SymbolRef struct {
 
 // CrossFileStats tracks cross-file analysis metrics
 type CrossFileStats struct {
-	FilesAnalyzed     int `json:"files_analyzed"`
-	SymbolsFound      int `json:"symbols_found"`
-	DependenciesFound int `json:"dependencies_found"`
+	FilesAnalyzed     int   `json:"files_analyzed"`
+	SymbolsFound      int   `json:"symbols_found"`
+	DependenciesFound int   `json:"dependencies_found"`
 	AnalysisTime      int64 `json:"analysis_time_ms"`
 }
 

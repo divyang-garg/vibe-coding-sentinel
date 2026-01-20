@@ -11,9 +11,10 @@ import (
 	"strings"
 	"time"
 
+	"sentinel-hub-api/pkg/database"
+
 	"github.com/google/uuid"
 	"github.com/lib/pq"
-	"sentinel-hub-api/pkg/database"
 )
 
 // DetectedTask represents a task found during scanning

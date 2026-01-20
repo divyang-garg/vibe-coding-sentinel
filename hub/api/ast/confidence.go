@@ -30,15 +30,15 @@ func CalculateConfidence(finding *ASTFinding, validationResult ValidationResult)
 // CalculateConfidenceWithEdgeCases calculates confidence with edge case penalties
 func CalculateConfidenceWithEdgeCases(finding *ASTFinding, validationResult ValidationResult, edgeCases EdgeCaseResult) float64 {
 	base := CalculateConfidence(finding, validationResult)
-	
+
 	// Apply edge case penalty
 	adjusted := base - edgeCases.ConfidencePenalty
-	
+
 	// Ensure confidence doesn't go below 0
 	if adjusted < 0.0 {
 		adjusted = 0.0
 	}
-	
+
 	return adjusted
 }
 

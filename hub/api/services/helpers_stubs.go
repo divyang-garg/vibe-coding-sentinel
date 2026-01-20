@@ -10,6 +10,7 @@ import (
 
 	"sentinel-hub-api/llm"
 	"sentinel-hub-api/models"
+	"sentinel-hub-api/repository"
 )
 
 // callLLM makes an API call to LLM provider by delegating to llm package
@@ -71,12 +72,46 @@ func calculateEstimatedCost(provider, model string, tokens int) float64 {
 	return (float64(tokens) / 1000.0) * rate
 }
 
-// trackUsage tracks LLM usage
-// Note: This is a simplified implementation. In production, this should save to database.
+// llmUsageRepo is the repository for LLM usage tracking (set via SetLLMUsageRepository)
+var llmUsageRepo repository.LLMUsageRepository
+
+// SetLLMUsageRepository sets the LLM usage repository for tracking
+func SetLLMUsageRepository(repo repository.LLMUsageRepository) {
+	llmUsageRepo = repo
+}
+
+// trackUsage tracks LLM usage and persists to database if repository is available
 func trackUsage(ctx context.Context, usage *LLMUsage) error {
-	// TODO: Implement database persistence for LLM usage tracking
-	// For now, this is a no-op as the quota manager in llm package handles in-memory tracking
-	return nil
+	if usage == nil {
+		return fmt.Errorf("usage cannot be nil")
+	}
+
+	// If repository is not set, skip persistence (backward compatible)
+	if llmUsageRepo == nil {
+		return nil
+	}
+
+	// Ensure usage has required fields
+	if usage.ID == "" {
+		usage.ID = fmt.Sprintf("usage_%d", time.Now().UnixNano())
+	}
+	if usage.CreatedAt == "" {
+		usage.CreatedAt = time.Now().Format(time.RFC3339)
+	}
+
+	// Convert to models.LLMUsage
+	modelsUsage := &models.LLMUsage{
+		ID:            usage.ID,
+		ProjectID:     usage.ProjectID,
+		ValidationID:  usage.ValidationID,
+		Provider:      usage.Provider,
+		Model:         usage.Model,
+		TokensUsed:    usage.TokensUsed,
+		EstimatedCost: usage.EstimatedCost,
+		CreatedAt:     usage.CreatedAt,
+	}
+
+	return llmUsageRepo.SaveUsage(ctx, modelsUsage)
 }
 
 // listLLMConfigs lists LLM configurations for a project by delegating to llm package
@@ -124,10 +159,11 @@ func selectModelWithDepth(ctx context.Context, projectID string, config *LLMConf
 }
 
 // callLLMWithDepth calls LLM with depth-aware settings
-// For now, this delegates to callLLM. Future enhancement could adjust prompts based on depth.
+// Enhances the prompt based on depth parameter before calling LLM
 func callLLMWithDepth(ctx context.Context, config *LLMConfig, prompt string, taskType string, depth int) (string, int, error) {
-	// TODO: Enhance prompt based on depth parameter
-	return callLLM(ctx, config, prompt, taskType)
+	// Enhance prompt based on depth parameter
+	enhancedPrompt := buildDepthAwarePrompt(prompt, depth, taskType)
+	return callLLM(ctx, config, enhancedPrompt, taskType)
 }
 
 // UpdateTask updates a task using direct database query

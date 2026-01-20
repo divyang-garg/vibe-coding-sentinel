@@ -5,9 +5,10 @@ package middleware
 import (
 	"context"
 	"net/http"
-	
-	"github.com/google/uuid"
+
 	"sentinel-hub-api/pkg"
+
+	"github.com/google/uuid"
 )
 
 // TracingMiddleware adds correlation IDs to requests
@@ -19,26 +20,26 @@ func TracingMiddleware() func(http.Handler) http.Handler {
 			if traceID == "" {
 				traceID = uuid.New().String()
 			}
-			
+
 			// Extract or generate request ID
 			requestID := r.Header.Get("X-Request-ID")
 			if requestID == "" {
 				requestID = uuid.New().String()
 			}
-			
+
 			// Generate span ID for this request
 			spanID := uuid.New().String()[:8]
-			
+
 			// Add to context
 			ctx := context.WithValue(r.Context(), pkg.RequestIDKey, requestID)
 			ctx = context.WithValue(ctx, pkg.TraceIDKey, traceID)
 			ctx = context.WithValue(ctx, pkg.SpanIDKey, spanID)
-			
+
 			// Add to response headers for client correlation
 			w.Header().Set("X-Trace-ID", traceID)
 			w.Header().Set("X-Request-ID", requestID)
 			w.Header().Set("X-Span-ID", spanID)
-			
+
 			next.ServeHTTP(w, r.WithContext(ctx))
 		})
 	}

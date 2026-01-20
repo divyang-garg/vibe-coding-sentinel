@@ -15,7 +15,7 @@ type Dependency struct {
 	ToFile   string
 	Type     string // "import", "require", "include"
 	Line     int
-	Column  int
+	Column   int
 }
 
 // DependencyGraph manages file dependencies

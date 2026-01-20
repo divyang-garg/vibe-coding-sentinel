@@ -168,9 +168,13 @@ func calculateEstimatedCost(provider, model string, tokens int) float64 {
 	return 0.0
 }
 
-// trackUsage tracks LLM usage (stub - in production save to database)
+// trackUsage tracks LLM usage
+// Note: This function is kept for backward compatibility but should be replaced
+// with calls to services.trackUsage which has database persistence support.
+// This stub implementation returns nil to maintain existing behavior.
 func trackUsage(ctx context.Context, usage *LLMUsage) error {
-	// TODO: Implement database persistence
+	// TODO: Remove this function and update all callers to use services.trackUsage
+	// The actual implementation with database persistence is in services/helpers_stubs.go
 	return nil
 }
 
@@ -254,7 +258,7 @@ func sanitizeString(s string, maxLen int) string {
 }
 
 // extractFeatureKeywords extracts keywords from feature name
-func extractFeatureKeywords(featureName string) []string {
+func extractFeatureKeywordsFromUtils(featureName string) []string {
 	var keywords []string
 	words := []rune(featureName)
 	var current []rune

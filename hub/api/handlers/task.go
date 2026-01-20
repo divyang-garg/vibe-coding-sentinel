@@ -4,11 +4,13 @@ package handlers
 
 import (
 	"encoding/json"
+	"fmt"
 	"net/http"
 	"strconv"
 
 	"sentinel-hub-api/models"
 	"sentinel-hub-api/services"
+
 	"github.com/go-chi/chi/v5"
 )
 
@@ -102,8 +104,15 @@ func (h *TaskHandler) ListTasks(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	// TODO: Add status filtering when service supports it
-	_ = r.URL.Query().Get("status") // Placeholder for future status filtering
+	// Extract and validate status filter
+	if statusStr := r.URL.Query().Get("status"); statusStr != "" {
+		status := models.TaskStatus(statusStr)
+		if !status.IsValid() {
+			h.WriteErrorResponse(w, fmt.Errorf("invalid status: %s. Valid values are: pending, in_progress, completed, blocked, cancelled", statusStr), http.StatusBadRequest)
+			return
+		}
+		req.Status = statusStr
+	}
 
 	response, err := h.TaskService.ListTasks(r.Context(), req)
 	if err != nil {

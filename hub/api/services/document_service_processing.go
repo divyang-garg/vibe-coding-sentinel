@@ -99,8 +99,15 @@ func (s *DocumentServiceImpl) ProcessDocument(ctx context.Context, docID string)
 	// Index document for search
 	if err := s.searchEngine.IndexDocument(ctx, docID, extractedText, knowledgeItems); err != nil {
 		// Log but don't fail - indexing is not critical for processing
-		// TODO: Use structured logging when available
-		fmt.Printf("Warning: failed to index document %s: %v\n", docID, err)
+		if s.logger != nil {
+			s.logger.Warn(ctx, "failed to index document", map[string]interface{}{
+				"document_id": docID,
+				"error":       err.Error(),
+			})
+		} else {
+			// Fallback to basic logging if logger not available
+			fmt.Printf("Warning: failed to index document %s: %v\n", docID, err)
+		}
 	}
 
 	// Mark as completed

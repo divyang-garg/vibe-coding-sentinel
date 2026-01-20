@@ -52,9 +52,9 @@ func TestFileCache_GetSet(t *testing.T) {
 	t.Run("stores and retrieves value", func(t *testing.T) {
 		key := "test_key"
 		value := `{"test": "value"}`
-		
+
 		cache.Set(key, value, 100)
-		
+
 		retrieved, ok := cache.Get(key)
 		assert.True(t, ok)
 		assert.Equal(t, value, retrieved)
@@ -62,10 +62,10 @@ func TestFileCache_GetSet(t *testing.T) {
 
 	t.Run("overwrites existing value", func(t *testing.T) {
 		key := "overwrite_key"
-		
+
 		cache.Set(key, "value1", 50)
 		cache.Set(key, "value2", 60)
-		
+
 		retrieved, ok := cache.Get(key)
 		assert.True(t, ok)
 		assert.Equal(t, "value2", retrieved)

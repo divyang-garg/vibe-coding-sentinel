@@ -173,5 +173,21 @@
     "session_id": "session-1768895626",
     "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix1385399032/001",
     "timestamp": "2026-01-20T13:23:46+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768903228",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix2783480358/001",
+    "timestamp": "2026-01-20T15:30:28+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768903241",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix528532785/001",
+    "timestamp": "2026-01-20T15:30:41+05:30"
   }
 ]

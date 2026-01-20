@@ -86,13 +86,13 @@ type APIVersionService interface {
 
 // CodeAnalysisService defines the interface for code analysis operations
 type CodeAnalysisService interface {
-	AnalyzeCode(ctx context.Context, req models.ASTAnalysisRequest) (interface{}, error)
+	AnalyzeCode(ctx context.Context, req models.CodeAnalysisRequest) (interface{}, error)
 	LintCode(ctx context.Context, req models.CodeLintRequest) (interface{}, error)
 	RefactorCode(ctx context.Context, req models.CodeRefactorRequest) (interface{}, error)
 	GenerateDocumentation(ctx context.Context, req models.DocumentationRequest) (interface{}, error)
 	ValidateCode(ctx context.Context, req models.CodeValidationRequest) (interface{}, error)
 	AnalyzeSecurity(ctx context.Context, req models.SecurityASTRequest) (interface{}, error)
-	AnalyzeVibe(ctx context.Context, req models.ASTAnalysisRequest) (interface{}, error)
+	AnalyzeVibe(ctx context.Context, req models.CodeAnalysisRequest) (interface{}, error)
 	AnalyzeComprehensive(ctx context.Context, req ComprehensiveAnalysisRequest) (interface{}, error)
 	AnalyzeIntent(ctx context.Context, req IntentAnalysisRequest) (interface{}, error)
 	AnalyzeDocSync(ctx context.Context, req DocSyncRequest) (interface{}, error)

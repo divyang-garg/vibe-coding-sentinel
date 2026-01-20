@@ -187,7 +187,7 @@ func TestDocumentUploadProcessExtract(t *testing.T) {
 	mockValidator := &MockDocumentValidator{}
 	mockSearch := &MockSearchEngine{}
 
-	service := NewDocumentService(mockRepo, mockExtractor, mockValidator, mockSearch)
+	service := NewDocumentService(mockRepo, mockExtractor, mockValidator, mockSearch, nil)
 
 	t.Run("text file upload and process", func(t *testing.T) {
 		// Create test file
@@ -204,16 +204,16 @@ func TestDocumentUploadProcessExtract(t *testing.T) {
 
 		docID := "doc-test-123"
 		doc := &models.Document{
-			ID:          docID,
-			ProjectID:   projectID,
-			Name:        "test.txt",
+			ID:           docID,
+			ProjectID:    projectID,
+			Name:         "test.txt",
 			OriginalName: "test.txt",
-			FilePath:    filePath,
-			MimeType:    "text/plain",
-			Size:        fileInfo.Size(),
-			Status:      models.DocumentStatusUploaded,
-			Progress:    0,
-			CreatedAt:   time.Now(),
+			FilePath:     filePath,
+			MimeType:     "text/plain",
+			Size:         fileInfo.Size(),
+			Status:       models.DocumentStatusUploaded,
+			Progress:     0,
+			CreatedAt:    time.Now(),
 		}
 
 		mockRepo.On("Save", ctx, mock.AnythingOfType("*models.Document")).Return(nil).Run(func(args mock.Arguments) {
@@ -231,7 +231,7 @@ func TestDocumentUploadProcessExtract(t *testing.T) {
 		uploadResp, err := service.UploadDocument(ctx, uploadReq, filePath, "text/plain")
 		assert.NoError(t, err)
 		assert.NotNil(t, uploadResp)
-		
+
 		// Capture actual docID from upload response
 		actualDocID := uploadResp.Document.ID
 		assert.NotEmpty(t, actualDocID)
@@ -321,7 +321,7 @@ func TestDocumentErrorHandling(t *testing.T) {
 	mockValidator := &MockDocumentValidator{}
 	mockSearch := &MockSearchEngine{}
 
-	service := NewDocumentService(mockRepo, mockExtractor, mockValidator, mockSearch)
+	service := NewDocumentService(mockRepo, mockExtractor, mockValidator, mockSearch, nil)
 
 	t.Run("document not found", func(t *testing.T) {
 		mockRepo.On("FindByID", ctx, "nonexistent").Return((*models.Document)(nil), fmt.Errorf("document not found"))

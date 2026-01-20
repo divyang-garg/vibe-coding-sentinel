@@ -57,7 +57,7 @@ func TestMarkdownParser(t *testing.T) {
 
 		parser, _ := NewDocumentParser(tmpFile)
 		result, err := parser.Parse(tmpFile)
-		
+
 		require.NoError(t, err)
 		assert.Equal(t, content, result)
 	})
@@ -78,7 +78,7 @@ func TestTextParser(t *testing.T) {
 
 		parser, _ := NewDocumentParser(tmpFile)
 		result, err := parser.Parse(tmpFile)
-		
+
 		require.NoError(t, err)
 		assert.Equal(t, content, result)
 	})

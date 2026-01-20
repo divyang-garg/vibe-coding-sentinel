@@ -27,7 +27,7 @@ func NewCodeAnalysisService() CodeAnalysisService {
 }
 
 // AnalyzeCode performs comprehensive code analysis
-func (s *CodeAnalysisServiceImpl) AnalyzeCode(ctx context.Context, req models.ASTAnalysisRequest) (interface{}, error) {
+func (s *CodeAnalysisServiceImpl) AnalyzeCode(ctx context.Context, req models.CodeAnalysisRequest) (interface{}, error) {
 	if req.Code == "" {
 		return nil, fmt.Errorf("code is required")
 	}
@@ -369,16 +369,14 @@ func (s *CodeAnalysisServiceImpl) AnalyzeSecurity(ctx context.Context, req model
 }
 
 // AnalyzeVibe performs vibe coding detection analysis
-func (s *CodeAnalysisServiceImpl) AnalyzeVibe(ctx context.Context, req models.ASTAnalysisRequest) (interface{}, error) {
-	// Use AST service for vibe analysis
-	astService := NewASTService()
+func (s *CodeAnalysisServiceImpl) AnalyzeVibe(ctx context.Context, req models.CodeAnalysisRequest) (interface{}, error) {
 	// Vibe analysis would use AST to detect duplicate functions, orphaned code, etc.
 	analysis := map[string]interface{}{
-		"language":      req.Language,
-		"vibe_issues":   s.identifyVibeIssues(req.Code, req.Language),
+		"language":            req.Language,
+		"vibe_issues":         s.identifyVibeIssues(req.Code, req.Language),
 		"duplicate_functions": s.findDuplicateFunctions(req.Code, req.Language),
-		"orphaned_code": s.findOrphanedCode(req.Code, req.Language),
-		"analyzed_at":   "2024-01-01T00:00:00Z",
+		"orphaned_code":       s.findOrphanedCode(req.Code, req.Language),
+		"analyzed_at":         "2024-01-01T00:00:00Z",
 	}
 	return analysis, nil
 }
@@ -392,13 +390,13 @@ func (s *CodeAnalysisServiceImpl) AnalyzeComprehensive(ctx context.Context, req 
 	// Use comprehensive analysis service (would be implemented in production)
 	// For now, return a simplified response
 	analysis := map[string]interface{}{
-		"project_id":    req.ProjectID,
-		"feature":       req.Feature,
-		"mode":          req.Mode,
-		"depth":         req.Depth,
+		"project_id":      req.ProjectID,
+		"feature":         req.Feature,
+		"mode":            req.Mode,
+		"depth":           req.Depth,
 		"layers_analyzed": []string{"ui", "api", "database", "logic", "integration", "tests"},
-		"findings":      []interface{}{},
-		"analyzed_at":   "2024-01-01T00:00:00Z",
+		"findings":        []interface{}{},
+		"analyzed_at":     "2024-01-01T00:00:00Z",
 	}
 
 	if req.IncludeBusinessContext {
@@ -424,14 +422,23 @@ func (s *CodeAnalysisServiceImpl) AnalyzeIntent(ctx context.Context, req IntentA
 	}
 
 	// Use intent analyzer
-	var contextData *ContextData
-	if req.ContextData != nil {
-		contextData = &ContextData{
-			RecentFiles:  extractRecentFiles(req.CodebasePath),
-			GitStatus:    extractGitStatus(req.CodebasePath),
-			ProjectStructure: extractProjectStructure(req.CodebasePath),
+		var contextData *ContextData
+		if req.ContextData != nil {
+			gitStatusRaw := extractGitStatus(req.CodebasePath)
+			gitStatus := make(map[string]string)
+			for k, v := range gitStatusRaw {
+				if str, ok := v.(string); ok {
+					gitStatus[k] = str
+				} else {
+					gitStatus[k] = fmt.Sprintf("%v", v)
+				}
+			}
+			contextData = &ContextData{
+				RecentFiles:      extractRecentFiles(req.CodebasePath),
+				GitStatus:        gitStatus,
+				ProjectStructure: extractProjectStructure(req.CodebasePath),
+			}
 		}
-	}
 
 	result, err := AnalyzeIntent(ctx, req.Prompt, contextData, req.ProjectID)
 	if err != nil {
@@ -446,12 +453,9 @@ func (s *CodeAnalysisServiceImpl) AnalyzeDocSync(ctx context.Context, req DocSyn
 	if req.ProjectID == "" {
 		return nil, fmt.Errorf("project_id is required")
 	}
-	if req.CodebasePath == "" {
-		return nil, fmt.Errorf("codebase_path is required")
-	}
 
-	// Use doc sync analyzer
-	result, err := analyzeDocSync(ctx, req, req.CodebasePath)
+	// Use doc sync analyzer - use project ID as codebase path fallback
+	result, err := analyzeDocSync(ctx, req, "")
 	if err != nil {
 		return nil, fmt.Errorf("failed to analyze doc sync: %w", err)
 	}
@@ -495,11 +499,11 @@ func (s *CodeAnalysisServiceImpl) AnalyzeBusinessRules(ctx context.Context, req 
 	}
 
 	return map[string]interface{}{
-		"project_id":    req.ProjectID,
-		"rules_checked": len(rules),
-		"findings":      findings,
+		"project_id":      req.ProjectID,
+		"rules_checked":   len(rules),
+		"findings":        findings,
 		"compliance_rate": calculateComplianceRate(rules, findings),
-		"analyzed_at":   "2024-01-01T00:00:00Z",
+		"analyzed_at":     "2024-01-01T00:00:00Z",
 	}, nil
 }
 

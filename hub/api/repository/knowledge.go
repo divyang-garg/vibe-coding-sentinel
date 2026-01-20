@@ -9,11 +9,12 @@ import (
 	"regexp"
 	"strings"
 	"time"
-	
+
+	"sentinel-hub-api/models"
+
 	pdf "github.com/ledongthuc/pdf"
 	"github.com/nguyenthenguyen/docx"
 	"github.com/xuri/excelize/v2"
-	"sentinel-hub-api/models"
 )
 
 // KnowledgeExtractorImpl implements KnowledgeExtractor
@@ -31,7 +32,7 @@ func NewKnowledgeExtractor() *KnowledgeExtractorImpl {
 // ExtractFromText extracts knowledge items from plain text
 func (k *KnowledgeExtractorImpl) ExtractFromText(ctx context.Context, text string, docID string) ([]models.KnowledgeItem, error) {
 	var items []models.KnowledgeItem
-	
+
 	// Try LLM extraction first
 	if k.llmExtractor.enabled {
 		llmRules, err := k.llmExtractor.ExtractWithLLM(ctx, text, docID)
@@ -60,7 +61,7 @@ func (k *KnowledgeExtractorImpl) ExtractFromText(ctx context.Context, text strin
 			}
 		}
 	}
-	
+
 	// Fallback to regex extraction
 	return k.extractWithRegex(ctx, text, docID), nil
 }
@@ -68,7 +69,7 @@ func (k *KnowledgeExtractorImpl) ExtractFromText(ctx context.Context, text strin
 // extractWithRegex performs regex-based extraction (fallback)
 func (k *KnowledgeExtractorImpl) extractWithRegex(ctx context.Context, text string, docID string) []models.KnowledgeItem {
 	var items []models.KnowledgeItem
-	
+
 	rulePatterns := []struct {
 		pattern    *regexp.Regexp
 		ruleType   string
@@ -80,7 +81,7 @@ func (k *KnowledgeExtractorImpl) extractWithRegex(ctx context.Context, text stri
 		{regexp.MustCompile(`(?i)(api|endpoint|interface)[:\s]+([^\n]+)`), "api_definition", 0.6},
 		{regexp.MustCompile(`(?i)(table|entity|model)[:\s]+([^\n]+)`), "data_table", 0.7},
 	}
-	
+
 	for _, pattern := range rulePatterns {
 		matches := pattern.pattern.FindAllStringSubmatch(text, -1)
 		for _, match := range matches {
@@ -112,7 +113,7 @@ func (k *KnowledgeExtractorImpl) extractWithRegex(ctx context.Context, text stri
 			}
 		}
 	}
-	
+
 	return items
 }
 
@@ -141,11 +142,11 @@ func (k *KnowledgeExtractorImpl) ExtractFromFile(ctx context.Context, filePath s
 	if err != nil {
 		return nil, fmt.Errorf("failed to parse file: %w", err)
 	}
-	
+
 	if text == "" {
 		return []models.KnowledgeItem{}, nil
 	}
-	
+
 	// Extract using text extraction
 	return k.ExtractFromText(ctx, text, docID)
 }
@@ -194,17 +195,17 @@ func parsePDF(filePath string) (string, error) {
 		return "", fmt.Errorf("failed to open PDF: %w", err)
 	}
 	defer f.Close()
-	
+
 	info, err := f.Stat()
 	if err != nil {
 		return "", fmt.Errorf("failed to get file info: %w", err)
 	}
-	
+
 	reader, err := pdf.NewReader(f, info.Size())
 	if err != nil {
 		return "", fmt.Errorf("failed to create PDF reader: %w", err)
 	}
-	
+
 	var text strings.Builder
 	fontMap := make(map[string]*pdf.Font)
 	for i := 1; i <= reader.NumPage(); i++ {
@@ -218,7 +219,7 @@ func parsePDF(filePath string) (string, error) {
 			text.WriteString("\n")
 		}
 	}
-	
+
 	return text.String(), nil
 }
 
@@ -229,7 +230,7 @@ func parseDOCX(filePath string) (string, error) {
 		return "", fmt.Errorf("failed to read DOCX file: %w", err)
 	}
 	defer doc.Close()
-	
+
 	return doc.Editable().GetContent(), nil
 }
 
@@ -240,30 +241,30 @@ func parseXLSX(filePath string) (string, error) {
 		return "", fmt.Errorf("failed to open Excel file: %w", err)
 	}
 	defer f.Close()
-	
+
 	var text strings.Builder
-	
+
 	// Iterate all sheets
 	sheetList := f.GetSheetList()
 	if len(sheetList) == 0 {
 		return "", fmt.Errorf("Excel file has no sheets")
 	}
-	
+
 	for _, sheetName := range sheetList {
 		text.WriteString(fmt.Sprintf("## Sheet: %s\n\n", sheetName))
-		
+
 		rows, err := f.GetRows(sheetName)
 		if err != nil {
 			// Skip sheets that can't be read, continue with others
 			text.WriteString(fmt.Sprintf("(Error reading sheet: %v)\n\n", err))
 			continue
 		}
-		
+
 		if len(rows) == 0 {
 			text.WriteString("(Sheet is empty)\n\n")
 			continue
 		}
-		
+
 		// First row as header
 		if len(rows) > 0 {
 			text.WriteString("| ")
@@ -275,7 +276,7 @@ func parseXLSX(filePath string) (string, error) {
 				text.WriteString("---|")
 			}
 			text.WriteString("\n")
-			
+
 			// Data rows
 			for i := 1; i < len(rows); i++ {
 				text.WriteString("| ")
@@ -287,7 +288,7 @@ func parseXLSX(filePath string) (string, error) {
 		}
 		text.WriteString("\n")
 	}
-	
+
 	return text.String(), nil
 }
 

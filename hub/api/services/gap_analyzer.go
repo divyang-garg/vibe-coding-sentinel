@@ -377,4 +377,3 @@ func storeGapReport(ctx context.Context, report *GapAnalysisReport) (string, err
 
 	return reportID, nil
 }
-

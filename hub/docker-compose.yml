@@ -22,7 +22,7 @@ services:
       # SECURITY: All environment variables MUST be set via .env file
       # See .env.example for required variables
       # NEVER use default values in production
-      - DATABASE_URL=postgres://sentinel:${DB_PASSWORD}@db:5432/sentinel?sslmode=require
+      - DATABASE_URL=postgres://sentinel:${DB_PASSWORD}@db:5432/sentinel?sslmode=disable
       - JWT_SECRET=${JWT_SECRET}
       - DOCUMENT_STORAGE=/data/documents
       - BINARY_STORAGE=/data/binaries
@@ -52,31 +52,32 @@ services:
   # ===================
   # Contains all document parsing dependencies
   # (poppler, tesseract, pandoc, etc.)
-  processor:
-    build:
-      context: ./processor
-      dockerfile: Dockerfile
-    # SECURITY: Environment variables loaded from .env file
-    env_file:
-      - .env
-    environment:
-      - DATABASE_URL=postgres://sentinel:${DB_PASSWORD}@db:5432/sentinel?sslmode=require
-      - DOCUMENT_STORAGE=/data/documents
-      - OLLAMA_HOST=http://ollama:11434
-      - WORKER_CONCURRENCY=${WORKER_CONCURRENCY:-4}
-      # Azure AI Foundry Configuration (optional)
-      - AZURE_AI_ENDPOINT=${AZURE_AI_ENDPOINT:-}
-      - AZURE_AI_KEY=${AZURE_AI_KEY:-}
-      - AZURE_AI_DEPLOYMENT=${AZURE_AI_DEPLOYMENT:-claude-opus-4-5}
-      - AZURE_AI_API_VERSION=${AZURE_AI_API_VERSION:-2024-02-01}
-    volumes:
-      - document_storage:/data/documents
-    depends_on:
-      db:
-        condition: service_healthy
-    restart: unless-stopped
-    networks:
-      - sentinel-network
+  # NOTE: Processor service commented out as directory doesn't exist
+  # processor:
+  #   build:
+  #     context: ./processor
+  #     dockerfile: Dockerfile
+  #   # SECURITY: Environment variables loaded from .env file
+  #   env_file:
+  #     - .env
+  #   environment:
+  #     - DATABASE_URL=postgres://sentinel:${DB_PASSWORD}@db:5432/sentinel?sslmode=require
+  #     - DOCUMENT_STORAGE=/data/documents
+  #     - OLLAMA_HOST=http://ollama:11434
+  #     - WORKER_CONCURRENCY=${WORKER_CONCURRENCY:-4}
+  #     # Azure AI Foundry Configuration (optional)
+  #     - AZURE_AI_ENDPOINT=${AZURE_AI_ENDPOINT:-}
+  #     - AZURE_AI_KEY=${AZURE_AI_KEY:-}
+  #     - AZURE_AI_DEPLOYMENT=${AZURE_AI_DEPLOYMENT:-claude-opus-4-5}
+  #     - AZURE_AI_API_VERSION=${AZURE_AI_API_VERSION:-2024-02-01}
+  #   volumes:
+  #     - document_storage:/data/documents
+  #   depends_on:
+  #     db:
+  #       condition: service_healthy
+  #   restart: unless-stopped
+  #   networks:
+  #     - sentinel-network
 
   # ===================
   # Database
@@ -91,7 +92,7 @@ services:
     volumes:
       - postgres_data:/var/lib/postgresql/data
     ports:
-      - "127.0.0.1:5432:5432"  # Only localhost access
+      - "127.0.0.1:5433:5432"  # Only localhost access (using 5433 to avoid conflict)
     restart: unless-stopped
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U sentinel -d sentinel"]

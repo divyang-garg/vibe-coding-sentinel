@@ -83,7 +83,7 @@ func (s *WorkflowServiceImpl) GetWorkflow(ctx context.Context, id string) (inter
 	return map[string]interface{}{
 		"id":            workflow.ID,
 		"name":          workflow.Name,
-		"description":  workflow.Description,
+		"description":   workflow.Description,
 		"version":       workflow.Version,
 		"steps":         workflow.Steps,
 		"input_schema":  workflow.InputSchema,

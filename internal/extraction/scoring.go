@@ -66,18 +66,18 @@ func NewConfidenceScorer() ConfidenceScorer {
 func (s *confidenceScorer) ScoreRule(rule BusinessRule) float64 {
 	// Structural completeness (40%)
 	structScore := s.scoreStructure(rule)
-	
+
 	// Semantic quality (30%)
 	semanticScore := s.scoreSemantics(rule)
-	
+
 	// Traceability (20%)
 	traceScore := s.scoreTraceability(rule)
-	
+
 	// Constraint quality (10%)
 	constraintScore := s.scoreConstraints(rule)
-	
+
 	score := structScore*0.4 + semanticScore*0.3 + traceScore*0.2 + constraintScore*0.1
-	
+
 	return math.Min(score, 1.0)
 }
 
@@ -106,7 +106,7 @@ func (s *confidenceScorer) scoreStructure(rule BusinessRule) float64 {
 func (s *confidenceScorer) scoreSemantics(rule BusinessRule) float64 {
 	score := 0.0
 	desc := strings.ToLower(rule.Description)
-	
+
 	// Check for actionable language
 	actionWords := []string{"must", "shall", "should", "will", "can", "may"}
 	for _, word := range actionWords {
@@ -115,12 +115,12 @@ func (s *confidenceScorer) scoreSemantics(rule BusinessRule) float64 {
 			break
 		}
 	}
-	
+
 	// Check for measurable criteria (numbers)
 	if regexp.MustCompile(`\d+`).MatchString(desc) {
 		score += 0.3
 	}
-	
+
 	// Description length quality (50-500 chars is optimal)
 	descLen := len(rule.Description)
 	if descLen > 50 && descLen < 500 {
@@ -128,7 +128,7 @@ func (s *confidenceScorer) scoreSemantics(rule BusinessRule) float64 {
 	} else if descLen >= 20 {
 		score += 0.2 // Partial credit for reasonable length
 	}
-	
+
 	return math.Min(score, 1.0)
 }
 
@@ -149,7 +149,7 @@ func (s *confidenceScorer) scoreConstraints(rule BusinessRule) float64 {
 	score := 0.0
 	if len(rule.Specification.Constraints) > 0 {
 		score += 0.5
-		
+
 		// Bonus for pseudocode
 		hasPseudocode := false
 		for _, c := range rule.Specification.Constraints {

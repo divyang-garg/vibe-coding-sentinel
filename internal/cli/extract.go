@@ -141,14 +141,13 @@ func parseExtractOptions(args []string) extractOptions {
 	return opts
 }
 
-
 func createExtractor(opts extractOptions) (extraction.Extractor, error) {
 	// Create dependencies
 	promptBuilder := extraction.NewPromptBuilder()
 	parser := extraction.NewResponseParser()
 	scorer := extraction.NewConfidenceScorer()
 	fallback := extraction.NewFallbackExtractor()
-	
+
 	// Use file-based cache if available, fallback to in-memory
 	cacheDir := os.Getenv("SENTINEL_CACHE_DIR")
 	if cacheDir == "" {
@@ -160,7 +159,7 @@ func createExtractor(opts extractOptions) (extraction.Extractor, error) {
 			cacheDir = filepath.Join(homeDir, ".sentinel", "cache")
 		}
 	}
-	
+
 	var cache extraction.Cache
 	if cacheDir != "" {
 		fileCache, err := cachepkg.NewFileCache(cacheDir)
@@ -172,7 +171,7 @@ func createExtractor(opts extractOptions) (extraction.Extractor, error) {
 	} else {
 		cache = newSimpleCache()
 	}
-	
+
 	logger := newCLILogger()
 
 	// Create LLM client (uses hub/api/llm infrastructure)

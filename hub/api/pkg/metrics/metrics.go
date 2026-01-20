@@ -14,18 +14,18 @@ type Metrics struct {
 	HTTPRequestDuration *prometheus.HistogramVec
 	HTTPRequestSize     *prometheus.HistogramVec
 	HTTPResponseSize    *prometheus.HistogramVec
-	
+
 	// Business metrics
-	TasksCreated        prometheus.Counter
-	TasksCompleted      prometheus.Counter
-	DocumentsProcessed  prometheus.Counter
-	ExtractionDuration  *prometheus.HistogramVec
+	TasksCreated         prometheus.Counter
+	TasksCompleted       prometheus.Counter
+	DocumentsProcessed   prometheus.Counter
+	ExtractionDuration   *prometheus.HistogramVec
 	ExtractionConfidence *prometheus.HistogramVec
-	
+
 	// System metrics
-	ActiveConnections   prometheus.Gauge
-	GoroutineCount      prometheus.Gauge
-	MemoryUsage         prometheus.Gauge
+	ActiveConnections prometheus.Gauge
+	GoroutineCount    prometheus.Gauge
+	MemoryUsage       prometheus.Gauge
 }
 
 // NewMetrics creates and registers all metrics
@@ -33,7 +33,7 @@ func NewMetrics(namespace string) *Metrics {
 	if namespace == "" {
 		namespace = "sentinel_hub_api"
 	}
-	
+
 	return &Metrics{
 		HTTPRequestsTotal: promauto.NewCounterVec(
 			prometheus.CounterOpts{

@@ -5,6 +5,7 @@ import (
 	"context"
 	"database/sql"
 
+	"sentinel-hub-api/pkg"
 	"sentinel-hub-api/repository"
 	"sentinel-hub-api/services"
 )
@@ -45,9 +46,15 @@ func NewDependencies(db *sql.DB) *Dependencies {
 	documentValidator := repository.NewDocumentValidator()
 	searchEngine := repository.NewSearchEngine()
 
+	// Initialize logger for structured logging
+	logger := pkg.NewJSONLogger(pkg.JSONLoggerConfig{
+		ServiceName: "sentinel-hub-api",
+		Level:       pkg.LogLevelInfo,
+	})
+
 	// Initialize services
 	taskService := services.NewTaskService(taskRepo, dependencyAnalyzer, impactAnalyzer)
-	docService := services.NewDocumentService(docRepo, knowledgeExtractor, documentValidator, searchEngine)
+	docService := services.NewDocumentService(docRepo, knowledgeExtractor, documentValidator, searchEngine, logger)
 	orgService := services.NewOrganizationService(orgRepo, projectRepo)
 	workflowService := services.NewWorkflowService(workflowRepo)
 	monitoringService := services.NewMonitoringService(errorReportRepo)

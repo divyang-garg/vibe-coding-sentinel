@@ -9,10 +9,10 @@ import (
 
 // EdgeCaseResult contains detected edge cases that reduce confidence
 type EdgeCaseResult struct {
-	HasReflection    bool    // reflect.ValueOf, eval(), getattr()
-	HasDynamicImport bool    // import(), __import__(), require()
-	HasPluginUsage   bool    // plugin.Lookup, dynamic loading
-	HasGeneratedCode bool   // Code generation markers
+	HasReflection     bool    // reflect.ValueOf, eval(), getattr()
+	HasDynamicImport  bool    // import(), __import__(), require()
+	HasPluginUsage    bool    // plugin.Lookup, dynamic loading
+	HasGeneratedCode  bool    // Code generation markers
 	ConfidencePenalty float64 // Penalty to apply to confidence (0.0-1.0)
 }
 

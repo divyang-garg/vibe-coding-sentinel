@@ -42,10 +42,10 @@ func main() {
 
 	// Create finding for helperFunction
 	finding := &ASTFinding{
-		Type:     "orphaned_code",
-		Message:  "Potentially orphaned function: 'helperFunction' is defined but never called",
-		Code:     "func helperFunction() {\n\t// This function is used\n}",
-		Line:     4,
+		Type:      "orphaned_code",
+		Message:   "Potentially orphaned function: 'helperFunction' is defined but never called",
+		Code:      "func helperFunction() {\n\t// This function is used\n}",
+		Line:      4,
 		Validated: false,
 	}
 
@@ -86,10 +86,10 @@ func trulyOrphaned() {
 	}
 
 	finding := &ASTFinding{
-		Type:     "orphaned_code",
-		Message:  "Potentially orphaned function: 'trulyOrphaned' is defined but never called",
-		Code:     "func trulyOrphaned() {\n\t// This function is never called\n}",
-		Line:     4,
+		Type:      "orphaned_code",
+		Message:   "Potentially orphaned function: 'trulyOrphaned' is defined but never called",
+		Code:      "func trulyOrphaned() {\n\t// This function is never called\n}",
+		Line:      4,
 		Validated: false,
 	}
 
@@ -129,10 +129,10 @@ func test() {
 	}
 
 	finding := &ASTFinding{
-		Type:     "unused_variable",
-		Message:  "Unused variable: 'unusedVar' is declared but never used",
-		Code:     "var unusedVar int",
-		Line:     5,
+		Type:      "unused_variable",
+		Message:   "Unused variable: 'unusedVar' is declared but never used",
+		Code:      "var unusedVar int",
+		Line:      5,
 		Validated: false,
 	}
 
@@ -166,10 +166,10 @@ var ExportedVar int
 	}
 
 	finding := &ASTFinding{
-		Type:     "unused_variable",
-		Message:  "Unused variable: 'ExportedVar' is declared but never used",
-		Code:     "var ExportedVar int",
-		Line:     4,
+		Type:      "unused_variable",
+		Message:   "Unused variable: 'ExportedVar' is declared but never used",
+		Code:      "var ExportedVar int",
+		Line:      4,
 		Validated: false,
 	}
 
@@ -205,10 +205,10 @@ try {
 	}
 
 	finding := &ASTFinding{
-		Type:     "empty_catch",
-		Message:  "Empty catch/except block detected - errors are silently ignored",
-		Code:     "} catch (e) {\n\t// TODO: Add error handling\n}",
-		Line:     4,
+		Type:      "empty_catch",
+		Message:   "Empty catch/except block detected - errors are silently ignored",
+		Code:      "} catch (e) {\n\t// TODO: Add error handling\n}",
+		Line:      4,
 		Validated: false,
 	}
 
@@ -243,10 +243,10 @@ try {
 	}
 
 	finding := &ASTFinding{
-		Type:     "empty_catch",
-		Message:  "Empty catch/except block detected - errors are silently ignored",
-		Code:     "} catch (e) {\n}",
-		Line:     4,
+		Type:      "empty_catch",
+		Message:   "Empty catch/except block detected - errors are silently ignored",
+		Code:      "} catch (e) {\n}",
+		Line:      4,
 		Validated: false,
 	}
 

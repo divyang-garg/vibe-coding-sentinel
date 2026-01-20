@@ -33,12 +33,12 @@ func detectSQLInjectionGo(root *sitter.Node, code string) []SecurityVulnerabilit
 	// Enhanced pattern-based detection for multi-line queries
 	// Look for SQL query construction patterns across multiple lines
 	codeLower := strings.ToLower(code)
-	
+
 	// Check for SQL keywords
 	hasSQLKeyword := strings.Contains(codeLower, "select") || strings.Contains(codeLower, "insert") ||
 		strings.Contains(codeLower, "update") || strings.Contains(codeLower, "delete") ||
 		strings.Contains(codeLower, "where") || strings.Contains(codeLower, "from")
-	
+
 	if hasSQLKeyword {
 		// Look for query execution functions
 		queryFuncs := []string{"db.Query", "db.QueryRow", "db.Exec", "Query", "QueryRow", "Exec", "QueryContext", "ExecContext"}
@@ -48,7 +48,7 @@ func detectSQLInjectionGo(root *sitter.Node, code string) []SecurityVulnerabilit
 				if strings.Contains(code, "?") || strings.Contains(code, "$1") || strings.Contains(code, "$2") {
 					continue // Safe parameterized query
 				}
-				
+
 				// Check for string concatenation patterns
 				// Pattern 1: Direct concatenation in query string
 				if strings.Contains(code, "+") && strings.Contains(code, "\"") {
@@ -78,7 +78,7 @@ func detectSQLInjectionGo(root *sitter.Node, code string) []SecurityVulnerabilit
 						}
 					}
 				}
-				
+
 				// Pattern 2: Query variable construction
 				if strings.Contains(code, "query :=") || strings.Contains(code, "query =") ||
 					strings.Contains(code, "var query") {
@@ -120,13 +120,13 @@ func detectSQLInjectionGo(root *sitter.Node, code string) []SecurityVulnerabilit
 		if node.Type() == "call_expression" {
 			codeSnippet := safeSlice(code, node.StartByte(), node.EndByte())
 			funcName := getFunctionName(node, code)
-			
+
 			// Skip if it's a parameterized query (has ? or $ placeholders)
-			if strings.Contains(codeSnippet, "?") || strings.Contains(codeSnippet, "$1") || 
-			   strings.Contains(codeSnippet, "$2") || strings.Contains(codeSnippet, "$") {
+			if strings.Contains(codeSnippet, "?") || strings.Contains(codeSnippet, "$1") ||
+				strings.Contains(codeSnippet, "$2") || strings.Contains(codeSnippet, "$") {
 				return true // Safe parameterized query
 			}
-			
+
 			// Check if it's a SQL function
 			if isSQLFunction(funcName) || isSQLFunction(codeSnippet) {
 				// Check if arguments contain string concatenation or user input patterns
@@ -147,7 +147,7 @@ func detectSQLInjectionGo(root *sitter.Node, code string) []SecurityVulnerabilit
 				}
 			}
 		}
-		
+
 		// Also check for variable assignments that build SQL queries
 		if node.Type() == "short_var_declaration" || node.Type() == "assignment_statement" {
 			codeSnippet := safeSlice(code, node.StartByte(), node.EndByte())
@@ -175,7 +175,7 @@ func detectSQLInjectionGo(root *sitter.Node, code string) []SecurityVulnerabilit
 				vulnerabilities = append(vulnerabilities, vuln)
 			}
 		}
-		
+
 		return true
 	})
 
@@ -279,7 +279,7 @@ func getFunctionName(node *sitter.Node, code string) string {
 func hasStringConcatenation(node *sitter.Node, code string) bool {
 	// Look for + operator between strings
 	codeSnippet := safeSlice(code, node.StartByte(), node.EndByte())
-	return strings.Contains(codeSnippet, "+") && 
+	return strings.Contains(codeSnippet, "+") &&
 		(strings.Contains(codeSnippet, "\"") || strings.Contains(codeSnippet, "'"))
 }
 
@@ -290,7 +290,7 @@ func hasTemplateLiteral(node *sitter.Node, code string) bool {
 
 func hasStringFormatting(node *sitter.Node, code string) bool {
 	codeSnippet := safeSlice(code, node.StartByte(), node.EndByte())
-	return strings.Contains(codeSnippet, "%") || strings.Contains(codeSnippet, "f\"") || 
+	return strings.Contains(codeSnippet, "%") || strings.Contains(codeSnippet, "f\"") ||
 		strings.Contains(codeSnippet, "f'")
 }
 
@@ -304,8 +304,8 @@ func hasUserInputInSQL(code string) bool {
 	for _, pattern := range userInputPatterns {
 		if strings.Contains(codeLower, strings.ToLower(pattern)) {
 			// Check if it's in a SQL query string
-			if strings.Contains(code, "SELECT") || strings.Contains(code, "INSERT") || 
-			   strings.Contains(code, "UPDATE") || strings.Contains(code, "DELETE") {
+			if strings.Contains(code, "SELECT") || strings.Contains(code, "INSERT") ||
+				strings.Contains(code, "UPDATE") || strings.Contains(code, "DELETE") {
 				return true
 			}
 		}

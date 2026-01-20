@@ -344,6 +344,187 @@ func (suite *UserHandlerTestSuite) TestHandleServiceError_GenericError() {
 	suite.Equal("internal server error", response["error"])
 }
 
+func (suite *UserHandlerTestSuite) TestUpdateUser_InvalidJSON() {
+	// Given: Invalid JSON in request body
+	httpReq := httptest.NewRequest("PUT", "/api/v1/users/1", bytes.NewReader([]byte("invalid json")))
+	httpReq.Header.Set("Content-Type", "application/json")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "1")
+	httpReq = httpReq.WithContext(context.WithValue(httpReq.Context(), chi.RouteCtxKey, rctx))
+
+	w := httptest.NewRecorder()
+
+	// When: Updating user
+	suite.handler.UpdateUser(w, httpReq)
+
+	// Then: Should return bad request
+	suite.Equal(http.StatusBadRequest, w.Code)
+
+	var response map[string]string
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	suite.NoError(err)
+	suite.Equal("invalid request format", response["error"])
+}
+
+func (suite *UserHandlerTestSuite) TestUpdateUser_InvalidID() {
+	// Given: Non-numeric user ID in URL
+	req := services.UpdateUserRequest{
+		Name: stringPtr("Updated Name"),
+	}
+
+	body, _ := json.Marshal(req)
+	httpReq := httptest.NewRequest("PUT", "/api/v1/users/invalid", bytes.NewReader(body))
+	httpReq.Header.Set("Content-Type", "application/json")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "invalid")
+	httpReq = httpReq.WithContext(context.WithValue(httpReq.Context(), chi.RouteCtxKey, rctx))
+
+	w := httptest.NewRecorder()
+
+	// When: Updating user
+	suite.handler.UpdateUser(w, httpReq)
+
+	// Then: Should return bad request
+	suite.Equal(http.StatusBadRequest, w.Code)
+
+	var response map[string]string
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	suite.NoError(err)
+	suite.Equal("invalid user ID", response["error"])
+}
+
+func (suite *UserHandlerTestSuite) TestDeleteUser_InvalidID() {
+	// Given: Non-numeric user ID in URL
+	httpReq := httptest.NewRequest("DELETE", "/api/v1/users/invalid", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "invalid")
+	httpReq = httpReq.WithContext(context.WithValue(httpReq.Context(), chi.RouteCtxKey, rctx))
+
+	w := httptest.NewRecorder()
+
+	// When: Deleting user
+	suite.handler.DeleteUser(w, httpReq)
+
+	// Then: Should return bad request
+	suite.Equal(http.StatusBadRequest, w.Code)
+
+	var response map[string]string
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	suite.NoError(err)
+	suite.Equal("invalid user ID", response["error"])
+}
+
+func (suite *UserHandlerTestSuite) TestDeleteUser_ServiceError() {
+	// Given: Service returns NotFoundError
+	suite.mockService.On("DeleteUser", mock.Anything, 999).Return(&models.NotFoundError{Resource: "user", ID: 999})
+
+	httpReq := httptest.NewRequest("DELETE", "/api/v1/users/999", nil)
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "999")
+	httpReq = httpReq.WithContext(context.WithValue(httpReq.Context(), chi.RouteCtxKey, rctx))
+
+	w := httptest.NewRecorder()
+
+	// When: Deleting user
+	suite.handler.DeleteUser(w, httpReq)
+
+	// Then: Should return not found
+	suite.Equal(http.StatusNotFound, w.Code)
+
+	var response map[string]string
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	suite.NoError(err)
+	suite.Equal("user with id 999 not found", response["error"])
+	suite.mockService.AssertExpectations(suite.T())
+}
+
+func (suite *UserHandlerTestSuite) TestHandleServiceError_AuthorizationError() {
+	// Given: AuthorizationError
+	authzErr := &models.AuthorizationError{
+		Message: "insufficient permissions",
+	}
+
+	w := httptest.NewRecorder()
+
+	// When: Handling service error
+	suite.handler.handleServiceError(w, authzErr)
+
+	// Then: Should return forbidden
+	suite.Equal(http.StatusForbidden, w.Code)
+
+	var response map[string]string
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	suite.NoError(err)
+	suite.Equal("insufficient permissions", response["error"])
+}
+
+func (suite *UserHandlerTestSuite) TestUpdateUser_ValidationError() {
+	// Given: Update request that causes validation error
+	req := services.UpdateUserRequest{
+		Email: stringPtr("invalid-email"),
+	}
+
+	validationErr := &models.ValidationError{
+		Field:   "email",
+		Message: "invalid email format",
+	}
+	suite.mockService.On("UpdateUser", mock.Anything, 1, &req).Return(nil, validationErr)
+
+	body, _ := json.Marshal(req)
+	httpReq := httptest.NewRequest("PUT", "/api/v1/users/1", bytes.NewReader(body))
+	httpReq.Header.Set("Content-Type", "application/json")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "1")
+	httpReq = httpReq.WithContext(context.WithValue(httpReq.Context(), chi.RouteCtxKey, rctx))
+
+	w := httptest.NewRecorder()
+
+	// When: Updating user
+	suite.handler.UpdateUser(w, httpReq)
+
+	// Then: Should return bad request
+	suite.Equal(http.StatusBadRequest, w.Code)
+
+	var response map[string]interface{}
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	suite.NoError(err)
+	suite.Equal("validation_failed", response["error"])
+	suite.Equal("email", response["field"])
+	suite.Equal("invalid email format", response["message"])
+	suite.mockService.AssertExpectations(suite.T())
+}
+
+func (suite *UserHandlerTestSuite) TestUpdateUser_NotFoundError() {
+	// Given: Update request for non-existent user
+	req := services.UpdateUserRequest{
+		Name: stringPtr("Updated Name"),
+	}
+
+	notFoundErr := &models.NotFoundError{Resource: "user", ID: 999}
+	suite.mockService.On("UpdateUser", mock.Anything, 999, &req).Return(nil, notFoundErr)
+
+	body, _ := json.Marshal(req)
+	httpReq := httptest.NewRequest("PUT", "/api/v1/users/999", bytes.NewReader(body))
+	httpReq.Header.Set("Content-Type", "application/json")
+	rctx := chi.NewRouteContext()
+	rctx.URLParams.Add("id", "999")
+	httpReq = httpReq.WithContext(context.WithValue(httpReq.Context(), chi.RouteCtxKey, rctx))
+
+	w := httptest.NewRecorder()
+
+	// When: Updating user
+	suite.handler.UpdateUser(w, httpReq)
+
+	// Then: Should return not found
+	suite.Equal(http.StatusNotFound, w.Code)
+
+	var response map[string]string
+	err := json.Unmarshal(w.Body.Bytes(), &response)
+	suite.NoError(err)
+	suite.Equal("user with id 999 not found", response["error"])
+	suite.mockService.AssertExpectations(suite.T())
+}
+
 // Helper function
 func stringPtr(s string) *string {
 	return &s

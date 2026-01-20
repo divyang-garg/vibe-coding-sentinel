@@ -4,11 +4,11 @@ package llm
 
 // LLMConfig contains LLM provider configuration
 type LLMConfig struct {
-	ID               string                 `json:"id,omitempty"`
-	Provider         string                 `json:"provider"`
-	APIKey           string                 `json:"api_key"` // Decrypted for use
-	Model            string                 `json:"model"`
-	KeyType          string                 `json:"key_type"`
+	ID               string                  `json:"id,omitempty"`
+	Provider         string                  `json:"provider"`
+	APIKey           string                  `json:"api_key"` // Decrypted for use
+	Model            string                  `json:"model"`
+	KeyType          string                  `json:"key_type"`
 	CostOptimization *CostOptimizationConfig `json:"cost_optimization,omitempty"`
 }
 

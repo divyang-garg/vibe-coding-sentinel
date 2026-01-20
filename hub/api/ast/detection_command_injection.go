@@ -99,7 +99,7 @@ func detectCommandInjectionPython(root *sitter.Node, code string) []SecurityVuln
 
 	// Enhanced pattern-based detection for Python command injection
 	lines := strings.Split(code, "\n")
-	
+
 	// Pattern 1: os.system with user input
 	for lineNum, line := range lines {
 		lineLower := strings.ToLower(line)
@@ -121,7 +121,7 @@ func detectCommandInjectionPython(root *sitter.Node, code string) []SecurityVuln
 			}
 		}
 	}
-	
+
 	// Pattern 2: subprocess.call/Popen with shell=True
 	for lineNum, line := range lines {
 		lineLower := strings.ToLower(line)
@@ -144,7 +144,7 @@ func detectCommandInjectionPython(root *sitter.Node, code string) []SecurityVuln
 			}
 		}
 	}
-	
+
 	// Pattern 3: subprocess with string command (not list)
 	for lineNum, line := range lines {
 		lineLower := strings.ToLower(line)
@@ -217,13 +217,13 @@ func isCommandExecutionFunction(name string) bool {
 }
 
 func isChildProcessCall(code string) bool {
-	return strings.Contains(code, "child_process") || 
-		   strings.Contains(code, "require('child_process')")
+	return strings.Contains(code, "child_process") ||
+		strings.Contains(code, "require('child_process')")
 }
 
 func isSubprocessCall(code string) bool {
-	return strings.Contains(code, "subprocess.") || 
-		   strings.Contains(code, "os.system")
+	return strings.Contains(code, "subprocess.") ||
+		strings.Contains(code, "os.system")
 }
 
 func hasUserInputInCommand(node *sitter.Node, code string) bool {
@@ -239,29 +239,29 @@ func hasUserInputInCommandString(code string) bool {
 		"user_input", "userinput", "cmd", "command",
 	}
 	codeLower := strings.ToLower(code)
-	
+
 	// Check for function parameters (common in command injection)
 	if strings.Contains(code, "(") && strings.Contains(code, ")") {
 		// Extract parameter name if it's a simple variable
 		// Look for patterns like func(param) where param could be user input
 		if !strings.Contains(codeLower, "validate") &&
-		   !strings.Contains(codeLower, "sanitize") &&
-		   !strings.Contains(codeLower, "whitelist") &&
-		   !strings.Contains(codeLower, "shlex.quote") {
+			!strings.Contains(codeLower, "sanitize") &&
+			!strings.Contains(codeLower, "whitelist") &&
+			!strings.Contains(codeLower, "shlex.quote") {
 			// Check if it's not a literal string
 			if !strings.Contains(code, "\"") && !strings.Contains(code, "'") {
 				return true
 			}
 		}
 	}
-	
+
 	for _, pattern := range userInputPatterns {
 		if strings.Contains(codeLower, strings.ToLower(pattern)) {
 			// Check if it's validated/sanitized
 			if !strings.Contains(codeLower, "validate") &&
-			   !strings.Contains(codeLower, "sanitize") &&
-			   !strings.Contains(codeLower, "whitelist") &&
-			   !strings.Contains(codeLower, "shlex.quote") {
+				!strings.Contains(codeLower, "sanitize") &&
+				!strings.Contains(codeLower, "whitelist") &&
+				!strings.Contains(codeLower, "shlex.quote") {
 				return true
 			}
 		}

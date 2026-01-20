@@ -8,6 +8,7 @@ import (
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
+
 func detectBraceMismatch(tree *sitter.Tree, code string, language string) []ASTFinding {
 	findings := []ASTFinding{}
 

@@ -21,9 +21,9 @@ type OllamaClient struct {
 
 // OllamaConfig configures the Ollama client
 type OllamaConfig struct {
-	BaseURL    string
-	Model      string
-	Timeout    time.Duration
+	BaseURL string
+	Model   string
+	Timeout time.Duration
 }
 
 // DefaultOllamaConfig returns default configuration
@@ -57,28 +57,28 @@ func (c *OllamaClient) Call(ctx context.Context, prompt string, taskType string)
 			"num_predict": 4096,
 		},
 	}
-	
+
 	body, err := json.Marshal(reqBody)
 	if err != nil {
 		return "", 0, fmt.Errorf("failed to marshal request: %w", err)
 	}
-	
+
 	req, err := http.NewRequestWithContext(ctx, "POST", c.baseURL+"/api/generate", bytes.NewReader(body))
 	if err != nil {
 		return "", 0, fmt.Errorf("failed to create request: %w", err)
 	}
 	req.Header.Set("Content-Type", "application/json")
-	
+
 	resp, err := c.httpClient.Do(req)
 	if err != nil {
 		return "", 0, fmt.Errorf("LLM request failed: %w", err)
 	}
 	defer resp.Body.Close()
-	
+
 	if resp.StatusCode != http.StatusOK {
 		return "", 0, fmt.Errorf("LLM returned status %d", resp.StatusCode)
 	}
-	
+
 	var result struct {
 		Response string `json:"response"`
 		Context  []int  `json:"context"`
@@ -86,10 +86,10 @@ func (c *OllamaClient) Call(ctx context.Context, prompt string, taskType string)
 	if err := json.NewDecoder(resp.Body).Decode(&result); err != nil {
 		return "", 0, fmt.Errorf("failed to decode response: %w", err)
 	}
-	
+
 	// Estimate tokens (rough approximation: 1 token ≈ 4 characters)
 	tokens := len(prompt)/4 + len(result.Response)/4
-	
+
 	return result.Response, tokens, nil
 }
 

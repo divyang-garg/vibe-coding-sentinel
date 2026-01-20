@@ -5,6 +5,7 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"testing"
 	"time"
 
@@ -257,4 +258,147 @@ func (suite *UserRepositoryTestSuite) TestList_Success() {
 	suite.Len(result, 2)
 	suite.Equal(users[0].Email, result[0].Email)
 	suite.Equal(users[1].Email, result[1].Email)
+}
+
+func (suite *UserRepositoryTestSuite) TestGetByEmail_DatabaseError() {
+	// Given: Database error (non-NotFound)
+	suite.mock.ExpectQuery(`SELECT .* FROM users WHERE email = \$1`).
+		WithArgs("test@example.com").
+		WillReturnError(sql.ErrConnDone)
+
+	// When: Getting user by email
+	user, err := suite.repo.GetByEmail(context.Background(), "test@example.com")
+
+	// Then: Should return error
+	suite.Error(err)
+	suite.Nil(user)
+	suite.Contains(err.Error(), "failed to get user by email")
+}
+
+func (suite *UserRepositoryTestSuite) TestUpdate_DatabaseError() {
+	// Given: User to update but database error occurs
+	user := &models.User{
+		ID:       1,
+		Email:    "updated@example.com",
+		Name:     "Updated User",
+		Password: "newhashedpassword",
+		Role:     models.RoleAdmin,
+		IsActive: false,
+	}
+
+	suite.mock.ExpectExec(`UPDATE users SET name = \$2, email = \$3, password = \$4, role = \$5, is_active = \$6, updated_at = \$7 WHERE id = \$1`).
+		WithArgs(user.ID, user.Name, user.Email, user.Password, user.Role, user.IsActive, sqlmock.AnyArg()).
+		WillReturnError(sql.ErrConnDone)
+
+	// When: Updating user
+	err := suite.repo.Update(context.Background(), user)
+
+	// Then: Should return error
+	suite.Error(err)
+	suite.Contains(err.Error(), "failed to update user")
+}
+
+func (suite *UserRepositoryTestSuite) TestUpdate_RowsAffectedError() {
+	// Given: User to update but error getting rows affected
+	user := &models.User{
+		ID:       1,
+		Email:    "updated@example.com",
+		Name:     "Updated User",
+		Password: "newhashedpassword",
+		Role:     models.RoleAdmin,
+		IsActive: false,
+	}
+
+	result := sqlmock.NewErrorResult(errors.New("rows affected error"))
+	suite.mock.ExpectExec(`UPDATE users SET name = \$2, email = \$3, password = \$4, role = \$5, is_active = \$6, updated_at = \$7 WHERE id = \$1`).
+		WithArgs(user.ID, user.Name, user.Email, user.Password, user.Role, user.IsActive, sqlmock.AnyArg()).
+		WillReturnResult(result)
+
+	// When: Updating user
+	err := suite.repo.Update(context.Background(), user)
+
+	// Then: Should return error
+	suite.Error(err)
+	suite.Contains(err.Error(), "failed to get rows affected")
+}
+
+func (suite *UserRepositoryTestSuite) TestDelete_DatabaseError() {
+	// Given: Database error during delete
+	suite.mock.ExpectExec(`DELETE FROM users WHERE id = \$1`).
+		WithArgs(1).
+		WillReturnError(sql.ErrConnDone)
+
+	// When: Deleting user
+	err := suite.repo.Delete(context.Background(), 1)
+
+	// Then: Should return error
+	suite.Error(err)
+	suite.Contains(err.Error(), "failed to delete user")
+}
+
+func (suite *UserRepositoryTestSuite) TestDelete_RowsAffectedError() {
+	// Given: Error getting rows affected
+	result := sqlmock.NewErrorResult(errors.New("rows affected error"))
+	suite.mock.ExpectExec(`DELETE FROM users WHERE id = \$1`).
+		WithArgs(1).
+		WillReturnResult(result)
+
+	// When: Deleting user
+	err := suite.repo.Delete(context.Background(), 1)
+
+	// Then: Should return error
+	suite.Error(err)
+	suite.Contains(err.Error(), "failed to get rows affected")
+}
+
+func (suite *UserRepositoryTestSuite) TestList_DatabaseError() {
+	// Given: Database error during query
+	suite.mock.ExpectQuery(`SELECT .* FROM users ORDER BY created_at DESC LIMIT \$1 OFFSET \$2`).
+		WithArgs(10, 0).
+		WillReturnError(sql.ErrConnDone)
+
+	// When: Listing users
+	result, err := suite.repo.List(context.Background(), 10, 0)
+
+	// Then: Should return error
+	suite.Error(err)
+	suite.Nil(result)
+	suite.Contains(err.Error(), "failed to list users")
+}
+
+func (suite *UserRepositoryTestSuite) TestList_ScanError() {
+	// Given: Rows with invalid data causing scan error
+	rows := sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "is_active", "created_at", "updated_at"}).
+		AddRow("invalid", "user1@example.com", "User One", "hash1", "user", true, time.Now(), time.Now())
+
+	suite.mock.ExpectQuery(`SELECT .* FROM users ORDER BY created_at DESC LIMIT \$1 OFFSET \$2`).
+		WithArgs(10, 0).
+		WillReturnRows(rows)
+
+	// When: Listing users
+	result, err := suite.repo.List(context.Background(), 10, 0)
+
+	// Then: Should return error
+	suite.Error(err)
+	suite.Nil(result)
+	suite.Contains(err.Error(), "failed to scan user")
+}
+
+func (suite *UserRepositoryTestSuite) TestList_RowsError() {
+	// Given: Rows iteration error
+	rows := sqlmock.NewRows([]string{"id", "email", "name", "password", "role", "is_active", "created_at", "updated_at"}).
+		AddRow(1, "user1@example.com", "User One", "hash1", "user", true, time.Now(), time.Now()).
+		RowError(0, errors.New("row iteration error"))
+
+	suite.mock.ExpectQuery(`SELECT .* FROM users ORDER BY created_at DESC LIMIT \$1 OFFSET \$2`).
+		WithArgs(10, 0).
+		WillReturnRows(rows)
+
+	// When: Listing users
+	result, err := suite.repo.List(context.Background(), 10, 0)
+
+	// Then: Should return error
+	suite.Error(err)
+	suite.Nil(result)
+	suite.Contains(err.Error(), "error iterating users")
 }

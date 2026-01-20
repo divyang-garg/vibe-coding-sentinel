@@ -322,7 +322,12 @@ func mapRuleToCode(rule KnowledgeItem, projectCode []string) string {
 // extractKeywords is defined in utils.go - using shared implementation
 
 // extractFunctionNameFromCode attempts to extract a function name from code (simplified)
-// TODO: Use AST analysis (Phase 6) for more accurate function extraction
+// Current implementation uses pattern matching for function extraction.
+// See docs/development/PHASE6_AST_INTEGRATION.md for planned AST-based enhancement.
+// TODO(Phase 6): Use AST analysis for more accurate function extraction
+//   - Better handling of complex code structures
+//   - Improved accuracy for nested functions
+//   - Support for multiple languages
 func extractFunctionNameFromCode(code, keyword string) string {
 	// CURRENT IMPLEMENTATION: Uses pattern matching to find function definitions
 	// FUTURE ENHANCEMENT: Use AST analysis (Phase 6) for more accurate function extraction

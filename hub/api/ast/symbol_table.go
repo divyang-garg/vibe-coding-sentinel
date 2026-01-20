@@ -11,14 +11,14 @@ import (
 
 // FileSymbol represents a symbol defined in a specific file
 type FileSymbol struct {
-	Name      string
-	Kind      string // "function", "class", "variable", "type", "constant"
-	FilePath  string
-	Line      int
-	Column    int
-	Exported  bool // Is this symbol exported/public?
-	DeclNode  *sitter.Node
-	Language  string
+	Name     string
+	Kind     string // "function", "class", "variable", "type", "constant"
+	FilePath string
+	Line     int
+	Column   int
+	Exported bool // Is this symbol exported/public?
+	DeclNode *sitter.Node
+	Language string
 }
 
 // SymbolReference represents a reference to a symbol

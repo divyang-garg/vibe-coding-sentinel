@@ -10,8 +10,9 @@ import (
 	"net/http"
 	"time"
 
-	"github.com/google/uuid"
 	"sentinel-hub-api/pkg/database"
+
+	"github.com/google/uuid"
 )
 
 // =============================================================================

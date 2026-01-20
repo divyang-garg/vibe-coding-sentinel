@@ -207,7 +207,7 @@ func (s *ASTServiceImpl) AnalyzeSecurity(ctx context.Context, req models.Securit
 	riskScore := calculateRiskScore(modelVulns)
 
 	response := &models.SecurityASTResponse{
-		Findings:       modelFindings,
+		Findings: modelFindings,
 		Stats: models.ASTAnalysisStats{
 			ParseTime:    stats.ParseTime,
 			AnalysisTime: stats.AnalysisTime,
@@ -315,8 +315,8 @@ func (s *ASTServiceImpl) AnalyzeCrossFile(ctx context.Context, req models.CrossF
 	response := &models.CrossFileASTResponse{
 		Findings:            modelFindings,
 		UnusedExports:       unusedExports,
-		UndefinedRefs:        undefinedRefs,
-		CircularDeps:         crossFileResult.CircularDeps,
+		UndefinedRefs:       undefinedRefs,
+		CircularDeps:        crossFileResult.CircularDeps,
 		CrossFileDuplicates: crossFileDups,
 		Stats: models.CrossFileStats{
 			FilesAnalyzed:     crossFileResult.Stats.FilesAnalyzed,

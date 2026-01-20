@@ -121,14 +121,14 @@ func (s *ScopeStack) Pop() {
 
 // SecurityVulnerability represents a security vulnerability found in code
 type SecurityVulnerability struct {
-	Type        string  `json:"type"`        // "sql_injection", "xss", "command_injection", etc.
-	Severity    string  `json:"severity"`    // "critical", "high", "medium", "low"
+	Type        string  `json:"type"`     // "sql_injection", "xss", "command_injection", etc.
+	Severity    string  `json:"severity"` // "critical", "high", "medium", "low"
 	Line        int     `json:"line"`
 	Column      int     `json:"column"`
 	Message     string  `json:"message"`
 	Code        string  `json:"code,omitempty"`
 	Description string  `json:"description"`
 	Remediation string  `json:"remediation"`
-	Confidence  float64 `json:"confidence"`  // 0.0-1.0
+	Confidence  float64 `json:"confidence"` // 0.0-1.0
 	FilePath    string  `json:"file_path,omitempty"`
 }

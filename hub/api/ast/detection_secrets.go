@@ -111,8 +111,8 @@ func hasSecretInAssignment(code string) bool {
 	for _, keyword := range secretKeywords {
 		if strings.Contains(codeLower, keyword) {
 			// Check if it's assigned to a string literal
-			if strings.Contains(code, "=") && 
-			   (strings.Contains(code, "\"") || strings.Contains(code, "'")) {
+			if strings.Contains(code, "=") &&
+				(strings.Contains(code, "\"") || strings.Contains(code, "'")) {
 				// Check if value looks like a secret (long enough)
 				if len(code) > 20 {
 					return true

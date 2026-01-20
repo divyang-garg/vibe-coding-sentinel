@@ -216,10 +216,10 @@ func TestTaskRepository_FindByID(t *testing.T) {
 		*args[2].(*string) = expectedTask.Source
 		*args[3].(*string) = expectedTask.Title
 		*args[4].(*string) = expectedTask.Description
-		
+
 		// FilePath is a string (not nullable)
 		*args[5].(*string) = expectedTask.FilePath
-		
+
 		// Nullable int field (LineNumber) - args[6] is **int
 		if expectedTask.LineNumber != nil {
 			lineNumPtr := args[6].(**int)
@@ -227,10 +227,10 @@ func TestTaskRepository_FindByID(t *testing.T) {
 				*lineNumPtr = expectedTask.LineNumber
 			}
 		}
-		
+
 		*args[7].(*models.TaskStatus) = expectedTask.Status
 		*args[8].(*models.TaskPriority) = expectedTask.Priority
-		
+
 		// Nullable string field (AssignedTo) - args[9] is **string
 		if expectedTask.AssignedTo != nil {
 			assignedToPtr := args[9].(**string)
@@ -238,7 +238,7 @@ func TestTaskRepository_FindByID(t *testing.T) {
 				*assignedToPtr = expectedTask.AssignedTo
 			}
 		}
-		
+
 		// Nullable int field (EstimatedEffort) - args[10] is **int
 		if expectedTask.EstimatedEffort != nil {
 			estEffortPtr := args[10].(**int)
@@ -246,7 +246,7 @@ func TestTaskRepository_FindByID(t *testing.T) {
 				*estEffortPtr = expectedTask.EstimatedEffort
 			}
 		}
-		
+
 		// Nullable int field (ActualEffort) - args[11] is **int
 		if expectedTask.ActualEffort != nil {
 			actEffortPtr := args[11].(**int)
@@ -254,14 +254,14 @@ func TestTaskRepository_FindByID(t *testing.T) {
 				*actEffortPtr = expectedTask.ActualEffort
 			}
 		}
-		
+
 		*args[12].(*float64) = expectedTask.VerificationConfidence
 		*args[13].(*time.Time) = expectedTask.CreatedAt
 		*args[14].(*time.Time) = expectedTask.UpdatedAt
-		
+
 		// Nullable time fields (completedAt, verifiedAt, archivedAt) - args[15], [16], [17] are **time.Time
 		// These can remain nil
-		
+
 		*args[18].(*int) = expectedTask.Version
 	}).Return(nil)
 

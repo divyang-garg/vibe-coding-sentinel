@@ -42,7 +42,7 @@ func NewRouter(deps *handlers.Dependencies, m *metrics.Metrics) *chi.Mux {
 
 // setupHealthRoutes configures health check endpoints
 func setupHealthRoutes(r chi.Router, deps *handlers.Dependencies) {
-	healthHandler := handlers.NewHealthHandler(nil)
+	healthHandler := handlers.NewHealthHandler(deps.DB)
 	r.Get("/health", healthHandler.Health)
 	r.Get("/health/db", healthHandler.HealthDB)
 	r.Get("/health/ready", healthHandler.HealthReady)
@@ -245,10 +245,10 @@ func setupKnowledgeRoutes(r chi.Router, deps *handlers.Dependencies) {
 // setupHookRoutes configures hook and telemetry routes
 func setupHookRoutes(r chi.Router, deps *handlers.Dependencies) {
 	hookHandler := handlers.NewHookHandler(deps.DB)
-	
+
 	// Telemetry endpoint
 	r.Post("/api/v1/telemetry/hook", hookHandler.ReportHookTelemetry)
-	
+
 	// Hook endpoints
 	r.Route("/api/v1/hooks", func(r chi.Router) {
 		r.Get("/metrics", hookHandler.GetHookMetrics)

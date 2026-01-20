@@ -4,15 +4,15 @@
   },
   "frameworks": {},
   "namingPatterns": {
-    "PascalCase": 80,
-    "camelCase": 306,
-    "snake_case": 46
+    "PascalCase": 84,
+    "camelCase": 322,
+    "snake_case": 50
   },
   "fileExtensions": {
     ".gitignore": 1,
     ".go": 25,
     ".json": 1,
-    ".md": 282,
+    ".md": 298,
     ".yml": 1
   },
   "projectStructure": {},

@@ -22,7 +22,7 @@ func (f *ExtractorFactory) CreateDefault() *KnowledgeExtractor {
 	fallback := NewFallbackExtractor()
 	cache := NewMemoryCache(1000, 24*time.Hour)
 	logger := NewStdLogger()
-	
+
 	return NewKnowledgeExtractor(
 		llmClient,
 		promptBuilder,

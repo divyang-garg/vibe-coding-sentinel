@@ -3,8 +3,6 @@
 
 package services
 
-import ()
-
 // FileContent represents a file to be analyzed
 type FileContent struct {
 	Path     string `json:"path"`

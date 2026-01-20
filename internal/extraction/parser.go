@@ -27,11 +27,11 @@ func (p *responseParser) Parse(response string) (*ExtractResult, error) {
 	cleaned := p.cleanResponse(response)
 
 	var wrapper struct {
-		BusinessRules []BusinessRule  `json:"business_rules,omitempty"`
-		Entities      []Entity        `json:"entities,omitempty"`
-		APIContracts  []APIContract   `json:"api_contracts,omitempty"`
-		UserJourneys  []UserJourney   `json:"user_journeys,omitempty"`
-		Glossary      []GlossaryTerm  `json:"glossary,omitempty"`
+		BusinessRules []BusinessRule `json:"business_rules,omitempty"`
+		Entities      []Entity       `json:"entities,omitempty"`
+		APIContracts  []APIContract  `json:"api_contracts,omitempty"`
+		UserJourneys  []UserJourney  `json:"user_journeys,omitempty"`
+		Glossary      []GlossaryTerm `json:"glossary,omitempty"`
 	}
 
 	if err := json.Unmarshal([]byte(cleaned), &wrapper); err != nil {

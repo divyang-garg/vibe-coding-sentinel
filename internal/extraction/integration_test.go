@@ -57,9 +57,9 @@ func TestLiveLLMExtraction(t *testing.T) {
 	t.Run("json_structure_validation", func(t *testing.T) {
 		// Test that extracted rules match KNOWLEDGE_SCHEMA.md structure
 		parser := NewResponseParser()
-		
+
 		validJSON := `{"business_rules":[{"id":"BR-001","title":"Test Rule","description":"Test","specification":{"constraints":[{"id":"C1","type":"state_based","expression":"test"}]}}]}`
-		
+
 		result, err := parser.Parse(validJSON)
 		require.NoError(t, err)
 		assert.Len(t, result.BusinessRules, 1)
@@ -104,7 +104,7 @@ func TestEndToEndExtraction(t *testing.T) {
 
 	t.Run("confidence_score_range", func(t *testing.T) {
 		scorer := NewConfidenceScorer()
-		
+
 		rule := BusinessRule{
 			Title:       "Test Rule",
 			Description: "This is a test rule with sufficient detail",
@@ -171,7 +171,7 @@ func TestBatchProcessing(t *testing.T) {
 	t.Run("chunks_large_document", func(t *testing.T) {
 		chunker := NewTextChunker(4000)
 		largeText := strings.Repeat("The system must validate input. ", 1000) // ~40K chars
-		
+
 		chunks := chunker.Chunk(largeText, 4000)
 		assert.Greater(t, len(chunks), 1, "Large document should be split into multiple chunks")
 	})
@@ -213,7 +213,7 @@ func TestSchemaTypes(t *testing.T) {
 	t.Run("entity_extraction_prompt", func(t *testing.T) {
 		builder := NewPromptBuilder()
 		prompt := builder.BuildEntitiesPrompt("The User entity has email and password fields.")
-		
+
 		assert.Contains(t, prompt, "entities")
 		assert.Contains(t, prompt, "fields")
 	})
@@ -221,7 +221,7 @@ func TestSchemaTypes(t *testing.T) {
 	t.Run("api_contract_extraction_prompt", func(t *testing.T) {
 		builder := NewPromptBuilder()
 		prompt := builder.BuildAPIContractsPrompt("GET /api/users returns a list of users.")
-		
+
 		assert.Contains(t, prompt, "api_contracts")
 		assert.Contains(t, prompt, "endpoint")
 	})
@@ -229,7 +229,7 @@ func TestSchemaTypes(t *testing.T) {
 	t.Run("user_journey_extraction_prompt", func(t *testing.T) {
 		builder := NewPromptBuilder()
 		prompt := builder.BuildUserJourneysPrompt("User logs in, then views dashboard.")
-		
+
 		assert.Contains(t, prompt, "user_journeys")
 		assert.Contains(t, prompt, "steps")
 	})
@@ -237,7 +237,7 @@ func TestSchemaTypes(t *testing.T) {
 	t.Run("glossary_extraction_prompt", func(t *testing.T) {
 		builder := NewPromptBuilder()
 		prompt := builder.BuildGlossaryPrompt("An order is a customer purchase request.")
-		
+
 		assert.Contains(t, prompt, "glossary")
 		assert.Contains(t, prompt, "definition")
 	})

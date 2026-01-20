@@ -39,15 +39,25 @@ type DocumentServiceImpl struct {
 	knowledgeExtractor KnowledgeExtractor
 	documentValidator  DocumentValidator
 	searchEngine       SearchEngine
+	logger             Logger
+}
+
+// Logger defines the interface for structured logging
+type Logger interface {
+	Warn(ctx context.Context, msg string, fields map[string]interface{})
+	Error(ctx context.Context, msg string, err error, fields ...map[string]interface{})
+	Info(ctx context.Context, msg string, fields ...map[string]interface{})
+	Debug(ctx context.Context, msg string, fields ...map[string]interface{})
 }
 
 // NewDocumentService creates a new document service instance
-func NewDocumentService(docRepo DocumentRepository, knowledgeExtractor KnowledgeExtractor, validator DocumentValidator, searchEngine SearchEngine) DocumentService {
+func NewDocumentService(docRepo DocumentRepository, knowledgeExtractor KnowledgeExtractor, validator DocumentValidator, searchEngine SearchEngine, logger Logger) DocumentService {
 	return &DocumentServiceImpl{
 		docRepo:            docRepo,
 		knowledgeExtractor: knowledgeExtractor,
 		documentValidator:  validator,
 		searchEngine:       searchEngine,
+		logger:             logger,
 	}
 }
 

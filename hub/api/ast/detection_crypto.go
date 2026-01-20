@@ -31,7 +31,7 @@ func detectInsecureCryptoGo(root *sitter.Node, code string) []SecurityVulnerabil
 
 	traverseAST(root, func(node *sitter.Node) bool {
 		codeSnippet := safeSlice(code, node.StartByte(), node.EndByte())
-		
+
 		// Check for weak hash algorithms
 		if hasWeakHash(codeSnippet) {
 			line, col := getLineColumn(code, int(node.StartByte()))
@@ -78,7 +78,7 @@ func detectInsecureCryptoJS(root *sitter.Node, code string) []SecurityVulnerabil
 
 	traverseAST(root, func(node *sitter.Node) bool {
 		codeSnippet := safeSlice(code, node.StartByte(), node.EndByte())
-		
+
 		// Check for weak hash algorithms
 		if hasWeakHash(codeSnippet) {
 			line, col := getLineColumn(code, int(node.StartByte()))
@@ -125,7 +125,7 @@ func detectInsecureCryptoPython(root *sitter.Node, code string) []SecurityVulner
 
 	traverseAST(root, func(node *sitter.Node) bool {
 		codeSnippet := safeSlice(code, node.StartByte(), node.EndByte())
-		
+
 		// Check for weak hash algorithms
 		if hasWeakHash(codeSnippet) {
 			line, col := getLineColumn(code, int(node.StartByte()))
@@ -189,13 +189,13 @@ func hasHardcodedSecret(code string) bool {
 		"private_key", "privatekey", "access_key", "accesskey",
 	}
 	codeLower := strings.ToLower(code)
-	
+
 	// Look for assignment patterns with potential secrets
 	for _, pattern := range secretPatterns {
 		if strings.Contains(codeLower, pattern) {
 			// Check if it's assigned to a string literal (hardcoded)
-			if strings.Contains(code, "=") && 
-			   (strings.Contains(code, "\"") || strings.Contains(code, "'")) {
+			if strings.Contains(code, "=") &&
+				(strings.Contains(code, "\"") || strings.Contains(code, "'")) {
 				// Simple heuristic: if pattern appears near assignment
 				return true
 			}

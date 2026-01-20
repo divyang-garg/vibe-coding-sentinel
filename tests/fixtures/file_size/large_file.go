@@ -212,15 +212,3 @@ func main() {
 	fmt.Println("Large file for testing")
 	os.Exit(0)
 }
-
-
-
-
-
-
-
-
-
-
-
-

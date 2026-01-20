@@ -31,6 +31,7 @@ const (
 	TraceIDKey   contextKey = "trace_id"
 	SpanIDKey    contextKey = "span_id"
 	UserIDKey    contextKey = "user_id"
+	ProjectIDKey contextKey = "project_id"
 )
 
 // requestIDKey is the context key for request ID (deprecated, use RequestIDKey)

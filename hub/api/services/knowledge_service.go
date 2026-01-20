@@ -9,8 +9,8 @@ import (
 	"fmt"
 	"time"
 
-	"sentinel-hub-api/models"
 	"sentinel-hub-api/pkg/database"
+
 	"github.com/google/uuid"
 )
 
@@ -399,14 +399,14 @@ func (s *KnowledgeServiceImpl) GetBusinessContext(ctx context.Context, req Busin
 	}
 
 	// Extract entities
-	entities, err := extractEntities(ctx, req.ProjectID)
+	entities, err := extractEntitiesSimple(ctx, req.ProjectID)
 	if err != nil {
 		LogWarn(ctx, "Failed to extract entities: %v", err)
 		entities = []KnowledgeItem{}
 	}
 
 	// Extract user journeys
-	journeys, err := extractUserJourneys(ctx, req.ProjectID)
+	journeys, err := extractUserJourneysSimple(ctx, req.ProjectID)
 	if err != nil {
 		LogWarn(ctx, "Failed to extract user journeys: %v", err)
 		journeys = []KnowledgeItem{}
@@ -525,19 +525,19 @@ func (s *KnowledgeServiceImpl) SyncKnowledge(ctx context.Context, req SyncKnowle
 // Helper functions
 
 func containsKeyword(text, keyword string) bool {
-	return len(text) > 0 && len(keyword) > 0 && 
-		(len(text) >= len(keyword) && 
-		 (text == keyword || 
-		  contains(text, keyword)))
+	return len(text) > 0 && len(keyword) > 0 &&
+		(len(text) >= len(keyword) &&
+			(text == keyword ||
+				contains(text, keyword)))
 }
 
 func contains(s, substr string) bool {
-	return len(s) >= len(substr) && 
-		(s == substr || 
-		 (len(s) > len(substr) && 
-		  (s[:len(substr)] == substr || 
-		   s[len(s)-len(substr):] == substr || 
-		   indexOf(s, substr) >= 0)))
+	return len(s) >= len(substr) &&
+		(s == substr ||
+			(len(s) > len(substr) &&
+				(s[:len(substr)] == substr ||
+					s[len(s)-len(substr):] == substr ||
+					indexOf(s, substr) >= 0)))
 }
 
 func indexOf(s, substr string) int {
@@ -550,13 +550,13 @@ func indexOf(s, substr string) int {
 }
 
 // extractEntities extracts entity knowledge items
-func extractEntities(ctx context.Context, projectID string) ([]KnowledgeItem, error) {
+func extractEntitiesSimple(ctx context.Context, projectID string) ([]KnowledgeItem, error) {
 	// Simplified - would query knowledge_items with type='entity' in production
 	return []KnowledgeItem{}, nil
 }
 
 // extractUserJourneys extracts user journey knowledge items
-func extractUserJourneys(ctx context.Context, projectID string) ([]KnowledgeItem, error) {
+func extractUserJourneysSimple(ctx context.Context, projectID string) ([]KnowledgeItem, error) {
 	// Simplified - would query knowledge_items with type='user_journey' in production
 	return []KnowledgeItem{}, nil
 }

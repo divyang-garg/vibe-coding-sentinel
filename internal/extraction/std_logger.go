@@ -32,7 +32,7 @@ func NewStdLogger() Logger {
 	if os.Getenv("EXTRACTION_LOG_LEVEL") == "debug" {
 		level = LogLevelDebug
 	}
-	
+
 	return &StdLogger{
 		debugLog: log.New(os.Stdout, "[DEBUG] ", log.LstdFlags),
 		infoLog:  log.New(os.Stdout, "[INFO] ", log.LstdFlags),

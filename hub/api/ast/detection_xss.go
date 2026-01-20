@@ -63,13 +63,13 @@ func detectXSSGo(root *sitter.Node, code string) []SecurityVulnerability {
 func detectXSSJS(root *sitter.Node, code string) []SecurityVulnerability {
 	vulnerabilities := []SecurityVulnerability{}
 
-		// Pattern-based detection for simple cases
+	// Pattern-based detection for simple cases
 	lines := strings.Split(code, "\n")
 	for lineNum, lineText := range lines {
 		lineLower := strings.ToLower(lineText)
-		if (strings.Contains(lineLower, "innerhtml") || strings.Contains(lineLower, "outerhtml") || 
-		    strings.Contains(lineLower, "document.write")) &&
-		   (strings.Contains(lineText, "=") || strings.Contains(lineText, "(")) {
+		if (strings.Contains(lineLower, "innerhtml") || strings.Contains(lineLower, "outerhtml") ||
+			strings.Contains(lineLower, "document.write")) &&
+			(strings.Contains(lineText, "=") || strings.Contains(lineText, "(")) {
 			// Check if it's an assignment or function call with potential user input
 			if strings.Contains(lineText, ".") {
 				_, col := getLineColumn(code, strings.Index(code, lineText))
@@ -192,9 +192,9 @@ func hasUnescapedUserInput(node *sitter.Node, code string) bool {
 	for _, pattern := range userInputPatterns {
 		if strings.Contains(codeLower, pattern) {
 			// Check if it's escaped
-			if !strings.Contains(codeLower, "escape") && 
-			   !strings.Contains(codeLower, "sanitize") &&
-			   !strings.Contains(codeLower, "html/template") {
+			if !strings.Contains(codeLower, "escape") &&
+				!strings.Contains(codeLower, "sanitize") &&
+				!strings.Contains(codeLower, "html/template") {
 				return true
 			}
 		}

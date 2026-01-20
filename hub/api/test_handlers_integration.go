@@ -3,9 +3,7 @@
 
 package main
 
-import (
-	"database/sql"
-)
+import "net/http"
 
 // ExportTestHandlerCaller exports handler caller constructor for integration tests
 // This file is only compiled when building with -tags integration

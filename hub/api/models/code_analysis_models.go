@@ -2,8 +2,8 @@
 // Complies with CODING_STANDARDS.md: Data Models max 200 lines
 package models
 
-// ASTAnalysisRequest represents a request for AST analysis
-type ASTAnalysisRequest struct {
+// CodeAnalysisRequest represents a request for code analysis
+type CodeAnalysisRequest struct {
 	Code     string            `json:"code" validate:"required"`
 	Language string            `json:"language" validate:"required"`
 	Options  map[string]string `json:"options,omitempty"`

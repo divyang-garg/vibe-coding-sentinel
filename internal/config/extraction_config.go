@@ -20,14 +20,14 @@ type ExtractionConfig struct {
 // LoadExtractionConfig loads extraction configuration from environment
 func LoadExtractionConfig() (*ExtractionConfig, error) {
 	cfg := &ExtractionConfig{
-		LLMProvider:             getEnv("LLM_PROVIDER", "openai"),
-		LLMModel:                getEnv("LLM_MODEL", ""),
-		LLMAPIKey:               getEnv("LLM_API_KEY", ""),
-		CacheDir:                getEnv("SENTINEL_CACHE_DIR", ""),
-		CacheTTLHours:           getEnvAsInt("SENTINEL_CACHE_TTL_HOURS", 24),
-		BatchSize:               getEnvAsInt("SENTINEL_BATCH_SIZE", 4000),
-		MaxRetries:              getEnvAsInt("SENTINEL_MAX_RETRIES", 3),
-		CircuitBreakerThreshold: getEnvAsInt("SENTINEL_CB_THRESHOLD", 5),
+		LLMProvider:              getEnv("LLM_PROVIDER", "openai"),
+		LLMModel:                 getEnv("LLM_MODEL", ""),
+		LLMAPIKey:                getEnv("LLM_API_KEY", ""),
+		CacheDir:                 getEnv("SENTINEL_CACHE_DIR", ""),
+		CacheTTLHours:            getEnvAsInt("SENTINEL_CACHE_TTL_HOURS", 24),
+		BatchSize:                getEnvAsInt("SENTINEL_BATCH_SIZE", 4000),
+		MaxRetries:               getEnvAsInt("SENTINEL_MAX_RETRIES", 3),
+		CircuitBreakerThreshold:  getEnvAsInt("SENTINEL_CB_THRESHOLD", 5),
 		CircuitBreakerTimeoutSec: getEnvAsInt("SENTINEL_CB_TIMEOUT_SEC", 60),
 	}
 

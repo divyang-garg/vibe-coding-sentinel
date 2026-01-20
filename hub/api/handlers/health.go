@@ -6,7 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
-	
+
 	"sentinel-hub-api/pkg"
 )
 
@@ -34,7 +34,7 @@ func (h *HealthHandler) Health(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	
+
 	health := map[string]interface{}{
 		"status":    "healthy",
 		"timestamp": time.Now(),
@@ -102,7 +102,7 @@ func (h *HealthHandler) HealthReady(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
-	
+
 	// Check if all critical services are ready
 	if err := h.DB.Ping(); err != nil {
 		h.WriteErrorResponse(w, err, http.StatusServiceUnavailable)

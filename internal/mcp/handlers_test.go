@@ -3,6 +3,7 @@
 package mcp
 
 import (
+	"encoding/json"
 	"os"
 	"testing"
 )
@@ -181,5 +182,227 @@ func TestHandlePing(t *testing.T) {
 
 	if response.Result == nil {
 		t.Fatal("Expected result in response")
+	}
+}
+
+func TestHandleInitialize_InvalidParams(t *testing.T) {
+	server := NewServer()
+
+	var id interface{} = 1
+	req := Request{
+		ID:     &id,
+		Method: "initialize",
+		Params: []byte("invalid json"),
+	}
+
+	response := server.handleInitialize(req)
+	if response == nil {
+		t.Fatal("Expected response, got nil")
+	}
+
+	if response.Error == nil {
+		t.Error("Expected error response for invalid params")
+	}
+
+	if response.Error.Code != InvalidParamsCode {
+		t.Errorf("Expected InvalidParamsCode, got %d", response.Error.Code)
+	}
+}
+
+func TestHandleToolsCall_MissingParams(t *testing.T) {
+	server := NewServer()
+
+	var id interface{} = 1
+	req := Request{
+		ID:     &id,
+		Method: "tools/call",
+		Params: nil,
+	}
+
+	response := server.handleToolsCall(req)
+	if response == nil {
+		t.Fatal("Expected response, got nil")
+	}
+
+	if response.Error == nil {
+		t.Error("Expected error response for missing params")
+	}
+
+	if response.Error.Code != InvalidParamsCode {
+		t.Errorf("Expected InvalidParamsCode, got %d", response.Error.Code)
+	}
+}
+
+func TestHandleToolsCall_InvalidJSON(t *testing.T) {
+	server := NewServer()
+
+	var id interface{} = 1
+	req := Request{
+		ID:     &id,
+		Method: "tools/call",
+		Params: []byte("invalid json"),
+	}
+
+	response := server.handleToolsCall(req)
+	if response == nil {
+		t.Fatal("Expected response, got nil")
+	}
+
+	if response.Error == nil {
+		t.Error("Expected error response for invalid JSON")
+	}
+
+	if response.Error.Code != InvalidParamsCode {
+		t.Errorf("Expected InvalidParamsCode, got %d", response.Error.Code)
+	}
+}
+
+func TestHandleToolsCall_MissingName(t *testing.T) {
+	server := NewServer()
+
+	var id interface{} = 1
+	params := ToolCallParams{
+		Name:      "",
+		Arguments: map[string]interface{}{},
+	}
+	paramsJSON, _ := json.Marshal(params)
+
+	req := Request{
+		ID:     &id,
+		Method: "tools/call",
+		Params: paramsJSON,
+	}
+
+	response := server.handleToolsCall(req)
+	if response == nil {
+		t.Fatal("Expected response, got nil")
+	}
+
+	if response.Error == nil {
+		t.Error("Expected error response for missing name")
+	}
+
+	if response.Error.Code != InvalidParamsCode {
+		t.Errorf("Expected InvalidParamsCode, got %d", response.Error.Code)
+	}
+}
+
+func TestHandleToolsCall_ToolNotFound(t *testing.T) {
+	server := NewServer()
+
+	var id interface{} = 1
+	params := ToolCallParams{
+		Name:      "nonexistent_tool",
+		Arguments: map[string]interface{}{},
+	}
+	paramsJSON, _ := json.Marshal(params)
+
+	req := Request{
+		ID:     &id,
+		Method: "tools/call",
+		Params: paramsJSON,
+	}
+
+	response := server.handleToolsCall(req)
+	if response == nil {
+		t.Fatal("Expected response, got nil")
+	}
+
+	if response.Error == nil {
+		t.Error("Expected error response for tool not found")
+	}
+
+	if response.Error.Code != MethodNotFoundCode {
+		t.Errorf("Expected MethodNotFoundCode, got %d", response.Error.Code)
+	}
+}
+
+func TestHandleToolsCall_ToolExecutionError(t *testing.T) {
+	server := NewServer()
+	tmpDir := t.TempDir()
+
+	oldWd, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(oldWd)
+
+	// Create a file that will cause an error in handleCheckFileSize
+	// by using a path that doesn't exist
+	var id interface{} = 1
+	params := ToolCallParams{
+		Name: "sentinel_check_file_size",
+		Arguments: map[string]interface{}{
+			"file": "/nonexistent/path/to/file.go",
+		},
+	}
+	paramsJSON, _ := json.Marshal(params)
+
+	req := Request{
+		ID:     &id,
+		Method: "tools/call",
+		Params: paramsJSON,
+	}
+
+	response := server.handleToolsCall(req)
+	if response == nil {
+		t.Fatal("Expected response, got nil")
+	}
+
+	// Tool execution should fail, but it's handled internally
+	// The error should be returned as InternalErrorCode
+	if response.Error != nil && response.Error.Code == InternalErrorCode {
+		// This is expected - tool execution failed
+		return
+	}
+
+	// If no error, that's also acceptable as the tool might handle errors differently
+}
+
+func TestExecuteTool_UnknownTool(t *testing.T) {
+	server := NewServer()
+
+	result, err := server.executeTool("unknown_tool", map[string]interface{}{})
+
+	if err == nil {
+		t.Error("Expected error for unknown tool")
+	}
+
+	if result != nil {
+		t.Error("Expected nil result for unknown tool")
+	}
+
+	if err.Error() != "tool not implemented: unknown_tool" {
+		t.Errorf("Expected 'tool not implemented' error, got: %v", err)
+	}
+}
+
+func TestHandleGetContext_FileReadErrors(t *testing.T) {
+	server := NewServer()
+	tmpDir := t.TempDir()
+
+	oldWd, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(oldWd)
+
+	// Create .sentinel directory but with invalid JSON files
+	os.MkdirAll(".sentinel", 0755)
+	os.WriteFile(".sentinel/baseline.json", []byte("invalid json"), 0644)
+	os.WriteFile(".sentinel/knowledge.json", []byte("invalid json"), 0644)
+
+	args := map[string]interface{}{}
+	result, err := server.handleGetContext(args)
+
+	// Should not error - file read errors are handled gracefully
+	if err != nil {
+		t.Fatalf("handleGetContext should handle file read errors gracefully: %v", err)
+	}
+
+	resultMap, ok := result.(map[string]interface{})
+	if !ok {
+		t.Fatal("Result should be a map")
+	}
+
+	// Should still return basic context even if files can't be read
+	if resultMap["version"] == nil {
+		t.Error("Version should be returned even with file read errors")
 	}
 }

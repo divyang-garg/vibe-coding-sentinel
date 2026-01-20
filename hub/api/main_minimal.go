@@ -3,12 +3,14 @@
 package main
 
 import (
+	"database/sql"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
 
+	_ "github.com/lib/pq"
 	"sentinel-hub-api/config"
 	"sentinel-hub-api/handlers"
 	"sentinel-hub-api/pkg"
@@ -21,9 +23,27 @@ func main() {
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
+	
+	// Initialize database connection
+	var db *sql.DB
+	if dsn := os.Getenv("DATABASE_URL"); dsn != "" {
+		db, err = sql.Open("postgres", dsn)
+	} else {
+		db, err = sql.Open("postgres", cfg.GetDSN())
+	}
+	if err != nil {
+		log.Fatalf("Failed to open database connection: %v", err)
+	}
+	defer db.Close()
+	
+	// Test database connection
+	if err := db.Ping(); err != nil {
+		log.Fatalf("Failed to ping database: %v", err)
+	}
+	
 	m := metrics.NewMetrics("sentinel_hub_api")
 	go metrics.StartSystemMetricsCollection(m)
-	deps := handlers.NewDependencies(nil)
+	deps := handlers.NewDependencies(db)
 	r := router.NewRouter(deps, m)
 	server := &http.Server{
 		Addr:         cfg.GetServerAddr(),

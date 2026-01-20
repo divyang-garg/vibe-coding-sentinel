@@ -10,6 +10,7 @@ import (
 
 	"sentinel-hub-api/models"
 	"sentinel-hub-api/services"
+
 	"github.com/go-chi/chi/v5"
 )
 

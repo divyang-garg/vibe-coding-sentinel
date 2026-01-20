@@ -29,46 +29,46 @@ func NewMemoryCache(maxSize int, ttl time.Duration) Cache {
 	if ttl <= 0 {
 		ttl = 24 * time.Hour
 	}
-	
+
 	cache := &MemoryCache{
 		entries: make(map[string]cacheEntry),
 		maxSize: maxSize,
 		ttl:     ttl,
 	}
-	
+
 	// Start cleanup goroutine
 	go cache.cleanup()
-	
+
 	return cache
 }
 
 func (c *MemoryCache) Get(key string) (string, bool) {
 	c.mu.RLock()
 	defer c.mu.RUnlock()
-	
+
 	entry, ok := c.entries[key]
 	if !ok {
 		return "", false
 	}
-	
+
 	if time.Now().After(entry.expiresAt) {
 		// Entry expired, remove it
 		delete(c.entries, key)
 		return "", false
 	}
-	
+
 	return entry.value, true
 }
 
 func (c *MemoryCache) Set(key string, value string, tokensUsed int) {
 	c.mu.Lock()
 	defer c.mu.Unlock()
-	
+
 	// Evict oldest entries if at capacity
 	if len(c.entries) >= c.maxSize {
 		c.evictOldest()
 	}
-	
+
 	c.entries[key] = cacheEntry{
 		value:      value,
 		tokensUsed: tokensUsed,
@@ -79,14 +79,14 @@ func (c *MemoryCache) Set(key string, value string, tokensUsed int) {
 func (c *MemoryCache) evictOldest() {
 	var oldestKey string
 	var oldestTime time.Time
-	
+
 	for k, v := range c.entries {
 		if oldestKey == "" || v.expiresAt.Before(oldestTime) {
 			oldestKey = k
 			oldestTime = v.expiresAt
 		}
 	}
-	
+
 	if oldestKey != "" {
 		delete(c.entries, oldestKey)
 	}
@@ -95,7 +95,7 @@ func (c *MemoryCache) evictOldest() {
 func (c *MemoryCache) cleanup() {
 	ticker := time.NewTicker(1 * time.Hour)
 	defer ticker.Stop()
-	
+
 	for range ticker.C {
 		c.mu.Lock()
 		now := time.Now()
