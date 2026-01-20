@@ -6,12 +6,12 @@ import (
 	"context"
 	"errors"
 	"testing"
-	"time"
+
+	"sentinel-hub-api/models"
+	"sentinel-hub-api/services/mocks"
 
 	"github.com/stretchr/testify/assert"
 	"github.com/stretchr/testify/mock"
-	"sentinel-hub-api/models"
-	"sentinel-hub-api/services/mocks"
 )
 
 func TestTaskService_CreateTask(t *testing.T) {

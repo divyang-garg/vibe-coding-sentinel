@@ -7,10 +7,11 @@ import (
 	"errors"
 	"testing"
 
-	"github.com/stretchr/testify/assert"
-	"github.com/stretchr/testify/mock"
 	"sentinel-hub-api/models"
 	"sentinel-hub-api/services/mocks"
+
+	"github.com/stretchr/testify/assert"
+	"github.com/stretchr/testify/mock"
 )
 
 func TestTaskService_AnalyzeTaskImpact(t *testing.T) {

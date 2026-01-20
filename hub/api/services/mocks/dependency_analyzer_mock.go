@@ -5,9 +5,10 @@ package mocks
 import (
 	"context"
 
-	"github.com/stretchr/testify/mock"
 	"sentinel-hub-api/models"
 	"sentinel-hub-api/repository"
+
+	"github.com/stretchr/testify/mock"
 )
 
 // MockDependencyAnalyzer implements DependencyAnalyzer for testing

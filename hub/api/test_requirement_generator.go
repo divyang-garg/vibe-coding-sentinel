@@ -13,8 +13,9 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
 	"sentinel-hub-api/ast"
+
+	"github.com/google/uuid"
 )
 
 // TestRequirement represents a test requirement generated from a business rule

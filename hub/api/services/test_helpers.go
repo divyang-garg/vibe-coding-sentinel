@@ -5,10 +5,11 @@ package services
 import (
 	"time"
 
-	"github.com/stretchr/testify/assert"
 	"sentinel-hub-api/models"
 	"sentinel-hub-api/repository"
 	"sentinel-hub-api/services/mocks"
+
+	"github.com/stretchr/testify/assert"
 )
 
 // createTestTask creates a test task with default values

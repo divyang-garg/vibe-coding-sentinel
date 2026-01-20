@@ -5,8 +5,9 @@ package mocks
 import (
 	"context"
 
-	"github.com/stretchr/testify/mock"
 	"sentinel-hub-api/models"
+
+	"github.com/stretchr/testify/mock"
 )
 
 // MockTaskRepository implements TaskRepository for testing
