@@ -10,13 +10,14 @@ import (
 	"os/signal"
 	"syscall"
 
-	_ "github.com/lib/pq"
 	"sentinel-hub-api/config"
 	"sentinel-hub-api/handlers"
 	"sentinel-hub-api/pkg"
 	"sentinel-hub-api/pkg/metrics"
 	"sentinel-hub-api/router"
 	"sentinel-hub-api/services"
+
+	_ "github.com/lib/pq"
 )
 
 func main() {
@@ -45,11 +46,11 @@ func main() {
 	m := metrics.NewMetrics("sentinel_hub_api")
 	go metrics.StartSystemMetricsCollection(m)
 	deps := handlers.NewDependencies(db)
-	
+
 	// Set up bridge for trackUsage to delegate to services.TrackUsage
 	// This ensures LLM usage from main package files is persisted to database
 	SetServicesTrackUsage(services.GetTrackUsageFunction())
-	
+
 	r := router.NewRouter(deps, m)
 	server := &http.Server{
 		Addr:         cfg.GetServerAddr(),

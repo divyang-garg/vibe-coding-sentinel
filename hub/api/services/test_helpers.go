@@ -145,8 +145,8 @@ func createTestAddDependencyRequest(dependsOnTaskID string) models.AddDependency
 func createTestVerifyTaskRequest() models.VerifyTaskRequest {
 	return models.VerifyTaskRequest{
 		Status:     "verified",
-		Confidence:  0.95,
-		VerifiedBy:  "user@example.com",
+		Confidence: 0.95,
+		VerifiedBy: "user@example.com",
 		VerifiedAt: time.Now(),
 		Notes:      "Task completed successfully",
 	}

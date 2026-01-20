@@ -26,7 +26,7 @@ func buildDepthAwarePrompt(basePrompt string, depth int, taskType string) string
 // buildBasicPrompt builds a basic prompt for depth level 1
 func buildBasicPrompt(basePrompt string, taskType string) string {
 	instructions := "Provide a brief, high-level analysis focusing on the most critical issues only."
-	
+
 	return fmt.Sprintf(`%s
 
 Analysis Instructions:
@@ -39,7 +39,7 @@ Analysis Instructions:
 // buildDetailedPrompt builds a detailed prompt for depth level 2
 func buildDetailedPrompt(basePrompt string, taskType string) string {
 	instructions := "Provide a thorough analysis covering major issues, patterns, and recommendations."
-	
+
 	return fmt.Sprintf(`%s
 
 Analysis Instructions:
@@ -53,9 +53,9 @@ Analysis Instructions:
 // buildComprehensivePrompt builds a comprehensive prompt for depth level 3
 func buildComprehensivePrompt(basePrompt string, taskType string) string {
 	instructions := "Provide an exhaustive analysis covering all aspects including edge cases, optimizations, and best practices."
-	
+
 	additionalContext := getAdditionalContextForTaskType(taskType)
-	
+
 	return fmt.Sprintf(`%s
 
 Analysis Instructions:

@@ -229,12 +229,23 @@ cd sentinel
 # Install dependencies
 go mod download
 
+# Install development tools (required for pre-commit hooks)
+go install golang.org/x/tools/cmd/goimports@latest
+
+# Add Go bin to PATH (if not already added)
+export PATH=$PATH:$(go env GOPATH)/bin
+
+# Setup git hooks (installs goimports automatically)
+./scripts/setup_hooks.sh
+
 # Run tests
 go test ./...
 
 # Build
 go build -o sentinel ./main.go
 ```
+
+**Note:** The `goimports` tool is required for import organization checks in pre-commit hooks. It will be automatically installed by the setup script, but you can also install it manually using the command above.
 
 ### Code Standards
 

@@ -8,9 +8,9 @@ import (
 
 // Cache metrics tracking
 var (
-	cacheHitCounter      = sync.Map{} // map[string]int64 (projectID -> hits)
-	cacheMissCounter     = sync.Map{} // map[string]int64 (projectID -> misses)
-	cacheMetricsMutex   sync.RWMutex
+	cacheHitCounter               = sync.Map{} // map[string]int64 (projectID -> hits)
+	cacheMissCounter              = sync.Map{} // map[string]int64 (projectID -> misses)
+	cacheMetricsMutex             sync.RWMutex
 	modelSelectionSavingsCounter  = sync.Map{} // map[string]float64 (projectID -> total savings)
 	cheaperModelSelectedCounter   = sync.Map{} // map[string]int64 (projectID -> count)
 	expensiveModelSelectedCounter = sync.Map{} // map[string]int64 (projectID -> count)

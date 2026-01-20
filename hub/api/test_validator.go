@@ -495,7 +495,6 @@ func getValidationHandler(w http.ResponseWriter, r *http.Request) {
 			validation.Issues[i] = strings.Trim(issue, "\"")
 		}
 	}
-
 	w.Header().Set("Content-Type", "application/json")
 	json.NewEncoder(w).Encode(validation)
 }

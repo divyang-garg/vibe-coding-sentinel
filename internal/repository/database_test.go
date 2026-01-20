@@ -76,11 +76,11 @@ func TestNewDatabaseConnection_ConnectionPoolSettings(t *testing.T) {
 	// Then: Connection pool settings should be configured correctly
 	stats := db.Stats()
 	assert.Equal(t, 25, stats.MaxOpenConnections, "MaxOpenConns should be 25")
-	
+
 	// Verify connection is usable (indirectly confirms pool settings are applied)
 	err = db.Ping()
 	assert.NoError(t, err, "Connection should be usable after configuration")
-	
+
 	// Verify connection lifetime is set (indirectly by checking connection works)
 	// The ConnMaxLifetime is internal but we can verify it doesn't cause issues
 	time.Sleep(100 * time.Millisecond)

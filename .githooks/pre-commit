@@ -105,14 +105,33 @@ done <<< "$MAIN_FILES"
 
 # 6. Import Organization Check
 echo "Checking import organization..."
+if ! command -v goimports >/dev/null 2>&1; then
+    # Try to find goimports in GOPATH/bin
+    GOPATH=$(go env GOPATH 2>/dev/null || echo "$HOME/go")
+    if [ -f "$GOPATH/bin/goimports" ]; then
+        export PATH="$PATH:$GOPATH/bin"
+    else
+        # Attempt auto-install
+        log_info "goimports not found - attempting to install..."
+        if go install golang.org/x/tools/cmd/goimports@latest 2>/dev/null; then
+            GOPATH=$(go env GOPATH 2>/dev/null || echo "$HOME/go")
+            export PATH="$PATH:$GOPATH/bin"
+            log_success "goimports installed automatically"
+        else
+            check_result "Import Organization" "FAIL" "goimports not installed - run: go install golang.org/x/tools/cmd/goimports@latest"
+        fi
+    fi
+fi
+
 if command -v goimports >/dev/null 2>&1; then
-    if goimports -l . | wc -l | grep -q "^0$"; then
+    UNFORMATTED_IMPORTS=$(goimports -l . 2>/dev/null | wc -l | tr -d ' ')
+    if [ "$UNFORMATTED_IMPORTS" -eq "0" ]; then
         check_result "Import Organization" "PASS" "Imports properly organized"
     else
-        check_result "Import Organization" "WARN" "Some imports may need organization"
+        check_result "Import Organization" "WARN" "$UNFORMATTED_IMPORTS file(s) need import organization - run: goimports -w ."
     fi
 else
-    check_result "Import Organization" "WARN" "goimports not installed - skipping check"
+    check_result "Import Organization" "FAIL" "goimports not available - install: go install golang.org/x/tools/cmd/goimports@latest"
 fi
 
 # 7. No TODO/FIXME Check (CODING_STANDARDS.md Section 9.3)

@@ -12,8 +12,8 @@ import (
 // MockTaskRepository implements TaskRepository for testing
 type MockTaskRepository struct {
 	mock.Mock
-	tasks        map[string]*models.Task
-	dependencies map[string]*models.TaskDependency
+	tasks         map[string]*models.Task
+	dependencies  map[string]*models.TaskDependency
 	verifications map[string]*models.TaskVerification
 }
 

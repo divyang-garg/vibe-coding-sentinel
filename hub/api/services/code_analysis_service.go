@@ -422,23 +422,23 @@ func (s *CodeAnalysisServiceImpl) AnalyzeIntent(ctx context.Context, req IntentA
 	}
 
 	// Use intent analyzer
-		var contextData *ContextData
-		if req.ContextData != nil {
-			gitStatusRaw := extractGitStatus(req.CodebasePath)
-			gitStatus := make(map[string]string)
-			for k, v := range gitStatusRaw {
-				if str, ok := v.(string); ok {
-					gitStatus[k] = str
-				} else {
-					gitStatus[k] = fmt.Sprintf("%v", v)
-				}
-			}
-			contextData = &ContextData{
-				RecentFiles:      extractRecentFiles(req.CodebasePath),
-				GitStatus:        gitStatus,
-				ProjectStructure: extractProjectStructure(req.CodebasePath),
+	var contextData *ContextData
+	if req.ContextData != nil {
+		gitStatusRaw := extractGitStatus(req.CodebasePath)
+		gitStatus := make(map[string]string)
+		for k, v := range gitStatusRaw {
+			if str, ok := v.(string); ok {
+				gitStatus[k] = str
+			} else {
+				gitStatus[k] = fmt.Sprintf("%v", v)
 			}
 		}
+		contextData = &ContextData{
+			RecentFiles:      extractRecentFiles(req.CodebasePath),
+			GitStatus:        gitStatus,
+			ProjectStructure: extractProjectStructure(req.CodebasePath),
+		}
+	}
 
 	result, err := AnalyzeIntent(ctx, req.Prompt, contextData, req.ProjectID)
 	if err != nil {

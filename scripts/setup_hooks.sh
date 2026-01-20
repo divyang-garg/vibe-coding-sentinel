@@ -85,6 +85,52 @@ install_precommit_hook() {
     log_success "Pre-commit hook installed and executable"
 }
 
+# Function to install development tools
+install_development_tools() {
+    log_info "Installing development tools..."
+
+    # Check if Go is installed
+    if ! command -v go >/dev/null 2>&1; then
+        log_warning "Go compiler not found - skipping development tools installation"
+        log_info "Install Go from https://go.dev/doc/install"
+        return 0
+    fi
+
+    # Install goimports
+    if command -v goimports >/dev/null 2>&1; then
+        log_success "goimports already installed: $(which goimports)"
+    else
+        log_info "Installing goimports..."
+        if go install golang.org/x/tools/cmd/goimports@latest 2>/dev/null; then
+            # Check if goimports is now in PATH
+            if command -v goimports >/dev/null 2>&1; then
+                log_success "goimports installed successfully: $(which goimports)"
+            else
+                # goimports installed but not in PATH
+                GOPATH=$(go env GOPATH)
+                if [ -f "$GOPATH/bin/goimports" ]; then
+                    log_success "goimports installed to $GOPATH/bin/goimports"
+                    log_info "Add to PATH: export PATH=\$PATH:$GOPATH/bin"
+                else
+                    log_warning "goimports installation may have failed - verify manually"
+                fi
+            fi
+        else
+            log_warning "Failed to install goimports automatically"
+            log_info "Install manually: go install golang.org/x/tools/cmd/goimports@latest"
+            log_info "Then add to PATH: export PATH=\$PATH:\$(go env GOPATH)/bin"
+        fi
+    fi
+
+    # Install golangci-lint (optional but recommended)
+    if command -v golangci-lint >/dev/null 2>&1; then
+        log_success "golangci-lint already installed"
+    else
+        log_info "golangci-lint not installed (optional - install for enhanced linting)"
+        log_info "Install: go install github.com/golangci/golangci-lint/cmd/golangci-lint@latest"
+    fi
+}
+
 # Function to create additional git hooks
 create_additional_hooks() {
     log_info "Creating additional git hooks..."
@@ -196,6 +242,25 @@ jobs:
 
     - name: Download dependencies
       run: go mod download
+
+    - name: Install development tools
+      run: |
+        go install golang.org/x/tools/cmd/goimports@latest
+        echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+
+    - name: Check import organization
+      run: |
+        echo "Checking import organization with goimports..."
+        UNFORMATTED=$(goimports -l . | tee /tmp/goimports.diff | wc -l)
+        if [ "$UNFORMATTED" -gt 0 ]; then
+          echo "❌ Import organization issues found in $UNFORMATTED file(s):"
+          cat /tmp/goimports.diff
+          echo ""
+          echo "Fix by running: goimports -w ."
+          exit 1
+        else
+          echo "✅ All imports properly organized"
+        fi
 
     - name: Run linting
       run: |
@@ -469,6 +534,9 @@ main() {
     # Pre-flight checks
     check_git_repo
 
+    # Install development tools
+    install_development_tools
+
     # Configure git hooks
     if ! configure_git_hooks; then
         log_error "Failed to configure git hooks"
@@ -509,6 +577,7 @@ main() {
     # Final summary
     log_header "SETUP COMPLETED SUCCESSFULLY"
     echo ""
+    echo -e "${GREEN}✅ Development tools installed${NC}"
     echo -e "${GREEN}✅ Git hooks configured and installed${NC}"
     echo -e "${GREEN}✅ Pre-commit quality gates active${NC}"
 

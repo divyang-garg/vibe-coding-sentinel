@@ -127,6 +127,27 @@ jobs:
         with:
           go-version: '1.21'
       
+      - name: Install development tools
+        if: runner.os != 'Windows'
+        run: |
+          go install golang.org/x/tools/cmd/goimports@latest
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+      
+      - name: Check import organization
+        if: runner.os != 'Windows'
+        run: |
+          echo "Checking import organization with goimports..."
+          UNFORMATTED=$(goimports -l . | tee /tmp/goimports.diff | wc -l)
+          if [ "$UNFORMATTED" -gt 0 ]; then
+            echo "❌ Import organization issues found in $UNFORMATTED file(s):"
+            cat /tmp/goimports.diff
+            echo ""
+            echo "Fix by running: goimports -w ."
+            exit 1
+          else
+            echo "✅ All imports properly organized"
+          fi
+      
       - name: Build on Unix
         if: runner.os != 'Windows'
         run: ./synapsevibsentinel.sh
@@ -168,7 +189,26 @@ jobs:
         uses: actions/setup-go@v5
         with:
           go-version: '1.21'
-
+      
+      - name: Install development tools
+        run: |
+          go install golang.org/x/tools/cmd/goimports@latest
+          echo "$(go env GOPATH)/bin" >> $GITHUB_PATH
+      
+      - name: Check import organization
+        run: |
+          echo "Checking import organization with goimports..."
+          UNFORMATTED=$(goimports -l . | tee /tmp/goimports.diff | wc -l)
+          if [ "$UNFORMATTED" -gt 0 ]; then
+            echo "❌ Import organization issues found in $UNFORMATTED file(s):"
+            cat /tmp/goimports.diff
+            echo ""
+            echo "Fix by running: goimports -w ."
+            exit 1
+          else
+            echo "✅ All imports properly organized"
+          fi
+      
       - name: Build Hub API
         run: |
           cd hub/api
