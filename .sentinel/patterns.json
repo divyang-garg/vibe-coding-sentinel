@@ -1,42 +1,118 @@
 {
-  "language": "Shell",
-  "framework": "",
-  "naming": {
-    "functions": "snake_case",
-    "variables": "camelCase",
-    "files": "camelCase",
-    "classes": "PascalCase",
-    "constants": "SCREAMING_SNAKE_CASE",
-    "confidence": 0.95,
-    "samples": 57
+  "languages": {
+    "Go": 304,
+    "JavaScript/TypeScript": 33,
+    "PHP": 1,
+    "Python": 5
   },
-  "imports": {
-    "style": "absolute",
-    "prefix": "@/",
-    "grouping": [
-      "external",
-      "internal",
-      "relative"
+  "frameworks": {
+    "Go Modules": 2,
+    "Node.js": 1,
+    "Python": 1,
+    "React": 2
+  },
+  "namingPatterns": {
+    "PascalCase": 1003,
+    "camelCase": 17823,
+    "snake_case": 55
+  },
+  "fileExtensions": {
+    ".20251210_104523": 1,
+    ".DS_Store": 2,
+    ".backup": 230,
+    ".bat": 1,
+    ".bin": 2,
+    ".css": 1,
+    ".docx": 3,
+    ".env": 3,
+    ".gitignore": 3,
+    ".go": 304,
+    ".html": 2,
+    ".js": 28,
+    ".json": 28,
+    ".jsx": 1,
+    ".log": 1,
+    ".md": 296,
+    ".mod": 2,
+    ".out": 5,
+    ".pdf": 1,
+    ".php": 1,
+    ".ps1": 1,
+    ".py": 5,
+    ".sample": 14,
+    ".sh": 112,
+    ".sql": 3,
+    ".sum": 2,
+    ".test": 1,
+    ".ts": 3,
+    ".tsx": 1,
+    ".txt": 3,
+    ".yml": 9
+  },
+  "projectStructure": {
+    "components": [
+      "test-e2e/src/components",
+      "tests/fixtures/projects/javascript/src/components"
     ],
-    "extensions": false,
-    "confidence": 0.5
+    "hooks": [
+      ".git/hooks"
+    ],
+    "middleware": [
+      "hub/api/internal/api/middleware",
+      "hub/api/middleware",
+      "hub/api/pkg/middleware",
+      "internal/api/middleware"
+    ],
+    "models": [
+      "hub/api/internal/models",
+      "hub/api/models",
+      "internal/models"
+    ],
+    "services": [
+      "hub/api/internal/services",
+      "hub/api/services",
+      "internal/services",
+      "tests/fixtures/projects/javascript/src/services",
+      "tests/fixtures/projects/python/src/services"
+    ],
+    "tests": [
+      "hub/api/hub/api/tests",
+      "hub/api/hub/api/tests/integration",
+      "hub/api/tests",
+      "hub/api/tests/e2e",
+      "tests",
+      "tests/ci",
+      "tests/coverage",
+      "tests/coverage/reports",
+      "tests/e2e",
+      "tests/fixtures"
+    ],
+    "utils": [
+      "hub/api/utils",
+      "tests/fixtures/projects/javascript/src/utils",
+      "tests/fixtures/projects/python/src/utils"
+    ]
   },
-  "structure": {
-    "sourceRoot": "",
-    "testPattern": "tests/",
-    "componentPattern": "",
-    "servicePattern": "",
-    "utilPattern": "",
-    "folderMap": {}
+  "importPatterns": {
+    "style": "relative",
+    "aliasing": {},
+    "barrelFiles": null,
+    "defaultImports": 4,
+    "namedImports": 31,
+    "examples": [
+      "import React, { useState } from 'react';",
+      "import React from 'react';",
+      "import PropTypes from 'prop-types';",
+      "import { formatDate, deepClone } from '@/utils/helpers';",
+      "import { validateEmail } from '@/utils/validators';"
+    ]
   },
   "codeStyle": {
     "indentStyle": "spaces",
-    "indentSize": 2,
-    "quoteStyle": "single",
-    "semicolons": true,
+    "indentSize": 4,
+    "quoteStyle": "double",
+    "semicolons": "optional",
+    "lineEnding": "lf",
     "trailingComma": ""
-  },
-  "learnedAt": "2025-12-04T17:43:58+05:30",
-  "fileCount": 16,
-  "version": 1
+  }
 }

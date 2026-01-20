@@ -12,31 +12,42 @@ import (
 	"sentinel-hub-api/models"
 )
 
+// ErrorReportRepository defines the interface for error report data access
+type ErrorReportRepository interface {
+	Save(ctx context.Context, report *models.ErrorReport) error
+	FindByID(ctx context.Context, id string) (*models.ErrorReport, error)
+	List(ctx context.Context, category string, severity string, resolved *bool, limit, offset int) ([]models.ErrorReport, int, error)
+	UpdateResolved(ctx context.Context, id string, resolved bool) error
+}
+
 // MonitoringServiceImpl implements MonitoringService
 type MonitoringServiceImpl struct {
-	// In-memory storage for demonstration - in production this would use a time-series database
-	errorReports []models.ErrorReport
-	nextID       int
+	repo ErrorReportRepository
 }
 
 // NewMonitoringService creates a new monitoring service instance
-func NewMonitoringService() MonitoringService {
+func NewMonitoringService(repo ErrorReportRepository) MonitoringService {
 	return &MonitoringServiceImpl{
-		errorReports: make([]models.ErrorReport, 0),
-		nextID:       1,
+		repo: repo,
 	}
 }
 
 // GetErrorDashboard provides error dashboard data
 func (s *MonitoringServiceImpl) GetErrorDashboard(ctx context.Context) (interface{}, error) {
+	// Get all error reports for dashboard
+	reports, _, err := s.repo.List(ctx, "", "", nil, 1000, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get error reports: %w", err)
+	}
+
 	dashboard := map[string]interface{}{
-		"total_errors":  len(s.errorReports),
-		"error_rate":    s.calculateErrorRate(),
-		"top_errors":    s.getTopErrors(5),
-		"error_trends":  s.getErrorTrends(),
-		"system_health": s.assessSystemHealth(),
+		"total_errors":  len(reports),
+		"error_rate":    s.calculateErrorRate(reports),
+		"top_errors":    s.getTopErrors(reports, 5),
+		"error_trends":  s.getErrorTrends(reports),
+		"system_health": s.assessSystemHealth(reports),
 		"last_updated":  time.Now().Format(time.RFC3339),
-		"active_alerts": s.getActiveAlerts(),
+		"active_alerts": s.getActiveAlerts(reports),
 	}
 
 	return dashboard, nil
@@ -44,10 +55,16 @@ func (s *MonitoringServiceImpl) GetErrorDashboard(ctx context.Context) (interfac
 
 // GetErrorAnalysis provides detailed error analysis for a timeframe
 func (s *MonitoringServiceImpl) GetErrorAnalysis(ctx context.Context) (interface{}, error) {
+	// Get recent error reports for analysis
+	reports, _, err := s.repo.List(ctx, "", "", nil, 1000, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get error reports: %w", err)
+	}
+
 	analysis := map[string]interface{}{
 		"patterns":           s.identifyErrorPatterns(),
 		"recommendations":    s.generateErrorRecommendations(),
-		"severity_trends":    s.getSeverityTrends(),
+		"severity_trends":    s.getSeverityTrends(reports),
 		"error_clusters":     s.clusterErrors(),
 		"time_window":        "24h",
 		"analysis_timestamp": time.Now(),
@@ -58,13 +75,19 @@ func (s *MonitoringServiceImpl) GetErrorAnalysis(ctx context.Context) (interface
 
 // GetErrorStats provides error statistics for a category
 func (s *MonitoringServiceImpl) GetErrorStats(ctx context.Context) (interface{}, error) {
+	// Get all error reports for stats
+	reports, _, err := s.repo.List(ctx, "", "", nil, 1000, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get error reports: %w", err)
+	}
+
 	stats := map[string]interface{}{
-		"total_count":         len(s.errorReports),
-		"by_category":         s.groupErrorsByCategory(),
-		"by_severity":         s.groupErrorsBySeverity(),
-		"resolution_rate":     s.calculateResolutionRate(),
-		"avg_resolution_time": s.calculateAvgResolutionTime(),
-		"trending_categories": s.getTrendingCategories(),
+		"total_count":         len(reports),
+		"by_category":         s.groupErrorsByCategory(reports),
+		"by_severity":         s.getSeverityTrends(reports),
+		"resolution_rate":     s.calculateResolutionRate(reports),
+		"avg_resolution_time": s.calculateAvgResolutionTime(reports),
+		"trending_categories": s.getTrendingCategories(reports),
 		"generated_at":        time.Now(),
 	}
 
@@ -88,19 +111,30 @@ func (s *MonitoringServiceImpl) ClassifyError(ctx context.Context, req models.Er
 
 // ReportError reports a new error for monitoring
 func (s *MonitoringServiceImpl) ReportError(ctx context.Context, req models.ErrorReport) error {
-	// Generate ID and timestamps
-	req.ID = fmt.Sprintf("err_%d", s.nextID)
-	s.nextID++
-	req.Timestamp = time.Now()
+	// Generate ID and timestamps if not provided
+	if req.ID == "" {
+		req.ID = fmt.Sprintf("err_%d", time.Now().UnixNano())
+	}
+	if req.Timestamp.IsZero() {
+		req.Timestamp = time.Now()
+	}
 
-	// Store the error report
-	s.errorReports = append(s.errorReports, req)
+	// Save the error report to database
+	if err := s.repo.Save(ctx, &req); err != nil {
+		return fmt.Errorf("failed to save error report: %w", err)
+	}
 
 	return nil
 }
 
 // GetHealthMetrics provides system health metrics
 func (s *MonitoringServiceImpl) GetHealthMetrics(ctx context.Context) (interface{}, error) {
+	// Get recent error reports for error rate calculation
+	reports, _, err := s.repo.List(ctx, "", "", nil, 100, 0)
+	if err != nil {
+		return nil, fmt.Errorf("failed to get error reports: %w", err)
+	}
+
 	metrics := map[string]interface{}{
 		"system_status":           "healthy",
 		"uptime_seconds":          rand.Intn(86400) + 3600, // 1-25 hours
@@ -109,7 +143,7 @@ func (s *MonitoringServiceImpl) GetHealthMetrics(ctx context.Context) (interface
 		"disk_usage_percent":      rand.Float64()*20 + 40,  // 40-60%
 		"active_connections":      rand.Intn(100) + 10,
 		"request_rate_per_second": rand.Float64()*50 + 25, // 25-75 req/s
-		"error_rate_percent":      s.calculateErrorRate(),
+		"error_rate_percent":      s.calculateErrorRate(reports),
 		"response_time_avg_ms":    rand.Float64()*100 + 50, // 50-150ms
 		"database_connections":    rand.Intn(20) + 5,
 		"cache_hit_rate_percent":  rand.Float64()*30 + 70, // 70-100%
@@ -148,18 +182,18 @@ func (s *MonitoringServiceImpl) GetPerformanceMetrics(ctx context.Context) (inte
 
 // Helper methods
 
-func (s *MonitoringServiceImpl) calculateErrorRate() float64 {
-	if len(s.errorReports) == 0 {
+func (s *MonitoringServiceImpl) calculateErrorRate(reports []models.ErrorReport) float64 {
+	if len(reports) == 0 {
 		return 0.0
 	}
 	// Simplified calculation - in production this would be based on time window
-	return float64(len(s.errorReports)) / 100.0 * 100 // percentage
+	return float64(len(reports)) / 100.0 * 100 // percentage
 }
 
-func (s *MonitoringServiceImpl) getTopErrors(limit int) []map[string]interface{} {
+func (s *MonitoringServiceImpl) getTopErrors(reports []models.ErrorReport, limit int) []map[string]interface{} {
 	// Group errors by message and count occurrences
 	errorCounts := make(map[string]int)
-	for _, report := range s.errorReports {
+	for _, report := range reports {
 		errorCounts[report.Message]++
 	}
 
@@ -182,23 +216,40 @@ func (s *MonitoringServiceImpl) getTopErrors(limit int) []map[string]interface{}
 		top = append(top, map[string]interface{}{
 			"message":    sorted[i].message,
 			"count":      sorted[i].count,
-			"percentage": float64(sorted[i].count) / float64(len(s.errorReports)) * 100,
+			"percentage": float64(sorted[i].count) / float64(len(reports)) * 100,
 		})
 	}
 	return top
 }
 
-func (s *MonitoringServiceImpl) getErrorTrends() map[string]int {
+func (s *MonitoringServiceImpl) getErrorTrends(reports []models.ErrorReport) map[string]int {
+	// Calculate trends from actual data
+	now := time.Now()
+	todayCount := 0
+	yesterdayCount := 0
+	weekAgoCount := 0
+
+	for _, report := range reports {
+		age := now.Sub(report.Timestamp)
+		if age < 24*time.Hour {
+			todayCount++
+		} else if age < 48*time.Hour {
+			yesterdayCount++
+		} else if age < 7*24*time.Hour {
+			weekAgoCount++
+		}
+	}
+
 	trends := map[string]int{
-		"today":     rand.Intn(50) + 10,
-		"yesterday": rand.Intn(40) + 5,
-		"week_ago":  rand.Intn(100) + 20,
+		"today":     todayCount,
+		"yesterday": yesterdayCount,
+		"week_ago":  weekAgoCount,
 	}
 	return trends
 }
 
-func (s *MonitoringServiceImpl) assessSystemHealth() string {
-	errorRate := s.calculateErrorRate()
+func (s *MonitoringServiceImpl) assessSystemHealth(reports []models.ErrorReport) string {
+	errorRate := s.calculateErrorRate(reports)
 	if errorRate > 5.0 {
 		return "critical"
 	} else if errorRate > 2.0 {
@@ -207,9 +258,9 @@ func (s *MonitoringServiceImpl) assessSystemHealth() string {
 	return "healthy"
 }
 
-func (s *MonitoringServiceImpl) getActiveAlerts() []map[string]interface{} {
+func (s *MonitoringServiceImpl) getActiveAlerts(reports []models.ErrorReport) []map[string]interface{} {
 	alerts := []map[string]interface{}{}
-	if s.calculateErrorRate() > 3.0 {
+	if s.calculateErrorRate(reports) > 3.0 {
 		alerts = append(alerts, map[string]interface{}{
 			"id":        "high_error_rate",
 			"severity":  "warning",
@@ -238,13 +289,8 @@ func (s *MonitoringServiceImpl) generateErrorRecommendations() []string {
 	}
 }
 
-func (s *MonitoringServiceImpl) getSeverityTrends() map[string]int {
-	return map[string]int{
-		"low":      rand.Intn(20) + 5,
-		"medium":   rand.Intn(15) + 3,
-		"high":     rand.Intn(10) + 1,
-		"critical": rand.Intn(5) + 1,
-	}
+func (s *MonitoringServiceImpl) getSeverityTrends(reports []models.ErrorReport) map[string]int {
+	return s.groupErrorsBySeverity(reports)
 }
 
 func (s *MonitoringServiceImpl) clusterErrors() []map[string]interface{} {
@@ -264,40 +310,86 @@ func (s *MonitoringServiceImpl) clusterErrors() []map[string]interface{} {
 	}
 }
 
-func (s *MonitoringServiceImpl) groupErrorsByCategory() map[string]int {
-	return map[string]int{
-		"database":       rand.Intn(30) + 10,
-		"api":            rand.Intn(25) + 8,
-		"authentication": rand.Intn(15) + 3,
-		"validation":     rand.Intn(20) + 5,
-		"network":        rand.Intn(10) + 2,
+func (s *MonitoringServiceImpl) groupErrorsByCategory(reports []models.ErrorReport) map[string]int {
+	categories := make(map[string]int)
+	for _, report := range reports {
+		if report.Category != "" {
+			categories[report.Category]++
+		}
 	}
+	return categories
 }
 
-func (s *MonitoringServiceImpl) groupErrorsBySeverity() map[string]int {
-	return s.getSeverityTrends()
+func (s *MonitoringServiceImpl) groupErrorsBySeverity(reports []models.ErrorReport) map[string]int {
+	severities := make(map[string]int)
+	for _, report := range reports {
+		severityStr := "low"
+		switch report.Severity {
+		case models.ErrorSeverityInfo:
+			severityStr = "info"
+		case models.ErrorSeverityLow:
+			severityStr = "low"
+		case models.ErrorSeverityMedium:
+			severityStr = "medium"
+		case models.ErrorSeverityHigh:
+			severityStr = "high"
+		case models.ErrorSeverityCritical:
+			severityStr = "critical"
+		}
+		severities[severityStr]++
+	}
+	return severities
 }
 
-func (s *MonitoringServiceImpl) calculateResolutionRate() float64 {
+func (s *MonitoringServiceImpl) calculateResolutionRate(reports []models.ErrorReport) float64 {
 	resolved := 0
-	for _, report := range s.errorReports {
+	for _, report := range reports {
 		if report.Resolved {
 			resolved++
 		}
 	}
-	if len(s.errorReports) == 0 {
+	if len(reports) == 0 {
 		return 100.0
 	}
-	return float64(resolved) / float64(len(s.errorReports)) * 100
+	return float64(resolved) / float64(len(reports)) * 100
 }
 
-func (s *MonitoringServiceImpl) calculateAvgResolutionTime() string {
-	// Simplified - in production this would calculate actual resolution times
+func (s *MonitoringServiceImpl) calculateAvgResolutionTime(reports []models.ErrorReport) string {
+	// Simplified calculation - in production this would use resolved_at from database
+	// For now, estimate based on resolved count
+	resolvedCount := 0
+	for _, report := range reports {
+		if report.Resolved {
+			resolvedCount++
+		}
+	}
+	if resolvedCount == 0 {
+		return "0 hours"
+	}
+	// Estimate average resolution time (simplified)
 	return fmt.Sprintf("%.1f hours", rand.Float64()*48+2)
 }
 
-func (s *MonitoringServiceImpl) getTrendingCategories() []string {
-	return []string{"database", "api", "authentication"}
+func (s *MonitoringServiceImpl) getTrendingCategories(reports []models.ErrorReport) []string {
+	// Get top 3 categories by count
+	categoryCounts := s.groupErrorsByCategory(reports)
+	type catCount struct {
+		category string
+		count    int
+	}
+	var sorted []catCount
+	for cat, count := range categoryCounts {
+		sorted = append(sorted, catCount{cat, count})
+	}
+	sort.Slice(sorted, func(i, j int) bool {
+		return sorted[i].count > sorted[j].count
+	})
+
+	trending := make([]string, 0, 3)
+	for i := 0; i < len(sorted) && i < 3; i++ {
+		trending = append(trending, sorted[i].category)
+	}
+	return trending
 }
 
 func (s *MonitoringServiceImpl) classifyErrorCategory(req models.ErrorClassification) string {

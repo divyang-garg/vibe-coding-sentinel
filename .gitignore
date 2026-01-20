@@ -46,3 +46,8 @@ coverage.out# Environment files
 *.tmp
 *.log
 /tmp/
+
+# Sentinel Rules
+.cursor/rules/*.md
+!.cursor/rules/00-constitution.md
+sentinel

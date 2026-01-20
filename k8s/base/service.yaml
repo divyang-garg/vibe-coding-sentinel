@@ -1,0 +1,17 @@
+apiVersion: v1
+kind: Service
+metadata:
+  name: sentinel-hub-api
+  labels:
+    app: sentinel-hub-api
+    app.kubernetes.io/name: sentinel-hub-api
+    app.kubernetes.io/part-of: sentinel
+spec:
+  type: ClusterIP
+  ports:
+  - port: 80
+    targetPort: http
+    protocol: TCP
+    name: http
+  selector:
+    app: sentinel-hub-api

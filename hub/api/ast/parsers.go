@@ -5,6 +5,7 @@ package ast
 import (
 	"fmt"
 	"strings"
+	"sync"
 
 	sitter "github.com/smacker/go-tree-sitter"
 	"github.com/smacker/go-tree-sitter/golang"
@@ -14,6 +15,8 @@ import (
 )
 
 var parsers = make(map[string]*sitter.Parser)
+var parsersMutex sync.RWMutex
+var parsersOnce sync.Once
 
 // initParsers initializes the parser pool
 func initParsers() {
@@ -49,15 +52,19 @@ func getParser(language string) (*sitter.Parser, error) {
 	// Normalize language name
 	lang := normalizeLanguage(language)
 
-	// Initialize parsers if not already done
-	if len(parsers) == 0 {
-		initParsers()
-	}
+	// Initialize parsers once with sync.Once
+	parsersOnce.Do(initParsers)
 
+	// Read lock for cache check
+	parsersMutex.RLock()
 	if parser, ok := parsers[lang]; ok {
+		parsersMutex.RUnlock()
 		return parser, nil
 	}
+	parsersMutex.RUnlock()
 
+	// Parser not found - this shouldn't happen if initParsers was called
+	// but we'll return an error rather than panicking
 	return nil, fmt.Errorf("unsupported language: %s (supported: go, javascript, typescript, python)", language)
 }
 

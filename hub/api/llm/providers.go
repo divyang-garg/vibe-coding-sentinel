@@ -41,8 +41,8 @@ func getSupportedModels(provider string) []string {
 	}
 }
 
-// selectModel selects the appropriate LLM model based on task type and cost optimization
-func selectModel(ctx context.Context, taskType string, config *LLMConfig) string {
+// SelectModel selects the appropriate LLM model based on task type and cost optimization
+func SelectModel(ctx context.Context, taskType string, config *LLMConfig) string {
 	// Estimate tokens for cost optimization
 	estimatedTokens := 1000 // Default estimate, would be calculated from actual prompt
 
@@ -84,13 +84,25 @@ func selectModel(ctx context.Context, taskType string, config *LLMConfig) string
 		case "azure":
 			return "gpt-3.5-turbo"
 		}
+
+	case "knowledge_extraction":
+		switch config.Provider {
+		case "openai":
+			return "gpt-4" // Best for structured JSON output
+		case "anthropic":
+			return "claude-3-sonnet" // Good balance of cost/quality
+		case "ollama":
+			return config.Model // Use configured model
+		case "azure":
+			return "gpt-4"
+		}
 	}
 
 	return config.Model
 }
 
-// callLLM makes an API call to the LLM provider with rate limiting and quota management
-func callLLM(ctx context.Context, config *LLMConfig, prompt string, taskType string) (string, int, error) {
+// CallLLM makes an API call to the LLM provider with rate limiting and quota management
+func CallLLM(ctx context.Context, config *LLMConfig, prompt string, taskType string) (string, int, error) {
 	// Estimate token usage for quota checking
 	estimatedTokens := EstimateTokens(prompt)
 
@@ -107,7 +119,7 @@ func callLLM(ctx context.Context, config *LLMConfig, prompt string, taskType str
 
 	// Select optimal model based on cost optimization
 	selectedModel := config.Model
-	if optimizedModel := selectModel(ctx, taskType, config); optimizedModel != "" {
+	if optimizedModel := SelectModel(ctx, taskType, config); optimizedModel != "" {
 		selectedModel = optimizedModel
 	}
 
@@ -127,6 +139,8 @@ func callLLM(ctx context.Context, config *LLMConfig, prompt string, taskType str
 		response, tokensUsed, err = callAnthropic(ctx, &callConfig, prompt)
 	case "azure":
 		response, tokensUsed, err = callAzure(ctx, &callConfig, prompt)
+	case "ollama":
+		response, tokensUsed, err = callOllama(ctx, &callConfig, prompt)
 	default:
 		return "", 0, fmt.Errorf("unsupported provider: %s", callConfig.Provider)
 	}
@@ -206,6 +220,74 @@ func callOpenAI(ctx context.Context, config *LLMConfig, prompt string) (string, 
 	}
 
 	return apiResponse.Choices[0].Message.Content, apiResponse.Usage.TotalTokens, nil
+}
+
+// callOllama makes an API call to local Ollama instance
+func callOllama(ctx context.Context, config *LLMConfig, prompt string) (string, int, error) {
+	// Default to localhost:11434 if no custom endpoint
+	endpoint := "http://localhost:11434/api/generate"
+	if config.APIKey != "" && strings.HasPrefix(config.APIKey, "http") {
+		endpoint = config.APIKey + "/api/generate"
+	}
+
+	reqBody := map[string]interface{}{
+		"model":  config.Model,
+		"prompt": prompt,
+		"stream": false,
+	}
+
+	jsonBody, err := json.Marshal(reqBody)
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to marshal request: %w", err)
+	}
+
+	req, err := http.NewRequestWithContext(ctx, "POST", endpoint, bytes.NewBuffer(jsonBody))
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to create request: %w", err)
+	}
+
+	req.Header.Set("Content-Type", "application/json")
+
+	// Execute request
+	client := &http.Client{Timeout: 120 * time.Second} // Ollama can be slower
+	resp, err := client.Do(req)
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to execute request: %w", err)
+	}
+	defer resp.Body.Close()
+
+	if resp.StatusCode != 200 {
+		body, _ := io.ReadAll(resp.Body)
+		return "", 0, fmt.Errorf("Ollama API returned status %d: %s", resp.StatusCode, string(body))
+	}
+
+	body, err := io.ReadAll(resp.Body)
+	if err != nil {
+		return "", 0, fmt.Errorf("failed to read response: %w", err)
+	}
+
+	var apiResponse struct {
+		Response        string `json:"response"`
+		Done            bool   `json:"done"`
+		Context         []int  `json:"context"`
+		TotalDuration   int64  `json:"total_duration"`
+		LoadDuration    int64  `json:"load_duration"`
+		PromptEvalCount int    `json:"prompt_eval_count"`
+		EvalCount       int    `json:"eval_count"`
+	}
+
+	if err := json.Unmarshal(body, &apiResponse); err != nil {
+		return "", 0, fmt.Errorf("failed to parse response: %w", err)
+	}
+
+	// Estimate tokens: prompt tokens + generated tokens
+	tokensUsed := apiResponse.PromptEvalCount + apiResponse.EvalCount
+	if tokensUsed == 0 {
+		// Fallback estimation if counts not provided
+		tokensUsed = EstimateTokens(prompt) + EstimateTokens(apiResponse.Response)
+	}
+
+	return apiResponse.Response, tokensUsed, nil
 }
 
 // callAnthropic makes an API call to Anthropic Claude

@@ -81,6 +81,8 @@ type KnowledgeItem struct {
 	Status         string                 `json:"status"`
 	StructuredData map[string]interface{} `json:"structured_data,omitempty"`
 	DocumentID     string                 `json:"document_id"`
+	ApprovedBy     *string                `json:"approved_by,omitempty"`
+	ApprovedAt     *time.Time             `json:"approved_at,omitempty"`
 	CreatedAt      time.Time              `json:"created_at"`
 	UpdatedAt      time.Time              `json:"updated_at"`
 }

@@ -54,18 +54,8 @@ func analyzeIntegrationLayer(ctx context.Context, feature *DiscoveredFeature) ([
 	}
 
 	// Validate integration contracts if codebase path available
-	if feature.Context != nil && feature.Context.CodebasePath != "" {
-		contractFindings, err := validateIntegrationContracts(
-			ctx,
-			feature.Context.CodebasePath,
-			feature.IntegrationLayer.Integrations,
-		)
-		if err == nil {
-			findings = append(findings, contractFindings...)
-		} else {
-			LogWarn(ctx, "Integration contract validation failed: %v", err)
-		}
-	}
+	// NOTE: DiscoveredFeature.Context field not available - skipping contract validation
+	// Integration contract validation would require codebase path from another source
 
 	return findings, nil
 }

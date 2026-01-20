@@ -11,7 +11,7 @@ import (
 	"path/filepath"
 	"strings"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	_ "github.com/smacker/go-tree-sitter" // Reserved for tree-sitter integration
 )
 
 // LogicLayerFinding represents a finding from business logic analysis
@@ -240,79 +240,87 @@ func extractFunctionCodeAST(fullCode string, functionName string, startLine int,
 	}
 
 	// Use AST analyzer to find the function
-	parser, err := getParser(language)
-	if err != nil {
-		return "" // Fallback to simple extraction
-	}
-
-	tree, err := parser.ParseCtx(context.Background(), nil, []byte(fullCode))
-	if err != nil {
-		return "" // Fallback to simple extraction
-	}
-	defer tree.Close()
-
-	rootNode := tree.RootNode()
-
-	// Traverse AST to find the specific function
-	var targetNode *sitter.Node
-	traverseAST(rootNode, func(node *sitter.Node) bool {
-		var foundName string
-		var isFunction bool
-
-		switch language {
-		case "go":
-			if node.Type() == "function_declaration" || node.Type() == "method_declaration" {
-				for i := 0; i < int(node.ChildCount()); i++ {
-					child := node.Child(i)
-					if child != nil {
-						if child.Type() == "identifier" || child.Type() == "field_identifier" {
-							foundName = fullCode[child.StartByte():child.EndByte()]
-							isFunction = true
-							break
-						}
-					}
-				}
-			}
-		case "javascript", "typescript":
-			if node.Type() == "function_declaration" || node.Type() == "function" {
-				for i := 0; i < int(node.ChildCount()); i++ {
-					child := node.Child(i)
-					if child != nil {
-						if child.Type() == "identifier" || child.Type() == "property_identifier" {
-							foundName = fullCode[child.StartByte():child.EndByte()]
-							isFunction = true
-							break
-						}
-					}
-				}
-			}
-		case "python":
-			if node.Type() == "function_definition" {
-				for i := 0; i < int(node.ChildCount()); i++ {
-					child := node.Child(i)
-					if child != nil && child.Type() == "identifier" {
-						foundName = fullCode[child.StartByte():child.EndByte()]
-						isFunction = true
-						break
-					}
-				}
-			}
-		}
-
-		if isFunction && foundName == functionName {
-			targetNode = node
-			return false // Stop traversal
-		}
-		return true // Continue traversal
-	})
-
-	if targetNode != nil {
-		// Extract the function code from AST node
-		return fullCode[targetNode.StartByte():targetNode.EndByte()]
-	}
-
-	return "" // Function not found, fallback to simple extraction
+	// NOTE: AST parsing disabled - tree-sitter integration required
+	// Use simple pattern matching fallback
+	return extractFunctionCodeSimple(fullCode, functionName, language)
 }
+
+// extractFunctionCodeSimple extracts function code using simple pattern matching
+func extractFunctionCodeSimple(fullCode, funcName, language string) string {
+	lines := strings.Split(fullCode, "\n")
+	var funcStart, funcEnd int
+	var inFunction bool
+	var braceCount int
+
+	for i, line := range lines {
+		trimmed := strings.TrimSpace(line)
+
+		if !inFunction {
+			// Look for function start
+			switch language {
+			case "go":
+				if strings.HasPrefix(trimmed, "func ") && strings.Contains(trimmed, funcName) {
+					funcStart = i
+					inFunction = true
+					braceCount = strings.Count(trimmed, "{") - strings.Count(trimmed, "}")
+				}
+			case "javascript", "typescript":
+				if strings.Contains(trimmed, "function "+funcName) || strings.Contains(trimmed, funcName+" =") {
+					funcStart = i
+					inFunction = true
+					braceCount = strings.Count(trimmed, "{") - strings.Count(trimmed, "}")
+				}
+			case "python":
+				if strings.HasPrefix(trimmed, "def "+funcName) {
+					funcStart = i
+					inFunction = true
+					// Python uses indentation, not braces
+					funcEnd = findPythonFunctionEnd(lines, i)
+					return strings.Join(lines[funcStart:funcEnd+1], "\n")
+				}
+			}
+		} else {
+			// Track braces to find function end
+			braceCount += strings.Count(line, "{") - strings.Count(line, "}")
+			if braceCount <= 0 {
+				funcEnd = i
+				return strings.Join(lines[funcStart:funcEnd+1], "\n")
+			}
+		}
+	}
+
+	if inFunction && funcEnd == 0 {
+		// Return from funcStart to end of file
+		return strings.Join(lines[funcStart:], "\n")
+	}
+
+	return ""
+}
+
+// findPythonFunctionEnd finds the end of a Python function
+func findPythonFunctionEnd(lines []string, start int) int {
+	if start >= len(lines) {
+		return start
+	}
+
+	// Get indentation of def line
+	defLine := lines[start]
+	defIndent := len(defLine) - len(strings.TrimLeft(defLine, " \t"))
+
+	for i := start + 1; i < len(lines); i++ {
+		line := lines[i]
+		if strings.TrimSpace(line) == "" {
+			continue
+		}
+		currentIndent := len(line) - len(strings.TrimLeft(line, " \t"))
+		if currentIndent <= defIndent && strings.TrimSpace(line) != "" {
+			return i - 1
+		}
+	}
+	return len(lines) - 1
+}
+
+// Note: extractFunctionCodeASTOriginal was disabled - tree-sitter integration required
 
 // extractFunctionCode extracts the code for a specific function (fallback method)
 func extractFunctionCode(fullCode string, functionName string, startLine int) string {

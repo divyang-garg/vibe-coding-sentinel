@@ -9,7 +9,7 @@ type LLMConfig struct {
 	APIKey           string                 `json:"api_key"` // Decrypted for use
 	Model            string                 `json:"model"`
 	KeyType          string                 `json:"key_type"`
-	CostOptimization map[string]interface{} `json:"cost_optimization,omitempty"`
+	CostOptimization *CostOptimizationConfig `json:"cost_optimization,omitempty"`
 }
 
 // LLMResponse represents the response from an LLM API call

@@ -25,6 +25,18 @@ type RateLimitInfo struct {
 	WindowSize string    `json:"window_size"`
 }
 
+// RateLimitError represents a rate limit exceeded error
+type RateLimitError struct {
+	Message    string    `json:"message"`
+	RetryAfter int       `json:"retry_after"`
+	ResetTime  time.Time `json:"reset_time"`
+}
+
+// Error implements error interface
+func (e *RateLimitError) Error() string {
+	return e.Message
+}
+
 // RateLimitMiddleware implements rate limiting middleware
 // Uses simple in-memory rate limiter (in production, use Redis or similar)
 func RateLimitMiddleware() func(http.Handler) http.Handler {
@@ -66,7 +78,7 @@ func RateLimitMiddleware() func(http.Handler) http.Handler {
 					w.Header().Set("X-RateLimit-Reset", strconv.FormatInt(info.ResetTime.Unix(), 10))
 					w.Header().Set("Retry-After", strconv.Itoa(int(time.Until(info.ResetTime).Seconds())))
 
-					rateLimitErr := &models.RateLimitError{
+					rateLimitErr := &RateLimitError{
 						Message:    "Rate limit exceeded",
 						RetryAfter: int(time.Until(info.ResetTime).Seconds()),
 						ResetTime:  info.ResetTime,

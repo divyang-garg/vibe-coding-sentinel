@@ -4,12 +4,11 @@
 package main
 
 import (
-	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
 
-	sitter "github.com/smacker/go-tree-sitter"
+	_ "github.com/smacker/go-tree-sitter" // Reserved for tree-sitter integration
 )
 
 // FileContent represents a file to be analyzed
@@ -165,16 +164,18 @@ func detectSections(content string, language string) []FileSection {
 	var sections []FileSection
 
 	// Try to use AST parser if available
-	parser, err := getParser(language)
+	// NOTE: AST parsing disabled - tree-sitter integration required
+	_, err := getParser(language)
 	if err == nil {
 		// Use AST to detect functions/classes
-		ctx := context.Background()
-		tree, err := parser.ParseCtx(ctx, nil, []byte(content))
-		if err == nil {
-			defer tree.Close()
-			sections = extractSectionsFromAST(tree.RootNode(), content)
-		}
+		// ctx := context.Background()
+		// tree, err := parser.ParseCtx(ctx, nil, []byte(content))
+		// if err == nil {
+		// 	defer tree.Close()
+		// 	sections = extractSectionsFromAST(tree.RootNode(), content)
+		// }
 	}
+	_ = err // Ignore err since AST is disabled
 
 	// Fallback to pattern-based detection if AST fails
 	if len(sections) == 0 {
@@ -185,59 +186,22 @@ func detectSections(content string, language string) []FileSection {
 }
 
 // extractSectionsFromAST extracts sections from AST tree
-func extractSectionsFromAST(node *sitter.Node, content string) []FileSection {
-	var sections []FileSection
-
-	// Traverse AST to find function/class definitions
-	traverseASTForSections(node, func(n *sitter.Node) {
-		nodeType := n.Type()
-		if nodeType == "function_declaration" || nodeType == "method_declaration" ||
-			nodeType == "class_declaration" || nodeType == "type_declaration" {
-
-			startLine := int(n.StartPoint().Row) + 1
-			endLine := int(n.EndPoint().Row) + 1
-			lines := endLine - startLine + 1
-
-			// Extract name
-			name := extractNodeName(n, content)
-
-			sections = append(sections, FileSection{
-				StartLine:   startLine,
-				EndLine:     endLine,
-				Name:        name,
-				Description: fmt.Sprintf("%s definition", nodeType),
-				Lines:       lines,
-			})
-		}
-	})
-
-	return sections
+// NOTE: AST parsing disabled - tree-sitter integration required
+func extractSectionsFromAST(node interface{}, content string) []FileSection {
+	// AST parsing disabled - tree-sitter integration required
+	return []FileSection{}
 }
 
 // traverseASTForSections traverses AST tree and calls callback for each node (for section detection)
-func traverseASTForSections(node *sitter.Node, callback func(*sitter.Node)) {
-	callback(node)
-	for i := 0; i < int(node.ChildCount()); i++ {
-		child := node.Child(i)
-		if child != nil {
-			traverseASTForSections(child, callback)
-		}
-	}
+// NOTE: AST parsing disabled - tree-sitter integration required
+func traverseASTForSections(node interface{}, callback func(interface{})) {
+	// AST parsing disabled - tree-sitter integration required
 }
 
 // extractNodeName extracts the name from an AST node
-func extractNodeName(node *sitter.Node, content string) string {
-	// Look for name field in node
-	for i := 0; i < int(node.ChildCount()); i++ {
-		child := node.Child(i)
-		if child != nil && (child.Type() == "identifier" || child.Type() == "type_identifier") {
-			start := int(child.StartByte())
-			end := int(child.EndByte())
-			if start < len(content) && end <= len(content) {
-				return strings.TrimSpace(content[start:end])
-			}
-		}
-	}
+// NOTE: AST parsing disabled - tree-sitter integration required
+func extractNodeName(node interface{}, content string) string {
+	// AST parsing disabled - tree-sitter integration required
 	return "unknown"
 }
 

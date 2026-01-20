@@ -21,7 +21,16 @@ RUN CGO_ENABLED=0 GOOS=linux go build -ldflags="-s -w" -o sentinel-hub-api .
 # =============================================================================
 FROM alpine:3.19
 
-RUN apk add --no-cache ca-certificates curl
+RUN apk add --no-cache \
+    ca-certificates \
+    curl \
+    poppler-utils \
+    fontconfig \
+    ttf-dejavu \
+    libzip \
+    unzip \
+    tesseract-ocr \
+    tesseract-ocr-data-eng
 
 WORKDIR /app
 

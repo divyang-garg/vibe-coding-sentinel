@@ -155,7 +155,8 @@ func (suite *IntegrationTestSuite) TestKnowledgeExtractionIntegration() {
 
 	// Test text with business rules
 	testText := `
-	This system shall authenticate users before granting access.
+	This system requires authentication. Users must authenticate before accessing data.
+	Security requirements include encryption at rest and in transit.
 	The performance must be less than 2 seconds for login.
 	API endpoints should use HTTPS encryption.
 	The database must support ACID transactions.

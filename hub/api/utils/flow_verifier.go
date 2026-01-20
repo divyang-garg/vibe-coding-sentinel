@@ -8,6 +8,8 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"sentinel-hub-api/feature_discovery"
 )
 
 // Flow represents an end-to-end user flow
@@ -37,7 +39,7 @@ type Breakpoint struct {
 }
 
 // verifyEndToEndFlows verifies end-to-end flows for a feature
-func verifyEndToEndFlows(ctx context.Context, feature *DiscoveredFeature) ([]Flow, error) {
+func verifyEndToEndFlows(ctx context.Context, feature *feature_discovery.DiscoveredFeature) ([]Flow, error) {
 	flows := []Flow{}
 
 	// Check if UI layer exists and has components
@@ -84,7 +86,7 @@ func verifyEndToEndFlows(ctx context.Context, feature *DiscoveredFeature) ([]Flo
 }
 
 // buildCallGraph builds a call graph from discovered feature components
-func buildCallGraph(feature *DiscoveredFeature) map[string][]string {
+func buildCallGraph(feature *feature_discovery.DiscoveredFeature) map[string][]string {
 	graph := make(map[string][]string)
 
 	// Map UI components to API endpoints (by naming convention or explicit mapping)
@@ -139,7 +141,7 @@ func buildCallGraph(feature *DiscoveredFeature) map[string][]string {
 }
 
 // traceFlow traces a flow from a UI component through all layers
-func traceFlow(component ComponentInfo, feature *DiscoveredFeature, callGraph map[string][]string) *Flow {
+func traceFlow(component feature_discovery.ComponentInfo, feature *feature_discovery.DiscoveredFeature, callGraph map[string][]string) *Flow {
 	flow := &Flow{
 		Name:  component.Name,
 		Steps: []FlowStep{},
@@ -208,7 +210,7 @@ func traceFlow(component ComponentInfo, feature *DiscoveredFeature, callGraph ma
 }
 
 // identifyBreakpoints identifies breakpoints in a flow
-func identifyBreakpoints(ctx context.Context, flow *Flow, feature *DiscoveredFeature) []Breakpoint {
+func identifyBreakpoints(ctx context.Context, flow *Flow, feature *feature_discovery.DiscoveredFeature) []Breakpoint {
 	breakpoints := []Breakpoint{}
 
 	for i, step := range flow.Steps {
@@ -267,7 +269,7 @@ func identifyBreakpoints(ctx context.Context, flow *Flow, feature *DiscoveredFea
 }
 
 // verifyIntegrationPoints verifies integration points between layers
-func verifyIntegrationPoints(ctx context.Context, flows []Flow, feature *DiscoveredFeature) ([]Breakpoint, error) {
+func verifyIntegrationPoints(ctx context.Context, flows []Flow, feature *feature_discovery.DiscoveredFeature) ([]Breakpoint, error) {
 	breakpoints := []Breakpoint{}
 
 	for _, flow := range flows {
@@ -324,6 +326,32 @@ func verifyIntegrationPoints(ctx context.Context, flows []Flow, feature *Discove
 
 // Helper functions
 
+// extractFeatureKeywords extracts meaningful keywords from a string
+func extractFeatureKeywords(text string) []string {
+	// Split by common separators and filter out common words
+	words := strings.FieldsFunc(text, func(r rune) bool {
+		return r == '_' || r == '-' || r == ' ' || r == '.' || r == '/'
+	})
+
+	keywords := []string{}
+	stopWords := map[string]bool{
+		"the": true, "a": true, "an": true, "and": true, "or": true,
+		"but": true, "in": true, "on": true, "at": true, "to": true,
+		"for": true, "of": true, "with": true, "by": true, "from": true,
+		"get": true, "set": true, "is": true, "are": true, "was": true,
+		"component": true, "function": true, "handler": true,
+	}
+
+	for _, word := range words {
+		wordLower := strings.ToLower(word)
+		if len(wordLower) > 2 && !stopWords[wordLower] {
+			keywords = append(keywords, wordLower)
+		}
+	}
+
+	return keywords
+}
+
 func matchesComponentToEndpoint(componentName string, endpointPath string) bool {
 	// Simplified matching - would use semantic analysis in production
 	componentLower := strings.ToLower(componentName)
@@ -366,7 +394,7 @@ func matchesFunctionToTable(functionName string, tableName string) bool {
 	return false
 }
 
-func hasErrorHandling(step FlowStep, feature *DiscoveredFeature) bool {
+func hasErrorHandling(step FlowStep, feature *feature_discovery.DiscoveredFeature) bool {
 	if step.File == "" {
 		return false
 	}
@@ -414,7 +442,7 @@ func hasErrorHandling(step FlowStep, feature *DiscoveredFeature) bool {
 	return false
 }
 
-func hasValidation(step FlowStep, feature *DiscoveredFeature) bool {
+func hasValidation(step FlowStep, feature *feature_discovery.DiscoveredFeature) bool {
 	if step.File == "" {
 		return false
 	}
@@ -451,7 +479,7 @@ func hasValidation(step FlowStep, feature *DiscoveredFeature) bool {
 	return false
 }
 
-func hasRollback(step FlowStep, feature *DiscoveredFeature) bool {
+func hasRollback(step FlowStep, feature *feature_discovery.DiscoveredFeature) bool {
 	if step.File == "" {
 		return false
 	}
@@ -472,7 +500,7 @@ func hasRollback(step FlowStep, feature *DiscoveredFeature) bool {
 		strings.Contains(codeContent, "revert")
 }
 
-func hasTimeout(step FlowStep, feature *DiscoveredFeature) bool {
+func hasTimeout(step FlowStep, feature *feature_discovery.DiscoveredFeature) bool {
 	if step.File == "" {
 		return false
 	}
@@ -491,7 +519,7 @@ func hasTimeout(step FlowStep, feature *DiscoveredFeature) bool {
 		strings.Contains(codeContent, "withtimeout")
 }
 
-func requestFormatsMatch(uiStep FlowStep, apiStep FlowStep, feature *DiscoveredFeature) bool {
+func requestFormatsMatch(uiStep FlowStep, apiStep FlowStep, feature *feature_discovery.DiscoveredFeature) bool {
 	// Read both files
 	uiContent, err1 := os.ReadFile(uiStep.File)
 	apiContent, err2 := os.ReadFile(apiStep.File)
@@ -542,7 +570,7 @@ func requestFormatsMatch(uiStep FlowStep, apiStep FlowStep, feature *DiscoveredF
 	return true
 }
 
-func operationsMatch(logicStep FlowStep, dbStep FlowStep, feature *DiscoveredFeature) bool {
+func operationsMatch(logicStep FlowStep, dbStep FlowStep, feature *feature_discovery.DiscoveredFeature) bool {
 	if logicStep.File == "" || dbStep.File == "" {
 		return true
 	}
@@ -576,7 +604,7 @@ func operationsMatch(logicStep FlowStep, dbStep FlowStep, feature *DiscoveredFea
 	return true // Conservative: assume match if no clear mismatch
 }
 
-func responseFormatsMatch(apiStep FlowStep, logicStep FlowStep, feature *DiscoveredFeature) bool {
+func responseFormatsMatch(apiStep FlowStep, logicStep FlowStep, feature *feature_discovery.DiscoveredFeature) bool {
 	if apiStep.File == "" || logicStep.File == "" {
 		return true
 	}

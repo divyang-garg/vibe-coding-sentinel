@@ -83,7 +83,7 @@ func applySecurityFixesInternal(ctx context.Context, code string, language strin
 	// Use AST analysis to detect SQL injection vulnerabilities
 	if language == "javascript" || language == "typescript" || language == "python" || language == "go" {
 		// Use AST to find SQL queries with string interpolation
-		findings, _, err := analyzeAST(fixedCode, language, []string{"sql_injection"})
+		_, findings, err := analyzeAST(fixedCode, language, []string{"sql_injection"})
 		if err == nil {
 			for _, finding := range findings {
 				if finding.Type == "sql_injection" || strings.Contains(strings.ToLower(finding.Message), "sql") {
@@ -177,7 +177,7 @@ func applySecurityFixesInternal(ctx context.Context, code string, language strin
 	// Fix 3: Add input sanitization for XSS prevention
 	if language == "javascript" || language == "typescript" {
 		// Use AST to find XSS vulnerabilities
-		findings, _, err := analyzeAST(fixedCode, language, []string{"xss"})
+		_, findings, err := analyzeAST(fixedCode, language, []string{"xss"})
 		if err == nil {
 			for _, finding := range findings {
 				if finding.Type == "xss" || strings.Contains(strings.ToLower(finding.Message), "innerhtml") {
@@ -364,7 +364,7 @@ func applyPerformanceFixesInternal(ctx context.Context, code string, language st
 
 	// Fix 1: Optimize nested loops - enhanced with AST-based detection
 	// Use AST to detect actual nested loop structures
-	findings, _, err := analyzeAST(code, language, []string{"complexity"})
+	_, findings, err := analyzeAST(code, language, []string{"complexity"})
 	if err == nil {
 		for _, finding := range findings {
 			if finding.Type == "complexity" && strings.Contains(finding.Message, "nested loop") {

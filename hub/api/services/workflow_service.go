@@ -10,21 +10,24 @@ import (
 	"sentinel-hub-api/models"
 )
 
+// WorkflowRepository defines the interface for workflow data access
+type WorkflowRepository interface {
+	Save(ctx context.Context, workflow *models.WorkflowDefinition) error
+	FindByID(ctx context.Context, id string) (*models.WorkflowDefinition, error)
+	List(ctx context.Context, limit, offset int) ([]models.WorkflowDefinition, int, error)
+	SaveExecution(ctx context.Context, execution *models.WorkflowExecution) error
+	FindExecutionByID(ctx context.Context, id string) (*models.WorkflowExecution, error)
+}
+
 // WorkflowServiceImpl implements WorkflowService
 type WorkflowServiceImpl struct {
-	// In production, this would have repositories for workflow persistence
-	// For now, we'll use in-memory storage for demonstration
-	workflows  map[string]*models.WorkflowDefinition
-	executions map[string]*models.WorkflowExecution
-	nextID     int
+	repo WorkflowRepository
 }
 
 // NewWorkflowService creates a new workflow service instance
-func NewWorkflowService() WorkflowService {
+func NewWorkflowService(repo WorkflowRepository) WorkflowService {
 	return &WorkflowServiceImpl{
-		workflows:  make(map[string]*models.WorkflowDefinition),
-		executions: make(map[string]*models.WorkflowExecution),
-		nextID:     1,
+		repo: repo,
 	}
 }
 
@@ -37,11 +40,14 @@ func (s *WorkflowServiceImpl) CreateWorkflow(ctx context.Context, req models.Wor
 		return nil, fmt.Errorf("workflow must have at least one step")
 	}
 
-	// Generate ID and timestamps
-	req.ID = fmt.Sprintf("wf_%d", s.nextID)
-	s.nextID++
+	// Generate ID and timestamps if not provided
+	if req.ID == "" {
+		req.ID = fmt.Sprintf("wf_%d", time.Now().UnixNano())
+	}
 	now := time.Now()
-	req.CreatedAt = now
+	if req.CreatedAt.IsZero() {
+		req.CreatedAt = now
+	}
 	req.UpdatedAt = now
 
 	// Validate workflow steps
@@ -49,8 +55,10 @@ func (s *WorkflowServiceImpl) CreateWorkflow(ctx context.Context, req models.Wor
 		return nil, fmt.Errorf("invalid workflow steps: %w", err)
 	}
 
-	// Store workflow
-	s.workflows[req.ID] = &req
+	// Save workflow to database
+	if err := s.repo.Save(ctx, &req); err != nil {
+		return nil, fmt.Errorf("failed to save workflow: %w", err)
+	}
 
 	return map[string]interface{}{
 		"id":         req.ID,
@@ -64,15 +72,18 @@ func (s *WorkflowServiceImpl) CreateWorkflow(ctx context.Context, req models.Wor
 
 // GetWorkflow retrieves a workflow by ID
 func (s *WorkflowServiceImpl) GetWorkflow(ctx context.Context, id string) (interface{}, error) {
-	workflow, exists := s.workflows[id]
-	if !exists {
-		return nil, fmt.Errorf("workflow not found")
+	workflow, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("workflow not found: %w", err)
+	}
+	if workflow == nil {
+		return nil, fmt.Errorf("workflow not found: %s", id)
 	}
 
 	return map[string]interface{}{
 		"id":            workflow.ID,
 		"name":          workflow.Name,
-		"description":   workflow.Description,
+		"description":  workflow.Description,
 		"version":       workflow.Version,
 		"steps":         workflow.Steps,
 		"input_schema":  workflow.InputSchema,
@@ -91,19 +102,13 @@ func (s *WorkflowServiceImpl) ListWorkflows(ctx context.Context, limit int, offs
 		limit = 100
 	}
 
-	total := len(s.workflows)
-	results := make([]interface{}, 0, limit)
+	workflows, total, err := s.repo.List(ctx, limit, offset)
+	if err != nil {
+		return nil, 0, fmt.Errorf("failed to list workflows: %w", err)
+	}
 
-	count := 0
-	for _, workflow := range s.workflows {
-		if count < offset {
-			count++
-			continue
-		}
-		if len(results) >= limit {
-			break
-		}
-
+	results := make([]interface{}, 0, len(workflows))
+	for _, workflow := range workflows {
 		results = append(results, map[string]interface{}{
 			"id":          workflow.ID,
 			"name":        workflow.Name,
@@ -119,15 +124,13 @@ func (s *WorkflowServiceImpl) ListWorkflows(ctx context.Context, limit int, offs
 
 // ExecuteWorkflow executes a workflow
 func (s *WorkflowServiceImpl) ExecuteWorkflow(ctx context.Context, id string) (interface{}, error) {
-	workflow, exists := s.workflows[id]
-	if !exists {
-		return nil, fmt.Errorf("workflow not found")
+	workflow, err := s.repo.FindByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("workflow not found: %w", err)
 	}
 
 	// Create execution record
-	executionID := fmt.Sprintf("exec_%d", s.nextID)
-	s.nextID++
-
+	executionID := fmt.Sprintf("exec_%d", time.Now().UnixNano())
 	now := time.Now()
 	execution := &models.WorkflowExecution{
 		ID:         executionID,
@@ -136,13 +139,16 @@ func (s *WorkflowServiceImpl) ExecuteWorkflow(ctx context.Context, id string) (i
 		StartedAt:  &now,
 		Progress:   0,
 		Steps:      make([]models.StepResult, len(workflow.Steps)),
+		Input:      make(map[string]interface{}),
 	}
-	*execution.StartedAt = time.Now()
 
-	s.executions[executionID] = execution
+	// Save execution to database
+	if err := s.repo.SaveExecution(ctx, execution); err != nil {
+		return nil, fmt.Errorf("failed to save execution: %w", err)
+	}
 
 	// Simulate workflow execution (in production, this would be async)
-	go s.executeWorkflowSteps(execution, workflow.Steps)
+	go s.executeWorkflowSteps(ctx, execution, workflow.Steps)
 
 	return map[string]interface{}{
 		"execution_id": executionID,
@@ -155,9 +161,9 @@ func (s *WorkflowServiceImpl) ExecuteWorkflow(ctx context.Context, id string) (i
 
 // UpdateWorkflowStatus updates workflow status (for external control)
 func (s *WorkflowServiceImpl) UpdateWorkflowStatus(ctx context.Context, id string, status interface{}) (interface{}, error) {
-	execution, exists := s.executions[id]
-	if !exists {
-		return nil, fmt.Errorf("workflow execution not found")
+	execution, err := s.repo.FindExecutionByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("workflow execution not found: %w", err)
 	}
 
 	// Update status based on input
@@ -179,6 +185,11 @@ func (s *WorkflowServiceImpl) UpdateWorkflowStatus(ctx context.Context, id strin
 		return nil, fmt.Errorf("unsupported status: %s", statusStr)
 	}
 
+	// Save updated execution
+	if err := s.repo.SaveExecution(ctx, execution); err != nil {
+		return nil, fmt.Errorf("failed to update execution: %w", err)
+	}
+
 	return map[string]interface{}{
 		"execution_id": id,
 		"status":       execution.Status,
@@ -188,9 +199,12 @@ func (s *WorkflowServiceImpl) UpdateWorkflowStatus(ctx context.Context, id strin
 
 // GetWorkflowExecution retrieves workflow execution details
 func (s *WorkflowServiceImpl) GetWorkflowExecution(ctx context.Context, id string) (interface{}, error) {
-	execution, exists := s.executions[id]
-	if !exists {
-		return nil, fmt.Errorf("workflow execution not found")
+	execution, err := s.repo.FindExecutionByID(ctx, id)
+	if err != nil {
+		return nil, fmt.Errorf("workflow execution not found: %w", err)
+	}
+	if execution == nil {
+		return nil, fmt.Errorf("workflow execution not found: %s", id)
 	}
 
 	return map[string]interface{}{
@@ -229,7 +243,7 @@ func (s *WorkflowServiceImpl) validateWorkflowSteps(steps []models.WorkflowStep)
 }
 
 // executeWorkflowSteps simulates workflow step execution
-func (s *WorkflowServiceImpl) executeWorkflowSteps(execution *models.WorkflowExecution, steps []models.WorkflowStep) {
+func (s *WorkflowServiceImpl) executeWorkflowSteps(ctx context.Context, execution *models.WorkflowExecution, steps []models.WorkflowStep) {
 	for i, step := range steps {
 		startTime := time.Now()
 
@@ -237,20 +251,31 @@ func (s *WorkflowServiceImpl) executeWorkflowSteps(execution *models.WorkflowExe
 		time.Sleep(100 * time.Millisecond)
 
 		// Mark step as completed
+		completedAt := time.Now()
 		execution.Steps[i] = models.StepResult{
 			StepID:      step.ID,
 			Status:      models.StepStatusCompleted,
 			Output:      map[string]interface{}{"result": "success"},
 			StartedAt:   &startTime,
-			CompletedAt: &time.Time{},
+			CompletedAt: &completedAt,
 			Duration:    time.Since(startTime),
 		}
-		*execution.Steps[i].CompletedAt = time.Now()
 		execution.Progress = (i + 1) * 100 / len(steps)
+
+		// Save progress periodically
+		if err := s.repo.SaveExecution(ctx, execution); err != nil {
+			// Log error but continue execution
+			fmt.Printf("Warning: failed to save execution progress: %v\n", err)
+		}
 	}
 
 	// Mark execution as completed
 	execution.Status = models.WorkflowStatusCompleted
 	now := time.Now()
 	execution.CompletedAt = &now
+
+	// Final save
+	if err := s.repo.SaveExecution(ctx, execution); err != nil {
+		fmt.Printf("Warning: failed to save completed execution: %v\n", err)
+	}
 }

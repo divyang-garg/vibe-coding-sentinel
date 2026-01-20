@@ -35,11 +35,11 @@ func NewCostOptimizer() *CostOptimizer {
 }
 
 // OptimizeModelSelection selects the best model within cost constraints
-func (co *CostOptimizer) OptimizeModelSelection(taskType string, provider string, estimatedTokens int, costConfig map[string]interface{}) string {
+func (co *CostOptimizer) OptimizeModelSelection(taskType string, provider string, estimatedTokens int, costConfig *CostOptimizationConfig) string {
 	// Extract cost constraints
 	maxCostPerRequest := 0.10 // default --.10
-	if maxCost, ok := costConfig["max_cost_per_request"].(float64); ok {
-		maxCostPerRequest = maxCost
+	if costConfig != nil && costConfig.MaxCostPerRequest > 0 {
+		maxCostPerRequest = costConfig.MaxCostPerRequest
 	}
 
 	// Get available models for provider

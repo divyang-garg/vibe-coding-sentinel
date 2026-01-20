@@ -1,0 +1,19 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+namespace: sentinel-development
+
+resources:
+- ../../base
+
+replicas:
+- name: sentinel-hub-api
+  count: 1
+
+patchesStrategicMerge:
+- deployment-patch.yaml
+- configmap-patch.yaml
+
+images:
+- name: sentinel-hub-api
+  newTag: dev

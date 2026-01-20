@@ -366,11 +366,7 @@ func storeComprehensiveValidation(ctx context.Context, report *ComprehensiveAnal
 
 // Helper functions
 
-func generateID() string {
-	b := make([]byte, 8)
-	rand.Read(b)
-	return hex.EncodeToString(b)
-}
+// generateID is defined in interfaces.go
 
 func generateValidationID() string {
 	// Format: VAL-XXX (3 random hex bytes)

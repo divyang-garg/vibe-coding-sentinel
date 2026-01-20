@@ -129,3 +129,11 @@ func getEnvAsSlice(key string, defaultValue []string) []string {
 	}
 	return defaultValue
 }
+
+// GetHubConfig reads Hub configuration from environment variables
+// Returns Hub URL and API key (empty string if not set)
+func GetHubConfig() (url, apiKey string) {
+	url = getEnv("SENTINEL_HUB_URL", "http://localhost:8080")
+	apiKey = getEnv("SENTINEL_HUB_API_KEY", "")
+	return url, apiKey
+}

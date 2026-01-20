@@ -60,7 +60,8 @@ func analyzeCodeImpact(ctx context.Context, changeRequest *ChangeRequest, projec
 
 	// Convert evidence to CodeLocation
 	for _, file := range evidence.Files {
-		lineNumbers := evidence.LineNumbers[file]
+		// Use evidence.LineNumbers if available, otherwise default
+		lineNumbers := evidence.LineNumbers
 		if len(lineNumbers) == 0 {
 			lineNumbers = []int{0} // Default if no line numbers
 		}

@@ -1,0 +1,18 @@
+{
+  "version": "1.0",
+  "entries": [
+    {
+      "id": "kb_1768657970408312000",
+      "title": "Test Auth",
+      "content": "Authentication requirement",
+      "source": "",
+      "type": "requirement",
+      "tags": [
+        "auth"
+      ],
+      "created_at": "2026-01-17T19:22:50.408321+05:30",
+      "updated_at": "2026-01-17T19:22:50.408321+05:30",
+      "status": "draft"
+    }
+  ]
+}

@@ -1,3 +1,6 @@
+//go:build ignore
+// +build ignore
+
 package main
 
 import "fmt"
@@ -14,15 +17,3 @@ func hello() {
 func main() {
 	hello()
 }
-
-
-
-
-
-
-
-
-
-
-
-

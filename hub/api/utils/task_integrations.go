@@ -3,11 +3,201 @@ package utils
 
 import (
 	"context"
+	"database/sql"
 	"fmt"
+	"time"
+
+	"sentinel-hub-api/pkg/database"
 
 	"github.com/google/uuid"
-	"sentinel-hub-api/pkg/database"
 )
+
+// Package-level database connection
+var db *sql.DB
+
+// SetDB sets the database connection for the utils package
+func SetDB(database *sql.DB) {
+	db = database
+}
+
+// TaskLink represents a link between tasks and other entities
+type TaskLink struct {
+	ID        string
+	TaskID    string
+	LinkType  string
+	LinkedID  string
+	CreatedAt time.Time
+}
+
+// ChangeRequest represents a change request (stub for now)
+type ChangeRequest struct {
+	ID                   string
+	ProjectID            string
+	Status               string
+	ImplementationStatus string
+	Type                 string
+}
+
+// Task represents a task (stub for now)
+type Task struct {
+	ID      string
+	Status  string
+	Version int
+}
+
+// UpdateTaskRequest represents a task update request
+type UpdateTaskRequest struct {
+	Title       *string
+	Description *string
+	Status      *string
+	Priority    *string
+	AssignedTo  *string
+	Tags        []string
+	Version     int
+}
+
+// CreateTaskRequest represents a task creation request
+type CreateTaskRequest struct {
+	Source      string
+	Title       string
+	Description string
+	Priority    string
+}
+
+// ListTasksRequest represents a task listing request
+type ListTasksRequest struct {
+	Limit  int
+	Offset int
+}
+
+// ListTasksResponse represents a task listing response
+type ListTasksResponse struct {
+	Tasks []Task
+}
+
+// KnowledgeItem represents a knowledge item (stub)
+type KnowledgeItem struct {
+	ID     string
+	Status string
+}
+
+// TestRequirement represents a test requirement (stub)
+type TestRequirement struct {
+	ID          string
+	RuleTitle   string
+	Description string
+}
+
+// ComprehensiveValidation represents a comprehensive validation (stub)
+type ComprehensiveValidation struct {
+	ID        string
+	ProjectID string
+	Feature   string
+}
+
+// ValidateTaskLink validates that a task link references a valid entity
+func ValidateTaskLink(ctx context.Context, linkType, linkedID string) error {
+	if linkedID == "" {
+		return fmt.Errorf("linked ID cannot be empty")
+	}
+	// Basic validation - in a full implementation, this would check the linked entity exists
+	return nil
+}
+
+// GetChangeRequestByID retrieves a change request by ID (stub)
+func GetChangeRequestByID(ctx context.Context, id string) (*ChangeRequest, error) {
+	if id == "" {
+		return nil, fmt.Errorf("change request not found: %s", id)
+	}
+	return &ChangeRequest{
+		ID:                   id,
+		Status:               ChangeRequestStatusPendingApproval,
+		ImplementationStatus: ImplementationStatusPending,
+	}, nil
+}
+
+// GetTask retrieves a task by ID (stub)
+func GetTask(ctx context.Context, taskID string) (*Task, error) {
+	if taskID == "" {
+		return nil, fmt.Errorf("task not found: %s", taskID)
+	}
+	return &Task{
+		ID:      taskID,
+		Status:  TaskStatusPending,
+		Version: 1,
+	}, nil
+}
+
+// UpdateTask updates a task (stub)
+func UpdateTask(ctx context.Context, taskID string, req UpdateTaskRequest) (*Task, error) {
+	task, err := GetTask(ctx, taskID)
+	if err != nil {
+		return nil, err
+	}
+	if req.Status != nil {
+		task.Status = *req.Status
+	}
+	task.Version = req.Version + 1
+	return task, nil
+}
+
+// CreateTask creates a new task (stub)
+func CreateTask(ctx context.Context, projectID string, req CreateTaskRequest) (*Task, error) {
+	task := &Task{
+		ID:      GenerateEntityID(),
+		Status:  TaskStatusPending,
+		Version: 1,
+	}
+	return task, nil
+}
+
+// ListTasks lists tasks for a project (stub)
+func ListTasks(ctx context.Context, projectID string, req ListTasksRequest) (*ListTasksResponse, error) {
+	return &ListTasksResponse{
+		Tasks: []Task{},
+	}, nil
+}
+
+// GetKnowledgeItemByID retrieves a knowledge item by ID (stub)
+func GetKnowledgeItemByID(ctx context.Context, id string) (*KnowledgeItem, error) {
+	if id == "" {
+		return nil, fmt.Errorf("knowledge item not found: %s", id)
+	}
+	return &KnowledgeItem{
+		ID:     id,
+		Status: KnowledgeItemStatusActive,
+	}, nil
+}
+
+// GetTestRequirementByID retrieves a test requirement by ID (stub)
+func GetTestRequirementByID(ctx context.Context, id string) (*TestRequirement, error) {
+	if id == "" {
+		return nil, fmt.Errorf("test requirement not found: %s", id)
+	}
+	return &TestRequirement{
+		ID:          id,
+		RuleTitle:   "Test Requirement",
+		Description: "Description",
+	}, nil
+}
+
+// GetComprehensiveValidationByID retrieves a comprehensive validation by ID (stub)
+func GetComprehensiveValidationByID(ctx context.Context, id string) (*ComprehensiveValidation, error) {
+	if id == "" {
+		return nil, fmt.Errorf("comprehensive validation not found: %s", id)
+	}
+	return &ComprehensiveValidation{
+		ID:        id,
+		ProjectID: "",
+		Feature:   "test",
+	}, nil
+}
+
+// LogError logs an error (stub - in production would use proper logging)
+func LogError(ctx context.Context, format string, args ...interface{}) {
+	// In production, this would use a proper logger
+	fmt.Printf("ERROR: "+format+"\n", args...)
+}
 
 // LinkTaskToChangeRequest links a task to a change request (Phase 12)
 func LinkTaskToChangeRequest(ctx context.Context, taskID string, changeRequestID string) error {

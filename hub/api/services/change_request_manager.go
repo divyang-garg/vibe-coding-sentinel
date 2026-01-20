@@ -65,10 +65,10 @@ func getChangeRequest(ctx context.Context, changeRequestID string) (*ChangeReque
 		cr.RejectedAt = &rejectedAt.Time
 	}
 	if rejectionReason.Valid {
-		cr.RejectionReason = &rejectionReason.String
+		cr.RejectionReason = rejectionReason.String
 	}
 	if implNotes.Valid {
-		cr.ImplementationNotes = &implNotes.String
+		cr.ImplementationNotes = implNotes.String
 	}
 
 	// Unmarshal JSONB fields using helper

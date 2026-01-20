@@ -1,0 +1,35 @@
+{
+  "languages": {
+    "Go": 25
+  },
+  "frameworks": {},
+  "namingPatterns": {
+    "PascalCase": 80,
+    "camelCase": 306,
+    "snake_case": 46
+  },
+  "fileExtensions": {
+    ".gitignore": 1,
+    ".go": 25,
+    ".json": 1,
+    ".md": 282,
+    ".yml": 1
+  },
+  "projectStructure": {},
+  "importPatterns": {
+    "style": "absolute",
+    "aliasing": {},
+    "barrelFiles": null,
+    "defaultImports": 0,
+    "namedImports": 2,
+    "examples": []
+  },
+  "codeStyle": {
+    "indentStyle": "tabs",
+    "indentSize": 4,
+    "quoteStyle": "",
+    "semicolons": "optional",
+    "lineEnding": "lf",
+    "trailingComma": ""
+  }
+}

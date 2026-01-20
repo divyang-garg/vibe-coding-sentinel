@@ -11,6 +11,8 @@ import (
 	"path/filepath"
 	"strings"
 	"time"
+
+	"sentinel-hub-api/services"
 )
 
 // AutoCompletionConfig represents configuration for auto-completion
@@ -153,14 +155,24 @@ func CheckDependencyBlocking(ctx context.Context, projectID string) ([]Task, err
 		}
 
 		// Get dependencies
-		deps, err := GetTaskDependencies(ctx, task.ID)
+		deps, err := services.GetTaskDependencies(ctx, task.ID)
 		if err != nil {
 			continue
 		}
 
 		// Check if any dependency is incomplete
+		// Note: services.GetTaskDependencies returns *DependencyGraphResponse with Graph field
+		// Extract blocked IDs from graph if available
 		isBlocked := false
-		for _, depID := range deps.BlockedBy {
+		var blockedBy []string
+		if deps != nil && deps.Graph != nil && deps.Graph.Dependencies != nil {
+			for _, dep := range deps.Graph.Dependencies {
+				if dep.TaskID == task.ID && dep.DependsOnTaskID != "" {
+					blockedBy = append(blockedBy, dep.DependsOnTaskID)
+				}
+			}
+		}
+		for _, depID := range blockedBy {
 			depTask, err := GetTask(ctx, depID)
 			if err != nil {
 				continue
@@ -183,7 +195,7 @@ func CheckDependencyBlocking(ctx context.Context, projectID string) ([]Task, err
 			}
 
 			blockedTasks = append(blockedTasks, task)
-			sendDependencyBlockingAlert(ctx, task, deps.BlockedBy)
+			sendDependencyBlockingAlert(ctx, task, blockedBy)
 		}
 	}
 

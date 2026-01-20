@@ -20,7 +20,7 @@ func ValidateUser(u *User) error {
 	if u.Name == "" {
 		return fmt.Errorf("user name is required")
 	}
-	if u.Role != "" && u.Role != "admin" && u.Role != "developer" && u.Role != "viewer" {
+	if u.Role != "" && u.Role != UserRoleAdmin && u.Role != UserRoleManager && u.Role != UserRoleDeveloper && u.Role != UserRoleViewer {
 		return fmt.Errorf("invalid role: %s", u.Role)
 	}
 	return nil
@@ -108,7 +108,7 @@ func ValidateCreateUserRequest(req CreateUserRequest) error {
 	if req.Name == "" {
 		return fmt.Errorf("name is required")
 	}
-	if req.Role != UserRoleAdmin && req.Role != UserRoleDeveloper && req.Role != UserRoleViewer {
+	if req.Role != UserRoleAdmin && req.Role != UserRoleManager && req.Role != UserRoleDeveloper && req.Role != UserRoleViewer {
 		return fmt.Errorf("invalid role: %s", req.Role)
 	}
 	return nil
@@ -122,7 +122,7 @@ func ValidateUpdateUserRequest(req UpdateUserRequest) error {
 	if req.Name != nil && *req.Name == "" {
 		return fmt.Errorf("name cannot be empty")
 	}
-	if req.Role != nil && *req.Role != UserRoleAdmin && *req.Role != UserRoleDeveloper && *req.Role != UserRoleViewer {
+	if req.Role != nil && *req.Role != UserRoleAdmin && *req.Role != UserRoleManager && *req.Role != UserRoleDeveloper && *req.Role != UserRoleViewer {
 		return fmt.Errorf("invalid role: %s", *req.Role)
 	}
 	return nil

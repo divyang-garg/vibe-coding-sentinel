@@ -153,13 +153,29 @@ func detectBusinessRuleWithAST(code string, filePath string, keywordMap map[stri
 		Confidence:  0.0,
 	}
 
-	// Get parser for Go
-	parser, err := getParser("go")
-	if err != nil {
+	// Determine language from file path
+	ext := strings.ToLower(filepath.Ext(filePath))
+	var language string
+	switch ext {
+	case ".go":
+		language = "go"
+	case ".js", ".jsx":
+		language = "javascript"
+	case ".ts", ".tsx":
+		language = "typescript"
+	case ".py":
+		language = "python"
+	default:
+		// Unsupported language, return empty evidence
 		return evidence
 	}
 
 	// Parse code into AST
+	parser, err := getParser(language)
+	if err != nil {
+		return evidence
+	}
+
 	ctx := context.Background()
 	tree, err := parser.ParseCtx(ctx, nil, []byte(code))
 	if err != nil || tree == nil {

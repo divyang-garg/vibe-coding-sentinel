@@ -10,6 +10,32 @@ import (
 	"net/http"
 )
 
+// Handler stubs for testing - these would be actual handlers in production
+func validateCodeHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+	w.Write([]byte(`{"error":"validateCodeHandler stub"}`))
+}
+
+func applyFixHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+	w.Write([]byte(`{"error":"applyFixHandler stub"}`))
+}
+
+func validateLLMConfigHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+	w.Write([]byte(`{"error":"validateLLMConfigHandler stub"}`))
+}
+
+func getCacheMetricsHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+	w.Write([]byte(`{"error":"getCacheMetricsHandler stub"}`))
+}
+
+func getCostMetricsHandler(w http.ResponseWriter, r *http.Request) {
+	w.WriteHeader(http.StatusNotImplemented)
+	w.Write([]byte(`{"error":"getCostMetricsHandler stub"}`))
+}
+
 // TestHandlerCaller provides a way to call handlers from tests
 // This is used by integration tests to call handlers with proper context
 type TestHandlerCaller struct {

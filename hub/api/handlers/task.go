@@ -9,6 +9,7 @@ import (
 
 	"sentinel-hub-api/models"
 	"sentinel-hub-api/services"
+	"github.com/go-chi/chi/v5"
 )
 
 // TaskHandler handles task-related HTTP requests
@@ -160,4 +161,82 @@ func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
 	}
 
 	h.WriteJSONResponse(w, http.StatusNoContent, map[string]string{"status": "deleted"})
+}
+
+// VerifyTask handles POST /api/v1/tasks/{id}/verify
+func (h *TaskHandler) VerifyTask(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		h.WriteErrorResponse(w, &models.ValidationError{
+			Field:   "id",
+			Message: "Task ID is required",
+		}, http.StatusBadRequest)
+		return
+	}
+
+	var req models.VerifyTaskRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.WriteErrorResponse(w, &models.ValidationError{
+			Field:   "body",
+			Message: "Invalid request format",
+		}, http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.TaskService.VerifyTask(r.Context(), id, req)
+	if err != nil {
+		h.WriteErrorResponse(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	h.WriteJSONResponse(w, http.StatusOK, result)
+}
+
+// GetTaskDependencies handles GET /api/v1/tasks/{id}/dependencies
+func (h *TaskHandler) GetTaskDependencies(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		h.WriteErrorResponse(w, &models.ValidationError{
+			Field:   "id",
+			Message: "Task ID is required",
+		}, http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.TaskService.GetDependencies(r.Context(), id)
+	if err != nil {
+		h.WriteErrorResponse(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	h.WriteJSONResponse(w, http.StatusOK, result)
+}
+
+// AddTaskDependency handles POST /api/v1/tasks/{id}/dependencies
+func (h *TaskHandler) AddTaskDependency(w http.ResponseWriter, r *http.Request) {
+	id := chi.URLParam(r, "id")
+	if id == "" {
+		h.WriteErrorResponse(w, &models.ValidationError{
+			Field:   "id",
+			Message: "Task ID is required",
+		}, http.StatusBadRequest)
+		return
+	}
+
+	var req models.AddDependencyRequest
+	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
+		h.WriteErrorResponse(w, &models.ValidationError{
+			Field:   "body",
+			Message: "Invalid request format",
+		}, http.StatusBadRequest)
+		return
+	}
+
+	result, err := h.TaskService.AddDependency(r.Context(), id, req)
+	if err != nil {
+		h.WriteErrorResponse(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	h.WriteJSONResponse(w, http.StatusCreated, result)
 }

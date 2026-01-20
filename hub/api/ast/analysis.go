@@ -30,8 +30,21 @@ func cleanExpiredCacheEntries() {
 	}
 }
 
-// AnalyzeAST performs comprehensive AST analysis
-func AnalyzeAST(code string, language string, analyses []string) ([]ASTFinding, AnalysisStats, error) {
+// AnalyzeAST performs comprehensive AST analysis with panic recovery
+func AnalyzeAST(code string, language string, analyses []string) (findings []ASTFinding, stats AnalysisStats, err error) {
+	defer func() {
+		if r := recover(); r != nil {
+			err = fmt.Errorf("AST analysis panic: %v", r)
+			findings = nil
+			stats = AnalysisStats{}
+		}
+	}()
+
+	return analyzeASTInternal(code, language, analyses)
+}
+
+// analyzeASTInternal performs the actual AST analysis logic
+func analyzeASTInternal(code string, language string, analyses []string) ([]ASTFinding, AnalysisStats, error) {
 	// Check cache first
 	cacheKey := getCacheKey(code, language, analyses)
 	cacheMutex.RLock()
@@ -146,6 +159,57 @@ func AnalyzeAST(code string, language string, analyses []string) ([]ASTFinding, 
 		cleanExpiredCacheEntries()
 	}
 	cacheMutex.Unlock()
+
+	return findings, stats, nil
+}
+
+// AnalyzeASTWithValidation performs AST analysis with codebase validation
+func AnalyzeASTWithValidation(code, language, filePath, projectRoot string, analyses []string) ([]ASTFinding, AnalysisStats, error) {
+	findings, stats, err := AnalyzeAST(code, language, analyses)
+	if err != nil {
+		return findings, stats, err
+	}
+
+	// Detect edge cases in source code
+	edgeCases := DetectEdgeCases(code, language)
+
+	// Validate findings with timeout and concurrency
+	err = ValidateFindingsConcurrent(findings, filePath, projectRoot, language, DefaultMaxConcurrency)
+	if err != nil {
+		// Log validation error but don't fail the entire analysis
+		// Continue with edge case penalties
+	}
+
+	// Apply edge case penalties to confidence and recalculate AutoFixSafe
+	for i := range findings {
+		// Apply edge case penalty to existing confidence
+		findings[i].Confidence -= edgeCases.ConfidencePenalty
+
+		// Ensure confidence doesn't go below 0
+		if findings[i].Confidence < 0 {
+			findings[i].Confidence = 0
+		}
+
+		// Recalculate AutoFixSafe based on updated confidence
+		findings[i].AutoFixSafe = DetermineAutoFixSafe(findings[i].Confidence, findings[i].Type)
+
+		// Update reasoning if edge cases were detected
+		if edgeCases.ConfidencePenalty > 0 {
+			edgeCaseNote := ""
+			if edgeCases.HasGeneratedCode {
+				edgeCaseNote = "Generated code detected - never auto-fix"
+			} else if edgeCases.HasReflection {
+				edgeCaseNote = "Reflection usage detected - reduced confidence"
+			} else if edgeCases.HasDynamicImport {
+				edgeCaseNote = "Dynamic imports detected - reduced confidence"
+			} else if edgeCases.HasPluginUsage {
+				edgeCaseNote = "Plugin usage detected - reduced confidence"
+			}
+			if edgeCaseNote != "" {
+				findings[i].Reasoning = edgeCaseNote + ". " + findings[i].Reasoning
+			}
+		}
+	}
 
 	return findings, stats, nil
 }

@@ -4,6 +4,7 @@ package services
 
 import (
 	"context"
+	"fmt"
 	"testing"
 	"time"
 
@@ -31,9 +32,96 @@ func (m *MockWorkflowRepository) FindByID(ctx context.Context, id string) (*mode
 	return args.Get(0).(*models.WorkflowDefinition), args.Error(1)
 }
 
-func (m *MockWorkflowRepository) FindAll(ctx context.Context, limit, offset int) ([]*models.WorkflowDefinition, error) {
+func (m *MockWorkflowRepository) List(ctx context.Context, limit, offset int) ([]models.WorkflowDefinition, int, error) {
 	args := m.Called(ctx, limit, offset)
-	return args.Get(0).([]*models.WorkflowDefinition), args.Error(1)
+	return args.Get(0).([]models.WorkflowDefinition), args.Int(1), args.Error(2)
+}
+
+func (m *MockWorkflowRepository) SaveExecution(ctx context.Context, execution *models.WorkflowExecution) error {
+	args := m.Called(ctx, execution)
+	return args.Error(0)
+}
+
+func (m *MockWorkflowRepository) FindExecutionByID(ctx context.Context, id string) (*models.WorkflowExecution, error) {
+	args := m.Called(ctx, id)
+	if args.Get(0) == nil {
+		return nil, args.Error(1)
+	}
+	return args.Get(0).(*models.WorkflowExecution), args.Error(1)
+}
+
+// InMemoryWorkflowRepository is an in-memory implementation for testing
+type InMemoryWorkflowRepository struct {
+	workflows  map[string]*models.WorkflowDefinition
+	executions map[string]*models.WorkflowExecution
+	nextID     int
+}
+
+func newInMemoryWorkflowRepository() *InMemoryWorkflowRepository {
+	return &InMemoryWorkflowRepository{
+		workflows:  make(map[string]*models.WorkflowDefinition),
+		executions: make(map[string]*models.WorkflowExecution),
+	}
+}
+
+func (r *InMemoryWorkflowRepository) Save(ctx context.Context, workflow *models.WorkflowDefinition) error {
+	if workflow.ID == "" {
+		r.nextID++
+		workflow.ID = "wf-" + string(rune(r.nextID+'0'))
+	}
+	r.workflows[workflow.ID] = workflow
+	return nil
+}
+
+func (r *InMemoryWorkflowRepository) FindByID(ctx context.Context, id string) (*models.WorkflowDefinition, error) {
+	workflow, exists := r.workflows[id]
+	if !exists {
+		return nil, fmt.Errorf("workflow not found: %s", id)
+	}
+	return workflow, nil
+}
+
+func (r *InMemoryWorkflowRepository) List(ctx context.Context, limit, offset int) ([]models.WorkflowDefinition, int, error) {
+	var all []models.WorkflowDefinition
+	for _, w := range r.workflows {
+		all = append(all, *w)
+	}
+	
+	// Get total count before applying pagination
+	total := len(all)
+	
+	// Apply pagination
+	start := offset
+	if start > len(all) {
+		start = len(all)
+	}
+	end := start + limit
+	if end > len(all) {
+		end = len(all)
+	}
+	
+	if start >= len(all) {
+		return []models.WorkflowDefinition{}, total, nil
+	}
+	
+	return all[start:end], total, nil
+}
+
+func (r *InMemoryWorkflowRepository) SaveExecution(ctx context.Context, execution *models.WorkflowExecution) error {
+	if execution.ID == "" {
+		r.nextID++
+		execution.ID = "exec-" + string(rune(r.nextID+'0'))
+	}
+	r.executions[execution.ID] = execution
+	return nil
+}
+
+func (r *InMemoryWorkflowRepository) FindExecutionByID(ctx context.Context, id string) (*models.WorkflowExecution, error) {
+	execution, exists := r.executions[id]
+	if !exists {
+		return nil, fmt.Errorf("workflow execution not found: %s", id)
+	}
+	return execution, nil
 }
 
 func TestWorkflowServiceImpl_CreateWorkflow(t *testing.T) {
@@ -109,7 +197,7 @@ func TestWorkflowServiceImpl_CreateWorkflow(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			service := NewWorkflowService()
+			service := NewWorkflowService(newInMemoryWorkflowRepository())
 
 			result, err := service.CreateWorkflow(context.Background(), tt.req)
 
@@ -142,7 +230,7 @@ func TestWorkflowServiceImpl_CreateWorkflow(t *testing.T) {
 }
 
 func TestWorkflowServiceImpl_GetWorkflow(t *testing.T) {
-	service := NewWorkflowService()
+	service := NewWorkflowService(newInMemoryWorkflowRepository())
 
 	// First create a workflow
 	workflow := models.WorkflowDefinition{
@@ -181,7 +269,7 @@ func TestWorkflowServiceImpl_GetWorkflow(t *testing.T) {
 }
 
 func TestWorkflowServiceImpl_GetWorkflow_NotFound(t *testing.T) {
-	service := NewWorkflowService()
+	service := NewWorkflowService(newInMemoryWorkflowRepository())
 
 	result, err := service.GetWorkflow(context.Background(), "non-existent-id")
 
@@ -191,7 +279,7 @@ func TestWorkflowServiceImpl_GetWorkflow_NotFound(t *testing.T) {
 }
 
 func TestWorkflowServiceImpl_ListWorkflows(t *testing.T) {
-	service := NewWorkflowService()
+	service := NewWorkflowService(newInMemoryWorkflowRepository())
 
 	// Create multiple workflows
 	workflows := []models.WorkflowDefinition{
@@ -238,7 +326,7 @@ func TestWorkflowServiceImpl_ListWorkflows(t *testing.T) {
 }
 
 func TestWorkflowServiceImpl_ExecuteWorkflow(t *testing.T) {
-	service := NewWorkflowService()
+	service := NewWorkflowService(newInMemoryWorkflowRepository())
 
 	// Create a workflow first
 	workflow := models.WorkflowDefinition{
@@ -284,7 +372,7 @@ func TestWorkflowServiceImpl_ExecuteWorkflow(t *testing.T) {
 }
 
 func TestWorkflowServiceImpl_UpdateWorkflowStatus(t *testing.T) {
-	service := NewWorkflowService()
+	service := NewWorkflowService(newInMemoryWorkflowRepository())
 
 	// Create and execute a workflow first
 	workflow := models.WorkflowDefinition{
@@ -322,7 +410,7 @@ func TestWorkflowServiceImpl_UpdateWorkflowStatus(t *testing.T) {
 }
 
 func TestWorkflowServiceImpl_GetWorkflowExecution(t *testing.T) {
-	service := NewWorkflowService()
+	service := NewWorkflowService(newInMemoryWorkflowRepository())
 
 	// Create and execute a workflow
 	workflow := models.WorkflowDefinition{
@@ -371,7 +459,7 @@ func TestWorkflowServiceImpl_GetWorkflowExecution(t *testing.T) {
 }
 
 func TestWorkflowServiceImpl_GetWorkflowExecution_NotFound(t *testing.T) {
-	service := NewWorkflowService()
+	service := NewWorkflowService(newInMemoryWorkflowRepository())
 
 	result, err := service.GetWorkflowExecution(context.Background(), "non-existent-execution")
 

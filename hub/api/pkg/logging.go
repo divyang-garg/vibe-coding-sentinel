@@ -22,6 +22,20 @@ const (
 
 var currentLogLevel LogLevel = LogLevelInfo
 
+// contextKey type for context keys
+type contextKey string
+
+// Context keys for request tracing
+const (
+	RequestIDKey contextKey = "request_id"
+	TraceIDKey   contextKey = "trace_id"
+	SpanIDKey    contextKey = "span_id"
+	UserIDKey    contextKey = "user_id"
+)
+
+// requestIDKey is the context key for request ID (deprecated, use RequestIDKey)
+const requestIDKey contextKey = "requestID"
+
 func init() {
 	if level := os.Getenv("SENTINEL_LOG_LEVEL"); level != "" {
 		currentLogLevel = LogLevel(level)

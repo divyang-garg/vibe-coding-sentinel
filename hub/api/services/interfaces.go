@@ -91,6 +91,12 @@ type CodeAnalysisService interface {
 	RefactorCode(ctx context.Context, req models.CodeRefactorRequest) (interface{}, error)
 	GenerateDocumentation(ctx context.Context, req models.DocumentationRequest) (interface{}, error)
 	ValidateCode(ctx context.Context, req models.CodeValidationRequest) (interface{}, error)
+	AnalyzeSecurity(ctx context.Context, req models.SecurityASTRequest) (interface{}, error)
+	AnalyzeVibe(ctx context.Context, req models.ASTAnalysisRequest) (interface{}, error)
+	AnalyzeComprehensive(ctx context.Context, req ComprehensiveAnalysisRequest) (interface{}, error)
+	AnalyzeIntent(ctx context.Context, req IntentAnalysisRequest) (interface{}, error)
+	AnalyzeDocSync(ctx context.Context, req DocSyncRequest) (interface{}, error)
+	AnalyzeBusinessRules(ctx context.Context, req BusinessRulesAnalysisRequest) (interface{}, error)
 }
 
 // RepositoryService defines the interface for repository management operations
@@ -112,6 +118,29 @@ type MonitoringService interface {
 	ReportError(ctx context.Context, req models.ErrorReport) error
 	GetHealthMetrics(ctx context.Context) (interface{}, error)
 	GetPerformanceMetrics(ctx context.Context) (interface{}, error)
+}
+
+// KnowledgeService defines the interface for knowledge management operations
+type KnowledgeService interface {
+	RunGapAnalysis(ctx context.Context, req GapAnalysisRequest) (*GapAnalysisReport, error)
+	ListKnowledgeItems(ctx context.Context, req ListKnowledgeItemsRequest) ([]KnowledgeItem, error)
+	CreateKnowledgeItem(ctx context.Context, item KnowledgeItem) (*KnowledgeItem, error)
+	GetKnowledgeItem(ctx context.Context, id string) (*KnowledgeItem, error)
+	UpdateKnowledgeItem(ctx context.Context, id string, item KnowledgeItem) (*KnowledgeItem, error)
+	DeleteKnowledgeItem(ctx context.Context, id string) error
+	GetBusinessContext(ctx context.Context, req BusinessContextRequest) (*BusinessContextResponse, error)
+	SyncKnowledge(ctx context.Context, req SyncKnowledgeRequest) (*SyncKnowledgeResponse, error)
+}
+
+// TestService defines the interface for test management operations
+type TestService interface {
+	GenerateTestRequirements(ctx context.Context, req GenerateTestRequirementsRequest) (*GenerateTestRequirementsResponse, error)
+	AnalyzeTestCoverage(ctx context.Context, req AnalyzeCoverageRequest) (*AnalyzeCoverageResponse, error)
+	GetTestCoverage(ctx context.Context, knowledgeItemID string) (*TestCoverage, error)
+	ValidateTests(ctx context.Context, req ValidateTestsRequest) (*ValidateTestsResponse, error)
+	GetValidationResults(ctx context.Context, testRequirementID string) (*TestValidation, error)
+	RunTests(ctx context.Context, req TestExecutionRequest) (*TestExecutionResponse, error)
+	GetTestExecutionStatus(ctx context.Context, executionID string) (*TestExecution, error)
 }
 
 // Utility functions

@@ -1,0 +1,15 @@
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: sentinel-hub-api-config
+  labels:
+    app: sentinel-hub-api
+    app.kubernetes.io/name: sentinel-hub-api
+    app.kubernetes.io/part-of: sentinel
+data:
+  environment: "development"
+  log-level: "info"
+  ollama-host: "http://ollama:11434"
+  cors-origins: "*"
+  rate-limit-requests: "1000"
+  rate-limit-window: "15m"

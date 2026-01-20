@@ -1,9 +1,18 @@
+//go:build ignore
+// +build ignore
+
 package main
 
 import (
 	"testing"
-	"time"
+	_ "time" // Unused import (intentional for test fixture)
 )
+
+// User type for test fixture
+type User struct {
+	ID   int
+	Name string
+}
 
 // TestAuthenticateUser_ValidToken tests happy path
 func TestAuthenticateUser_ValidToken(t *testing.T) {
@@ -50,15 +59,3 @@ func generateValidToken() string {
 func generateExpiredToken() string {
 	return "expired_jwt_token"
 }
-
-
-
-
-
-
-
-
-
-
-
-

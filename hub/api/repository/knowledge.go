@@ -4,24 +4,71 @@ package repository
 import (
 	"context"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
-	"sentinel-hub-api/models"
 	"strings"
+	"time"
+	
+	pdf "github.com/ledongthuc/pdf"
+	"github.com/nguyenthenguyen/docx"
+	"github.com/xuri/excelize/v2"
+	"sentinel-hub-api/models"
 )
 
 // KnowledgeExtractorImpl implements KnowledgeExtractor
-type KnowledgeExtractorImpl struct{}
+type KnowledgeExtractorImpl struct {
+	llmExtractor *LLMExtractor
+}
 
 // NewKnowledgeExtractor creates a new knowledge extractor instance
 func NewKnowledgeExtractor() *KnowledgeExtractorImpl {
-	return &KnowledgeExtractorImpl{}
+	return &KnowledgeExtractorImpl{
+		llmExtractor: NewLLMExtractor(),
+	}
 }
 
 // ExtractFromText extracts knowledge items from plain text
 func (k *KnowledgeExtractorImpl) ExtractFromText(ctx context.Context, text string, docID string) ([]models.KnowledgeItem, error) {
 	var items []models.KnowledgeItem
+	
+	// Try LLM extraction first
+	if k.llmExtractor.enabled {
+		llmRules, err := k.llmExtractor.ExtractWithLLM(ctx, text, docID)
+		if err == nil && len(llmRules) > 0 {
+			// Convert LLM results to knowledge items
+			for i, rule := range llmRules {
+				item := models.KnowledgeItem{
+					ID:         getString(rule, "id", fmt.Sprintf("ki_%s_llm_%d", docID, i+1)),
+					Type:       "business_rule",
+					Title:      getString(rule, "title", ""),
+					Content:    getString(rule, "description", ""),
+					Confidence: getFloat64(rule, "confidence", 0.8),
+					SourcePage: 0,
+					Status:     "extracted",
+					DocumentID: docID,
+					CreatedAt:  time.Now(),
+					UpdatedAt:  time.Now(),
+					StructuredData: map[string]interface{}{
+						"extraction_method": "llm",
+					},
+				}
+				items = append(items, item)
+			}
+			if len(items) > 0 {
+				return items, nil
+			}
+		}
+	}
+	
+	// Fallback to regex extraction
+	return k.extractWithRegex(ctx, text, docID), nil
+}
 
-	// Extract business rules using regex patterns
+// extractWithRegex performs regex-based extraction (fallback)
+func (k *KnowledgeExtractorImpl) extractWithRegex(ctx context.Context, text string, docID string) []models.KnowledgeItem {
+	var items []models.KnowledgeItem
+	
 	rulePatterns := []struct {
 		pattern    *regexp.Regexp
 		ruleType   string
@@ -33,22 +80,28 @@ func (k *KnowledgeExtractorImpl) ExtractFromText(ctx context.Context, text strin
 		{regexp.MustCompile(`(?i)(api|endpoint|interface)[:\s]+([^\n]+)`), "api_definition", 0.6},
 		{regexp.MustCompile(`(?i)(table|entity|model)[:\s]+([^\n]+)`), "data_table", 0.7},
 	}
-
+	
 	for _, pattern := range rulePatterns {
 		matches := pattern.pattern.FindAllStringSubmatch(text, -1)
 		for _, match := range matches {
 			if len(match) > 1 {
 				content := strings.TrimSpace(match[len(match)-1])
-				if content != "" && len(content) > 10 { // Filter out very short matches
+				if content != "" && len(content) > 10 {
+					title := strings.ReplaceAll(pattern.ruleType, "_", " ")
+					if len(title) > 0 {
+						title = strings.ToUpper(title[:1]) + title[1:]
+					}
 					items = append(items, models.KnowledgeItem{
 						ID:         fmt.Sprintf("ki_%s_%d", docID, len(items)+1),
 						Type:       pattern.ruleType,
-						Title:      fmt.Sprintf("%s Extracted", strings.Title(strings.ReplaceAll(pattern.ruleType, "_", " "))),
+						Title:      fmt.Sprintf("%s Extracted", title),
 						Content:    content,
 						Confidence: pattern.confidence,
 						SourcePage: 0,
 						Status:     "extracted",
 						DocumentID: docID,
+						CreatedAt:  time.Now(),
+						UpdatedAt:  time.Now(),
 						StructuredData: map[string]interface{}{
 							"extraction_method": "regex_pattern",
 							"pattern_type":      pattern.ruleType,
@@ -59,15 +112,183 @@ func (k *KnowledgeExtractorImpl) ExtractFromText(ctx context.Context, text strin
 			}
 		}
 	}
-
-	return items, nil
+	
+	return items
 }
 
-// ExtractFromFile extracts knowledge items from a file (placeholder implementation)
+func getString(m map[string]interface{}, key string, defaultVal string) string {
+	if v, ok := m[key]; ok {
+		if s, ok := v.(string); ok {
+			return s
+		}
+	}
+	return defaultVal
+}
+
+func getFloat64(m map[string]interface{}, key string, defaultVal float64) float64 {
+	if v, ok := m[key]; ok {
+		if f, ok := v.(float64); ok {
+			return f
+		}
+	}
+	return defaultVal
+}
+
+// ExtractFromFile extracts knowledge items from a file
 func (k *KnowledgeExtractorImpl) ExtractFromFile(ctx context.Context, filePath string, mimeType string, docID string) ([]models.KnowledgeItem, error) {
-	// For now, return empty slice - in production this would parse the file
-	// based on mimeType (PDF, DOCX, etc.)
-	return []models.KnowledgeItem{}, nil
+	// Parse file based on MIME type
+	text, err := parseFileContent(filePath, mimeType)
+	if err != nil {
+		return nil, fmt.Errorf("failed to parse file: %w", err)
+	}
+	
+	if text == "" {
+		return []models.KnowledgeItem{}, nil
+	}
+	
+	// Extract using text extraction
+	return k.ExtractFromText(ctx, text, docID)
+}
+
+// parseFileContent extracts text from various file types
+func parseFileContent(filePath string, mimeType string) (string, error) {
+	switch mimeType {
+	case "text/plain", "text/markdown":
+		content, err := os.ReadFile(filePath)
+		if err != nil {
+			return "", err
+		}
+		return string(content), nil
+	case "application/pdf":
+		return parsePDF(filePath)
+	case "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword":
+		return parseDOCX(filePath)
+	case "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", "application/vnd.ms-excel":
+		return parseXLSX(filePath)
+	default:
+		// Try to determine by file extension
+		ext := strings.ToLower(filepath.Ext(filePath))
+		switch ext {
+		case ".pdf":
+			return parsePDF(filePath)
+		case ".docx":
+			return parseDOCX(filePath)
+		case ".xlsx", ".xls":
+			return parseXLSX(filePath)
+		case ".txt", ".md":
+			content, err := os.ReadFile(filePath)
+			if err != nil {
+				return "", err
+			}
+			return string(content), nil
+		default:
+			return "", fmt.Errorf("unsupported file type: %s", mimeType)
+		}
+	}
+}
+
+// parsePDF extracts text from PDF files
+func parsePDF(filePath string) (string, error) {
+	f, err := os.Open(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open PDF: %w", err)
+	}
+	defer f.Close()
+	
+	info, err := f.Stat()
+	if err != nil {
+		return "", fmt.Errorf("failed to get file info: %w", err)
+	}
+	
+	reader, err := pdf.NewReader(f, info.Size())
+	if err != nil {
+		return "", fmt.Errorf("failed to create PDF reader: %w", err)
+	}
+	
+	var text strings.Builder
+	fontMap := make(map[string]*pdf.Font)
+	for i := 1; i <= reader.NumPage(); i++ {
+		page := reader.Page(i)
+		if page.V.IsNull() {
+			continue
+		}
+		pageText, _ := page.GetPlainText(fontMap)
+		text.WriteString(pageText)
+		if i < reader.NumPage() {
+			text.WriteString("\n")
+		}
+	}
+	
+	return text.String(), nil
+}
+
+// parseDOCX extracts text from DOCX files
+func parseDOCX(filePath string) (string, error) {
+	doc, err := docx.ReadDocxFile(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to read DOCX file: %w", err)
+	}
+	defer doc.Close()
+	
+	return doc.Editable().GetContent(), nil
+}
+
+// parseXLSX extracts text from Excel XLSX files
+func parseXLSX(filePath string) (string, error) {
+	f, err := excelize.OpenFile(filePath)
+	if err != nil {
+		return "", fmt.Errorf("failed to open Excel file: %w", err)
+	}
+	defer f.Close()
+	
+	var text strings.Builder
+	
+	// Iterate all sheets
+	sheetList := f.GetSheetList()
+	if len(sheetList) == 0 {
+		return "", fmt.Errorf("Excel file has no sheets")
+	}
+	
+	for _, sheetName := range sheetList {
+		text.WriteString(fmt.Sprintf("## Sheet: %s\n\n", sheetName))
+		
+		rows, err := f.GetRows(sheetName)
+		if err != nil {
+			// Skip sheets that can't be read, continue with others
+			text.WriteString(fmt.Sprintf("(Error reading sheet: %v)\n\n", err))
+			continue
+		}
+		
+		if len(rows) == 0 {
+			text.WriteString("(Sheet is empty)\n\n")
+			continue
+		}
+		
+		// First row as header
+		if len(rows) > 0 {
+			text.WriteString("| ")
+			for _, cell := range rows[0] {
+				text.WriteString(cell + " | ")
+			}
+			text.WriteString("\n|")
+			for range rows[0] {
+				text.WriteString("---|")
+			}
+			text.WriteString("\n")
+			
+			// Data rows
+			for i := 1; i < len(rows); i++ {
+				text.WriteString("| ")
+				for _, cell := range rows[i] {
+					text.WriteString(cell + " | ")
+				}
+				text.WriteString("\n")
+			}
+		}
+		text.WriteString("\n")
+	}
+	
+	return text.String(), nil
 }
 
 // ClassifyKnowledgeItem classifies a knowledge item (placeholder implementation)
@@ -117,6 +338,8 @@ func (v *DocumentValidatorImpl) ValidateFile(ctx context.Context, filePath strin
 	allowedTypes := []string{
 		"application/pdf",
 		"application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+		"application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", // XLSX
+		"application/vnd.ms-excel", // XLS
 		"text/plain",
 		"text/markdown",
 		"application/msword",

@@ -3,31 +3,28 @@
 package main
 
 import (
-	"context"
 	"log"
 	"net/http"
 	"os"
 	"os/signal"
 	"syscall"
-	"time"
 
 	"sentinel-hub-api/config"
 	"sentinel-hub-api/handlers"
+	"sentinel-hub-api/pkg"
+	"sentinel-hub-api/pkg/metrics"
 	"sentinel-hub-api/router"
 )
 
 func main() {
-	// Load configuration
 	cfg, err := config.Load()
 	if err != nil {
 		log.Fatalf("Failed to load configuration: %v", err)
 	}
-
-	// Initialize dependencies and router
+	m := metrics.NewMetrics("sentinel_hub_api")
+	go metrics.StartSystemMetricsCollection(m)
 	deps := handlers.NewDependencies(nil)
-	r := router.NewRouter(deps)
-
-	// Create HTTP server with config
+	r := router.NewRouter(deps, m)
 	server := &http.Server{
 		Addr:         cfg.GetServerAddr(),
 		Handler:      r,
@@ -35,23 +32,14 @@ func main() {
 		WriteTimeout: cfg.Server.WriteTimeout,
 		IdleTimeout:  cfg.Server.IdleTimeout,
 	}
-
-	// Start HTTP server
 	go func() {
 		log.Printf("Server starting on %s", cfg.GetServerAddr())
 		if err := server.ListenAndServe(); err != nil && err != http.ErrServerClosed {
 			log.Fatalf("Server failed: %v", err)
 		}
 	}()
-
-	// Wait for shutdown signal
 	quit := make(chan os.Signal, 1)
 	signal.Notify(quit, syscall.SIGINT, syscall.SIGTERM)
 	<-quit
-
-	// Graceful shutdown
-	log.Println("Shutting down...")
-	ctx, cancel := context.WithTimeout(context.Background(), 5*time.Second)
-	defer cancel()
-	server.Shutdown(ctx)
+	pkg.GracefulShutdown(server, deps.Cleanup)
 }

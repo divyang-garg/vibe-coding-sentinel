@@ -1,19 +1,16 @@
-// Phase 12: Gap Analysis Engine
+// Gap Analysis Engine - Main Analysis Functions
 // Identifies discrepancies between documented business rules and code implementation
+// Complies with CODING_STANDARDS.md: Business Services max 400 lines
 
 package services
 
 import (
 	"context"
-	"database/sql"
 	"encoding/json"
 	"fmt"
-	"os"
-	"path/filepath"
 	"strings"
 	"time"
 
-	sitter "github.com/smacker/go-tree-sitter"
 	"sentinel-hub-api/pkg/database"
 )
 
@@ -201,8 +198,8 @@ func analyzeUndocumentedCode(ctx context.Context, projectID string, codebasePath
 				RuleTitle:      pattern.FunctionName,
 				FilePath:       pattern.FilePath,
 				LineNumber:     pattern.LineNumber,
-				Description:    fmt.Sprintf("Function '%s' at %s:%d is not documented as a business rule", pattern.FunctionName, pattern.FilePath, pattern.LineNumber),
-				Recommendation: fmt.Sprintf("Document business rule for '%s' or remove if not needed", pattern.FunctionName),
+				Description:    fmt.Sprintf("Function '%s' implements business logic but is not documented as a business rule", pattern.FunctionName),
+				Recommendation: fmt.Sprintf("Document function '%s' as a business rule in knowledge base", pattern.FunctionName),
 				Severity:       severity,
 			})
 		}
@@ -213,27 +210,26 @@ func analyzeUndocumentedCode(ctx context.Context, projectID string, codebasePath
 
 // matchesDocumentedRule checks if a pattern matches any documented rule
 func matchesDocumentedRule(pattern BusinessLogicPattern, documentedRules []KnowledgeItem) bool {
-	funcLower := strings.ToLower(pattern.FunctionName)
+	patternKeyword := strings.ToLower(pattern.Keyword)
+	patternFunction := strings.ToLower(pattern.FunctionName)
 
 	for _, rule := range documentedRules {
-		ruleTitleLower := strings.ToLower(rule.Title)
-		ruleContentLower := strings.ToLower(rule.Content)
+		ruleTitle := strings.ToLower(rule.Title)
+		ruleContent := strings.ToLower(rule.Content)
 
-		// Check if function name appears in rule title or content
-		if strings.Contains(ruleTitleLower, funcLower) || strings.Contains(ruleContentLower, funcLower) {
+		// Check keyword match
+		if patternKeyword != "" && (strings.Contains(ruleTitle, patternKeyword) || strings.Contains(ruleContent, patternKeyword)) {
 			return true
 		}
 
-		// Check if keyword matches
-		if pattern.Keyword != "" {
-			if strings.Contains(ruleTitleLower, strings.ToLower(pattern.Keyword)) ||
-				strings.Contains(ruleContentLower, strings.ToLower(pattern.Keyword)) {
-				return true
-			}
+		// Check function name match
+		if strings.Contains(ruleTitle, patternFunction) || strings.Contains(ruleContent, patternFunction) {
+			return true
 		}
 
-		// Semantic similarity check (simple fuzzy matching)
-		if semanticSimilarity(funcLower, ruleTitleLower) > 0.7 {
+		// Check semantic similarity
+		similarity := semanticSimilarity(patternFunction, ruleTitle)
+		if similarity > 0.5 {
 			return true
 		}
 	}
@@ -243,42 +239,45 @@ func matchesDocumentedRule(pattern BusinessLogicPattern, documentedRules []Knowl
 
 // semanticSimilarity calculates a simple similarity score between two strings
 func semanticSimilarity(s1, s2 string) float64 {
-	// Simple word-based similarity
-	words1 := strings.Fields(s1)
-	words2 := strings.Fields(s2)
+	s1Lower := strings.ToLower(s1)
+	s2Lower := strings.ToLower(s2)
 
-	if len(words1) == 0 || len(words2) == 0 {
-		return 0.0
+	// Exact match
+	if s1Lower == s2Lower {
+		return 1.0
 	}
 
-	matches := 0
-	for _, w1 := range words1 {
-		for _, w2 := range words2 {
-			if w1 == w2 {
-				matches++
-				break
+	// Substring match
+	if strings.Contains(s1Lower, s2Lower) || strings.Contains(s2Lower, s1Lower) {
+		return 0.7
+	}
+
+	// Common words
+	s1Words := strings.Fields(s1Lower)
+	s2Words := strings.Fields(s2Lower)
+
+	commonCount := 0
+	for _, w1 := range s1Words {
+		for _, w2 := range s2Words {
+			if w1 == w2 && len(w1) > 2 {
+				commonCount++
 			}
 		}
 	}
 
-	return float64(matches) / float64(len(words1))
+	if len(s1Words) == 0 || len(s2Words) == 0 {
+		return 0.0
+	}
+
+	return float64(commonCount) / float64(len(s1Words)+len(s2Words)-commonCount)
 }
 
 // determineSeverityFromPattern determines severity based on pattern characteristics
 func determineSeverityFromPattern(pattern BusinessLogicPattern) string {
 	funcLower := strings.ToLower(pattern.FunctionName)
+	criticalKeywords := []string{"payment", "transaction", "security", "auth", "validate", "check"}
 
-	// Critical keywords
-	criticalKeywords := []string{"payment", "transaction", "security", "auth", "password"}
 	for _, keyword := range criticalKeywords {
-		if strings.Contains(funcLower, keyword) {
-			return "critical"
-		}
-	}
-
-	// High priority keywords
-	highKeywords := []string{"order", "user", "account", "validate"}
-	for _, keyword := range highKeywords {
 		if strings.Contains(funcLower, keyword) {
 			return "high"
 		}
@@ -287,268 +286,31 @@ func determineSeverityFromPattern(pattern BusinessLogicPattern) string {
 	return "medium"
 }
 
-// BusinessLogicPattern represents a business logic pattern found in code
-type BusinessLogicPattern struct {
-	FilePath     string
-	FunctionName string
-	Keyword      string
-	LineNumber   int    // Line number from AST (accurate)
-	Signature    string // Function signature
-}
-
-// extractBusinessLogicPatterns extracts business logic patterns from codebase
-// Uses AST analysis for accurate function detection and line numbers
-func extractBusinessLogicPatterns(codebasePath string) ([]BusinessLogicPattern, error) {
-	// Use AST-based extraction for better accuracy
-	return extractBusinessLogicPatternsAST(codebasePath)
-}
-
-// extractBusinessLogicPatternsAST extracts business logic patterns using AST analysis
-func extractBusinessLogicPatternsAST(codebasePath string) ([]BusinessLogicPattern, error) {
-	var patterns []BusinessLogicPattern
-
-	// Map file extensions to AST language strings
-	extToLang := map[string]string{
-		".go": "go",
-		".js": "javascript",
-		".ts": "typescript",
-		".py": "python",
-	}
-
-	// Walk codebase and collect code files
-	err := filepath.Walk(codebasePath, func(path string, info os.FileInfo, err error) error {
-		if err != nil {
-			return err
-		}
-
-		// Skip non-code files
-		if info.IsDir() || !isCodeFile(path) {
-			return nil
-		}
-
-		// Determine language from extension
-		ext := strings.ToLower(filepath.Ext(path))
-		language, ok := extToLang[ext]
-		if !ok {
-			return nil // Skip unsupported languages
-		}
-
-		// Read file content
-		content, err := os.ReadFile(path)
-		if err != nil {
-			return nil // Skip files that can't be read
-		}
-
-		// Use AST analyzer to extract function definitions
-		// We parse the code directly using AST to get accurate function definitions
-		// If AST analysis fails, fall back to simple pattern matching
-		filePatterns := extractPatternsFromCode(path, string(content), language)
-		patterns = append(patterns, filePatterns...)
-
-		return nil
-	})
-
-	return patterns, err
-}
-
-// extractPatternsFromCode extracts function definitions directly from code using AST
-func extractPatternsFromCode(filePath, code string, language string) []BusinessLogicPattern {
-	var patterns []BusinessLogicPattern
-
-	// Get parser for language
-	parser, err := getParser(language)
-	if err != nil {
-		return patterns
-	}
-
-	// Parse code into AST
-	ctx := context.Background()
-	tree, err := parser.ParseCtx(ctx, nil, []byte(code))
-	if err != nil {
-		return patterns
-	}
-
-	if tree == nil {
-		return patterns
-	}
-	defer tree.Close()
-
-	rootNode := tree.RootNode()
-	if rootNode == nil {
-		return patterns
-	}
-
-	// Traverse AST to find function definitions
-	traverseAST(rootNode, func(node *sitter.Node) bool {
-		var funcName string
-		var isFunction bool
-		var startLine int
-
-		switch language {
-		case "go":
-			if node.Type() == "function_declaration" || node.Type() == "method_declaration" {
-				startLine, _ = getLineColumn(code, int(node.StartByte()))
-				for i := 0; i < int(node.ChildCount()); i++ {
-					child := node.Child(i)
-					if child != nil {
-						if child.Type() == "identifier" {
-							funcName = code[child.StartByte():child.EndByte()]
-							isFunction = true
-							break
-						} else if child.Type() == "field_identifier" {
-							// Method name in method_declaration
-							funcName = code[child.StartByte():child.EndByte()]
-							isFunction = true
-							break
-						}
-					}
-				}
-			}
-		case "javascript", "typescript":
-			if node.Type() == "function_declaration" || node.Type() == "function" {
-				startLine, _ = getLineColumn(code, int(node.StartByte()))
-				for i := 0; i < int(node.ChildCount()); i++ {
-					child := node.Child(i)
-					if child != nil {
-						if child.Type() == "identifier" || child.Type() == "property_identifier" {
-							funcName = code[child.StartByte():child.EndByte()]
-							isFunction = true
-							break
-						}
-					}
-				}
-			} else if node.Type() == "arrow_function" {
-				// Arrow functions assigned to variables
-				parent := node.Parent()
-				if parent != nil && parent.Type() == "variable_declarator" {
-					startLine, _ = getLineColumn(code, int(node.StartByte()))
-					for i := 0; i < int(parent.ChildCount()); i++ {
-						child := parent.Child(i)
-						if child != nil && child.Type() == "identifier" {
-							funcName = code[child.StartByte():child.EndByte()]
-							isFunction = true
-							break
-						}
-					}
-				}
-			}
-		case "python":
-			if node.Type() == "function_definition" {
-				startLine, _ = getLineColumn(code, int(node.StartByte()))
-				for i := 0; i < int(node.ChildCount()); i++ {
-					child := node.Child(i)
-					if child != nil && child.Type() == "identifier" {
-						funcName = code[child.StartByte():child.EndByte()]
-						isFunction = true
-						break
-					}
-				}
-			}
-		}
-
-		if isFunction && funcName != "" {
-			signature := extractFunctionSignature(node, code, language)
-			keyword := extractKeywordFromFunction(funcName, code[node.StartByte():node.EndByte()])
-
-			patterns = append(patterns, BusinessLogicPattern{
-				FilePath:     filePath,
-				FunctionName: funcName,
-				Keyword:      keyword,
-				LineNumber:   startLine,
-				Signature:    signature,
-			})
-		}
-
-		return true // Continue traversal
-	})
-
-	return patterns
-}
-
-// extractBusinessLogicPatternsSimple is a fallback for when AST analysis fails
-func extractBusinessLogicPatternsSimple(path, content string) []BusinessLogicPattern {
-	// Fallback to simple pattern matching if AST fails
-	var patterns []BusinessLogicPattern
-	lines := strings.Split(content, "\n")
-	for i, line := range lines {
-		if strings.Contains(line, "func ") && containsBusinessKeywords(line) {
-			funcName := extractFunctionNameGap(line)
-			if funcName != "" {
-				patterns = append(patterns, BusinessLogicPattern{
-					FilePath:     path,
-					FunctionName: funcName,
-					Keyword:      extractKeyword(line),
-					LineNumber:   i + 1,
-					Signature:    "",
-				})
-			}
-		}
-	}
-	return patterns
-}
-
-// isBusinessLogicPattern checks if a pattern represents business logic
-func isBusinessLogicPattern(pattern BusinessLogicPattern) bool {
-	// Check function name for business keywords
-	funcLower := strings.ToLower(pattern.FunctionName)
-	businessKeywords := []string{"order", "payment", "user", "account", "transaction", "rule", "validate", "check", "process", "create", "update", "delete"}
-
-	for _, keyword := range businessKeywords {
-		if strings.Contains(funcLower, keyword) {
-			return true
-		}
-	}
-
-	// Check signature/content for business keywords
-	if strings.Contains(strings.ToLower(pattern.Signature), "order") ||
-		strings.Contains(strings.ToLower(pattern.Signature), "payment") ||
-		strings.Contains(strings.ToLower(pattern.Signature), "user") {
-		return true
-	}
-
-	return false
-}
-
-// extractKeywordFromFunction extracts a keyword from function name or content
-func extractKeywordFromFunction(funcName, content string) string {
-	keywords := []string{"order", "payment", "user", "account", "transaction", "rule", "validate"}
-	funcLower := strings.ToLower(funcName)
-	contentLower := strings.ToLower(content)
-
-	for _, keyword := range keywords {
-		if strings.Contains(funcLower, keyword) || strings.Contains(contentLower, keyword) {
-			return keyword
-		}
-	}
-	return ""
-}
-
 // Helper functions
 func determineSeverity(rule KnowledgeItem) string {
-	// Determine severity based on rule priority or category
-	if strings.Contains(strings.ToLower(rule.Content), "critical") {
-		return "critical"
+	// Determine severity based on rule content or title
+	// Check for critical keywords in title or content
+	content := strings.ToLower(rule.Title + " " + rule.Content)
+	criticalKeywords := []string{"security", "payment", "transaction", "critical", "important"}
+
+	for _, keyword := range criticalKeywords {
+		if strings.Contains(content, keyword) {
+			return "high"
+		}
 	}
-	if strings.Contains(strings.ToLower(rule.Content), "high") {
-		return "high"
-	}
+
 	return "medium"
 }
 
 func checkTestCoverage(ctx context.Context, knowledgeItemID string) (bool, error) {
-	// Check if tests exist for this knowledge item using Phase 10 test coverage tracker
-	query := `SELECT COUNT(*) FROM test_coverage WHERE knowledge_item_id = $1`
+	query := `
+		SELECT COUNT(*) 
+		FROM test_requirements 
+		WHERE knowledge_item_id = $1
+	`
 	var count int
-
-	// Use the same pattern as in doc_sync.go
-	ctx, cancel := context.WithTimeout(ctx, getQueryTimeout())
-	defer cancel()
-
 	err := database.QueryRowWithTimeout(ctx, db, query, knowledgeItemID).Scan(&count)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return false, nil
-		}
 		return false, fmt.Errorf("failed to check test coverage: %w", err)
 	}
 	return count > 0, nil
@@ -576,49 +338,6 @@ func generateGapSummary(gaps []Gap) map[string]interface{} {
 	summary["by_severity"] = bySeverity
 
 	return summary
-}
-
-func isCodeFile(path string) bool {
-	ext := strings.ToLower(filepath.Ext(path))
-	return ext == ".go" || ext == ".js" || ext == ".ts" || ext == ".py" || ext == ".java"
-}
-
-func containsBusinessKeywords(line string) bool {
-	keywords := []string{"order", "payment", "user", "account", "transaction", "rule", "validate", "check"}
-	lineLower := strings.ToLower(line)
-	for _, keyword := range keywords {
-		if strings.Contains(lineLower, keyword) {
-			return true
-		}
-	}
-	return false
-}
-
-func extractFunctionNameGap(line string) string {
-	// Simple extraction - full implementation would use AST
-	parts := strings.Fields(line)
-	for i, part := range parts {
-		if part == "func" && i+1 < len(parts) {
-			funcName := strings.TrimSpace(parts[i+1])
-			// Remove parameters
-			if idx := strings.Index(funcName, "("); idx > 0 {
-				return funcName[:idx]
-			}
-			return funcName
-		}
-	}
-	return ""
-}
-
-func extractKeyword(line string) string {
-	keywords := []string{"order", "payment", "user", "account", "transaction"}
-	lineLower := strings.ToLower(line)
-	for _, keyword := range keywords {
-		if strings.Contains(lineLower, keyword) {
-			return keyword
-		}
-	}
-	return ""
 }
 
 func getCurrentTimestamp() string {
@@ -658,3 +377,4 @@ func storeGapReport(ctx context.Context, report *GapAnalysisReport) (string, err
 
 	return reportID, nil
 }
+

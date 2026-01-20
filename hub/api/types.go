@@ -14,7 +14,23 @@
 
 package main
 
-import "time"
+import (
+	"time"
+
+	"sentinel-hub-api/feature_discovery"
+	"sentinel-hub-api/models"
+)
+
+// Type aliases from feature_discovery package
+type EndpointInfo = feature_discovery.EndpointInfo
+type ComponentInfo = feature_discovery.ComponentInfo
+type TableInfo = feature_discovery.TableInfo
+type DatabaseLayerTables = feature_discovery.DatabaseLayerTables
+
+// Type aliases from models package
+type LLMConfig = models.LLMConfig
+type LLMUsage = models.LLMUsage
+type Project = models.Project
 
 // ListChangeRequestsRequest represents the request for listing change requests
 type ListChangeRequestsRequest struct {
@@ -416,3 +432,17 @@ type ChangeRequest struct {
 	RejectedAt           *time.Time             `json:"rejected_at,omitempty"`
 	RejectionReason      *string                `json:"rejection_reason,omitempty"`
 }
+
+// =============================================================================
+// Phase 14A: Discovered Feature Types (for flow verification)
+// =============================================================================
+
+// Type aliases for backward compatibility
+// Note: Actual types are defined in feature_discovery/feature_types.go
+type DiscoveredFeature = feature_discovery.DiscoveredFeature
+type LogicLayer = feature_discovery.LogicLayer
+type BusinessLogicFunctionInfo = feature_discovery.BusinessLogicFunctionInfo
+type IntegrationLayer = feature_discovery.IntegrationLayer
+type IntegrationInfo = feature_discovery.IntegrationInfo
+type TestLayer = feature_discovery.TestLayer
+type TestFileInfo = feature_discovery.TestFileInfo

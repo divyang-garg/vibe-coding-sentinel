@@ -1,4 +1,5 @@
 // Fixed import structure
+// Complies with CODING_STANDARDS.md: Repositories max 350 lines
 package repository
 
 import (
@@ -10,6 +11,36 @@ import (
 	"sentinel-hub-api/models"
 	"sentinel-hub-api/pkg/database"
 	"sentinel-hub-api/utils"
+)
+
+// Package-level database connection (set during initialization)
+var db *sql.DB
+
+// SetDB sets the database connection for the repository package
+func SetDB(database *sql.DB) {
+	db = database
+}
+
+// ValidateUUID validates a UUID string
+func ValidateUUID(id string) error {
+	return utils.ValidateUUID(id)
+}
+
+// KnowledgeItem is an alias to models.KnowledgeItem for local use
+type KnowledgeItem = models.KnowledgeItem
+
+// ComprehensiveValidation is an alias to models.ComprehensiveValidation for local use
+type ComprehensiveValidation = models.ComprehensiveValidation
+
+// TestRequirement is an alias to models.TestRequirement for local use
+type TestRequirement = models.TestRequirement
+
+// LinkType constants for task links
+const (
+	LinkTypeChangeRequest         = "change_request"
+	LinkTypeKnowledgeItem         = "knowledge_item"
+	LinkTypeComprehensiveAnalysis = "comprehensive_analysis"
+	LinkTypeTestRequirement       = "test_requirement"
 )
 
 // GetChangeRequestByID retrieves a change request by ID
@@ -64,10 +95,10 @@ func GetChangeRequestByID(ctx context.Context, db *sql.DB, changeRequestID strin
 		cr.RejectedAt = &rejectedAt.Time
 	}
 	if rejectionReason.Valid {
-		cr.RejectionReason = &rejectionReason.String
+		cr.RejectionReason = rejectionReason.String
 	}
 	if implNotes.Valid {
-		cr.ImplementationNotes = &implNotes.String
+		cr.ImplementationNotes = implNotes.String
 	}
 
 	// Unmarshal JSONB fields
@@ -170,24 +201,32 @@ func GetComprehensiveValidationByID(ctx context.Context, validationID string) (*
 	}
 
 	// Unmarshal JSONB fields
-	jsonFields := []struct {
-		json  sql.NullString
-		field *map[string]interface{}
-		name  string
-	}{
-		{findingsJSON, &cv.Findings, "findings"},
-		{summaryJSON, &cv.Summary, "summary"},
-		{layerAnalysisJSON, &cv.LayerAnalysis, "layer_analysis"},
-		{endToEndFlowsJSON, &cv.EndToEndFlows, "end_to_end_flows"},
-		{checklistJSON, &cv.Checklist, "checklist"},
+	if findingsJSON.Valid {
+		cv.Findings = make(map[string]interface{})
+		if err := json.Unmarshal([]byte(findingsJSON.String), &cv.Findings); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal findings: %w", err)
+		}
 	}
-
-	for _, jf := range jsonFields {
-		if jf.json.Valid {
-			*jf.field = make(map[string]interface{})
-			if err := json.Unmarshal([]byte(jf.json.String), jf.field); err != nil {
-				return nil, fmt.Errorf("failed to unmarshal %s: %w", jf.name, err)
-			}
+	if summaryJSON.Valid {
+		cv.Summary = make(map[string]interface{})
+		if err := json.Unmarshal([]byte(summaryJSON.String), &cv.Summary); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal summary: %w", err)
+		}
+	}
+	if layerAnalysisJSON.Valid {
+		cv.LayerAnalysis = make(map[string]interface{})
+		if err := json.Unmarshal([]byte(layerAnalysisJSON.String), &cv.LayerAnalysis); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal layer_analysis: %w", err)
+		}
+	}
+	if endToEndFlowsJSON.Valid {
+		if err := json.Unmarshal([]byte(endToEndFlowsJSON.String), &cv.EndToEndFlows); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal end_to_end_flows: %w", err)
+		}
+	}
+	if checklistJSON.Valid {
+		if err := json.Unmarshal([]byte(checklistJSON.String), &cv.Checklist); err != nil {
+			return nil, fmt.Errorf("failed to unmarshal checklist: %w", err)
 		}
 	}
 

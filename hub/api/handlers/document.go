@@ -3,8 +3,9 @@
 package handlers
 
 import (
-	"encoding/json"
+	"fmt"
 	"net/http"
+	"os"
 
 	"sentinel-hub-api/models"
 	"sentinel-hub-api/services"
@@ -25,29 +26,68 @@ func NewDocumentHandler(documentService services.DocumentService) *DocumentHandl
 
 // UploadDocument handles POST /api/v1/documents/upload
 func (h *DocumentHandler) UploadDocument(w http.ResponseWriter, r *http.Request) {
-	var req models.DocumentUploadRequest
-	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		h.WriteErrorResponse(w, &models.ValidationError{
-			Field:   "body",
-			Message: "Invalid request format",
-		}, http.StatusBadRequest)
+	// Parse multipart form (100MB max)
+	err := r.ParseMultipartForm(100 << 20)
+	if err != nil {
+		h.WriteErrorResponse(w, fmt.Errorf("failed to parse multipart form: %w", err), http.StatusBadRequest)
 		return
 	}
 
-	// In a real implementation, this would handle file upload
-	// For now, return a placeholder response
-	response := &models.DocumentUploadResponse{
-		Document: &models.Document{
-			ID:       "doc-123",
-			Name:     req.Name,
-			Status:   models.DocumentStatusUploaded,
-			Progress: 0,
-		},
-		Success: true,
-		Message: "Document uploaded successfully",
+	file, header, err := r.FormFile("file")
+	if err != nil {
+		h.WriteErrorResponse(w, fmt.Errorf("file not found in request: %w", err), http.StatusBadRequest)
+		return
+	}
+	defer file.Close()
+
+	// Get project ID from header or context
+	projectID := r.Header.Get("X-Project-ID")
+	if projectID == "" {
+		project, err := h.GetProjectFromContext(r.Context())
+		if err != nil {
+			h.WriteErrorResponse(w, fmt.Errorf("project ID required: %w", err), http.StatusUnauthorized)
+			return
+		}
+		projectID = project.ID
 	}
 
-	h.WriteJSONResponse(w, http.StatusCreated, response)
+	// Save file to temp location
+	tempPath, err := saveUploadedFile(file, header.Filename)
+	if err != nil {
+		h.WriteErrorResponse(w, fmt.Errorf("failed to save uploaded file: %w", err), http.StatusInternalServerError)
+		return
+	}
+	defer func() {
+		// Clean up temp file if handler returns error
+		if tempPath != "" {
+			os.Remove(tempPath)
+		}
+	}()
+
+	// Create upload request
+	req := models.DocumentUploadRequest{
+		ProjectID:    projectID,
+		OriginalName: header.Filename,
+		Name:         header.Filename,
+	}
+
+	// Detect MIME type
+	mimeType := header.Header.Get("Content-Type")
+	if mimeType == "" {
+		mimeType = detectMimeType(header.Filename)
+	}
+
+	// Call service
+	doc, err := h.DocumentService.UploadDocument(r.Context(), req, tempPath, mimeType)
+	if err != nil {
+		h.WriteErrorResponse(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	// Don't clean up temp file on success - service will handle it
+	tempPath = ""
+
+	h.WriteJSONResponse(w, http.StatusCreated, doc)
 }
 
 // GetDocument handles GET /api/v1/documents/{id}
@@ -61,11 +101,10 @@ func (h *DocumentHandler) GetDocument(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// Placeholder implementation
-	doc := &models.Document{
-		ID:     id,
-		Name:   "sample.pdf",
-		Status: models.DocumentStatusCompleted,
+	doc, err := h.DocumentService.GetDocument(r.Context(), id)
+	if err != nil {
+		h.WriteErrorResponse(w, err, http.StatusNotFound)
+		return
 	}
 
 	h.WriteJSONResponse(w, http.StatusOK, doc)
@@ -82,20 +121,10 @@ func (h *DocumentHandler) ListDocuments(w http.ResponseWriter, r *http.Request) 
 		return
 	}
 
-	// Placeholder implementation
-	documents := []models.Document{
-		{
-			ID:        "doc-1",
-			ProjectID: projectID,
-			Name:      "document1.pdf",
-			Status:    models.DocumentStatusCompleted,
-		},
-		{
-			ID:        "doc-2",
-			ProjectID: projectID,
-			Name:      "document2.pdf",
-			Status:    models.DocumentStatusProcessing,
-		},
+	documents, err := h.DocumentService.ListDocuments(r.Context(), projectID)
+	if err != nil {
+		h.WriteErrorResponse(w, err, http.StatusInternalServerError)
+		return
 	}
 
 	h.WriteJSONResponse(w, http.StatusOK, map[string]interface{}{
@@ -115,11 +144,16 @@ func (h *DocumentHandler) GetDocumentStatus(w http.ResponseWriter, r *http.Reque
 		return
 	}
 
-	// Placeholder implementation
+	doc, err := h.DocumentService.GetProcessingStatus(r.Context(), id)
+	if err != nil {
+		h.WriteErrorResponse(w, err, http.StatusNotFound)
+		return
+	}
+
 	status := &models.DocumentProcessingResult{
-		DocumentID: id,
-		Status:     "completed",
-		Success:    true,
+		DocumentID: doc.ID,
+		Status:     string(doc.Status),
+		Success:    doc.Status == models.DocumentStatusCompleted,
 	}
 
 	h.WriteJSONResponse(w, http.StatusOK, status)

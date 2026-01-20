@@ -4,6 +4,8 @@ package services
 
 import (
 	"context"
+	"fmt"
+	"sync"
 	"testing"
 	"time"
 
@@ -12,8 +14,58 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
+// mockErrorReportRepository is an in-memory mock for testing
+type mockErrorReportRepository struct {
+	mu      sync.RWMutex
+	reports map[string]*models.ErrorReport
+	nextID  int
+}
+
+func newMockErrorReportRepository() *mockErrorReportRepository {
+	return &mockErrorReportRepository{
+		reports: make(map[string]*models.ErrorReport),
+	}
+}
+
+func (m *mockErrorReportRepository) Save(ctx context.Context, report *models.ErrorReport) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	// Always generate a unique ID to avoid collisions
+	m.nextID++
+	report.ID = fmt.Sprintf("error-%d", m.nextID)
+	// Create a copy to avoid pointer issues
+	reportCopy := *report
+	m.reports[report.ID] = &reportCopy
+	return nil
+}
+
+func (m *mockErrorReportRepository) FindByID(ctx context.Context, id string) (*models.ErrorReport, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	return m.reports[id], nil
+}
+
+func (m *mockErrorReportRepository) List(ctx context.Context, category string, severity string, resolved *bool, limit, offset int) ([]models.ErrorReport, int, error) {
+	m.mu.RLock()
+	defer m.mu.RUnlock()
+	var result []models.ErrorReport
+	for _, r := range m.reports {
+		result = append(result, *r)
+	}
+	return result, len(result), nil
+}
+
+func (m *mockErrorReportRepository) UpdateResolved(ctx context.Context, id string, resolved bool) error {
+	m.mu.Lock()
+	defer m.mu.Unlock()
+	if r, ok := m.reports[id]; ok {
+		r.Resolved = resolved
+	}
+	return nil
+}
+
 func TestMonitoringServiceImpl_ReportError(t *testing.T) {
-	service := NewMonitoringService()
+	service := NewMonitoringService(newMockErrorReportRepository())
 
 	report := models.ErrorReport{
 		Message:    "Test error occurred",
@@ -44,7 +96,7 @@ func TestMonitoringServiceImpl_ReportError(t *testing.T) {
 }
 
 func TestMonitoringServiceImpl_GetErrorDashboard(t *testing.T) {
-	service := NewMonitoringService()
+	service := NewMonitoringService(newMockErrorReportRepository())
 
 	// Add some test errors
 	errors := []models.ErrorReport{
@@ -109,9 +161,15 @@ func TestMonitoringServiceImpl_GetErrorDashboard(t *testing.T) {
 }
 
 func TestMonitoringServiceImpl_GetErrorAnalysis(t *testing.T) {
-	service := NewMonitoringService()
+	service := NewMonitoringService(newMockErrorReportRepository())
 
-	// Add test errors
+	// Add test errors with all severity levels
+	assert.NoError(t, service.ReportError(context.Background(), models.ErrorReport{
+		Message:   "Low severity error",
+		Severity:  models.ErrorSeverityLow,
+		Category:  "api",
+		Timestamp: time.Now(),
+	}))
 	assert.NoError(t, service.ReportError(context.Background(), models.ErrorReport{
 		Message:   "Connection timeout",
 		Severity:  models.ErrorSeverityHigh,
@@ -122,6 +180,12 @@ func TestMonitoringServiceImpl_GetErrorAnalysis(t *testing.T) {
 		Message:   "Invalid request",
 		Severity:  models.ErrorSeverityMedium,
 		Category:  "api",
+		Timestamp: time.Now(),
+	}))
+	assert.NoError(t, service.ReportError(context.Background(), models.ErrorReport{
+		Message:   "Critical severity error",
+		Severity:  models.ErrorSeverityCritical,
+		Category:  "database",
 		Timestamp: time.Now(),
 	}))
 
@@ -157,7 +221,7 @@ func TestMonitoringServiceImpl_GetErrorAnalysis(t *testing.T) {
 }
 
 func TestMonitoringServiceImpl_GetErrorStats(t *testing.T) {
-	service := NewMonitoringService()
+	service := NewMonitoringService(newMockErrorReportRepository())
 
 	// Add test errors
 	assert.NoError(t, service.ReportError(context.Background(), models.ErrorReport{
@@ -239,7 +303,7 @@ func TestMonitoringServiceImpl_ClassifyError(t *testing.T) {
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			service := NewMonitoringService()
+			service := NewMonitoringService(newMockErrorReportRepository())
 
 			result, err := service.ClassifyError(context.Background(), tt.classification)
 
@@ -270,7 +334,7 @@ func TestMonitoringServiceImpl_ClassifyError(t *testing.T) {
 }
 
 func TestMonitoringServiceImpl_GetHealthMetrics(t *testing.T) {
-	service := NewMonitoringService()
+	service := NewMonitoringService(newMockErrorReportRepository())
 
 	result, err := service.GetHealthMetrics(context.Background())
 	assert.NoError(t, err)
@@ -313,7 +377,7 @@ func TestMonitoringServiceImpl_GetHealthMetrics(t *testing.T) {
 }
 
 func TestMonitoringServiceImpl_GetPerformanceMetrics(t *testing.T) {
-	service := NewMonitoringService()
+	service := NewMonitoringService(newMockErrorReportRepository())
 
 	result, err := service.GetPerformanceMetrics(context.Background())
 	assert.NoError(t, err)
@@ -358,7 +422,7 @@ func TestMonitoringServiceImpl_GetPerformanceMetrics(t *testing.T) {
 }
 
 func TestMonitoringServiceImpl_ErrorRateCalculation(t *testing.T) {
-	service := NewMonitoringService()
+	service := NewMonitoringService(newMockErrorReportRepository())
 
 	// Initially should have low/zero error rate
 	dashboard, err := service.GetErrorDashboard(context.Background())

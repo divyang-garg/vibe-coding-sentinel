@@ -136,8 +136,8 @@ func deleteLLMConfig(ctx context.Context, configID string, projectID string) err
 	return fmt.Errorf("not implemented")
 }
 
-// listLLMConfigs lists all configurations for a project
-func listLLMConfigs(ctx context.Context, projectID string) ([]*LLMConfig, error) {
+// ListLLMConfigs lists all configurations for a project
+func ListLLMConfigs(ctx context.Context, projectID string) ([]*LLMConfig, error) {
 	query := `
 		SELECT id, provider, api_key_encrypted, model, key_type, cost_optimization, created_at, updated_at
 		FROM llm_configurations
@@ -173,10 +173,23 @@ func listLLMConfigs(ctx context.Context, projectID string) ([]*LLMConfig, error)
 		maskedKey := maskAPIKey(apiKey)
 
 		// Parse cost optimization config
-		var costOpt map[string]interface{}
+		var costOpt *CostOptimizationConfig
 		if costOptJSON.Valid && costOptJSON.String != "" {
-			if err := json.Unmarshal([]byte(costOptJSON.String), &costOpt); err != nil {
-				costOpt = make(map[string]interface{})
+			var costOptMap map[string]interface{}
+			if err := json.Unmarshal([]byte(costOptJSON.String), &costOptMap); err == nil {
+				costOpt = &CostOptimizationConfig{}
+				if useCache, ok := costOptMap["use_cache"].(bool); ok {
+					costOpt.UseCache = useCache
+				}
+				if ttl, ok := costOptMap["cache_ttl_hours"].(float64); ok {
+					costOpt.CacheTTLHours = int(ttl)
+				}
+				if progressive, ok := costOptMap["progressive_depth"].(bool); ok {
+					costOpt.ProgressiveDepth = progressive
+				}
+				if maxCost, ok := costOptMap["max_cost_per_request"].(float64); ok {
+					costOpt.MaxCostPerRequest = maxCost
+				}
 			}
 		}
 

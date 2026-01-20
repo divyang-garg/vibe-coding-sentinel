@@ -100,8 +100,9 @@ func analyzeTestScenarios(content string, testFile TestFileInfo) []TestLayerFind
 func checkTestCoverageForFile(content string, testFile TestFileInfo) []TestLayerFinding {
 	findings := []TestLayerFinding{}
 
-	// Count test cases
-	testCaseCount := countTestCases(content, testFile.Framework)
+	// Count test cases - detect framework from path
+	framework := detectTestFramework(testFile.Path)
+	testCaseCount := countTestCases(content, framework)
 
 	if testCaseCount == 0 {
 		findings = append(findings, TestLayerFinding{

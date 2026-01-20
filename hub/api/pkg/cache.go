@@ -9,6 +9,27 @@ import (
 	"time"
 )
 
+// GapAnalysisReport represents gap analysis results (local definition for pkg)
+type GapAnalysisReport struct {
+	ProjectID string                 `json:"project_id"`
+	Gaps      []Gap                  `json:"gaps"`
+	Summary   map[string]interface{} `json:"summary"`
+	CreatedAt string                 `json:"created_at"`
+}
+
+// Gap represents a single gap (local definition for pkg)
+type Gap struct {
+	Type            string                 `json:"type"`
+	KnowledgeItemID string                 `json:"knowledge_item_id"`
+	RuleTitle       string                 `json:"rule_title"`
+	FilePath        string                 `json:"file_path,omitempty"`
+	LineNumber      int                    `json:"line_number,omitempty"`
+	Description     string                 `json:"description"`
+	Evidence        map[string]interface{} `json:"evidence,omitempty"`
+	Recommendation  string                 `json:"recommendation"`
+	Severity        string                 `json:"severity"`
+}
+
 // CachedGapAnalysis represents a cached gap analysis result
 type CachedGapAnalysis struct {
 	Report    *GapAnalysisReport

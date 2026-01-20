@@ -6,12 +6,21 @@ import (
 	"database/sql"
 
 	"github.com/go-chi/chi/v5"
+	"sentinel-hub-api/llm"
+	"sentinel-hub-api/services"
 )
 
 // RegisterAll registers all HTTP handlers with the router
 func RegisterAll(r *chi.Mux, db *sql.DB) {
 	// Set database connection for handlers that need it
 	SetDB(db)
+	
+	// Set database connection for services package
+	if db != nil {
+		services.SetDB(db)
+		// Set database connection for llm package
+		llm.SetDB(db)
+	}
 
 	// Health check endpoints
 	r.Get("/health", healthHandler)

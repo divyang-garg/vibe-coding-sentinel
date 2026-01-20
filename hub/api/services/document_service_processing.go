@@ -35,21 +35,39 @@ func (s *DocumentServiceImpl) ProcessDocument(ctx context.Context, docID string)
 		return nil, fmt.Errorf("failed to update status: %w", err)
 	}
 
-	// Extract text content (placeholder - in production this would parse the actual file)
+	// Extract text content based on MIME type
 	var extractedText string
 	switch doc.MimeType {
 	case "text/plain":
-		content, err := os.ReadFile(doc.FilePath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read text file: %w", err)
+		content, readErr := os.ReadFile(doc.FilePath)
+		if readErr != nil {
+			return nil, fmt.Errorf("failed to read text file: %w", readErr)
 		}
 		extractedText = string(content)
 	case "text/markdown":
-		content, err := os.ReadFile(doc.FilePath)
-		if err != nil {
-			return nil, fmt.Errorf("failed to read markdown file: %w", err)
+		content, readErr := os.ReadFile(doc.FilePath)
+		if readErr != nil {
+			return nil, fmt.Errorf("failed to read markdown file: %w", readErr)
 		}
 		extractedText = string(content)
+	case "application/pdf":
+		var extractErr error
+		extractedText, extractErr = extractPDFText(doc.FilePath)
+		if extractErr != nil {
+			return nil, fmt.Errorf("failed to extract PDF text: %w", extractErr)
+		}
+	case "application/vnd.openxmlformats-officedocument.wordprocessingml.document", "application/msword":
+		var extractErr error
+		extractedText, extractErr = extractDOCXText(doc.FilePath)
+		if extractErr != nil {
+			return nil, fmt.Errorf("failed to extract DOCX text: %w", extractErr)
+		}
+	case "image/png", "image/jpeg", "image/jpg", "image/gif":
+		var extractErr error
+		extractedText, extractErr = extractImageText(doc.FilePath)
+		if extractErr != nil {
+			return nil, fmt.Errorf("failed to extract image text: %w", extractErr)
+		}
 	default:
 		extractedText = fmt.Sprintf("Document content extraction not implemented for %s", doc.MimeType)
 	}

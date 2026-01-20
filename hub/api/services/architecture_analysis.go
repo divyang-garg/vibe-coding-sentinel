@@ -83,13 +83,16 @@ func detectSections(content string, language string) []FileSection {
 
 	// Try to use AST parser if available
 	parser, err := getParser(language)
-	if err == nil {
-		// Use AST to detect functions/classes
+	if err == nil && parser != nil {
 		ctx := context.Background()
-		tree, err := parser.ParseCtx(ctx, nil, []byte(content))
-		if err == nil {
+		tree, parseErr := parser.ParseCtx(ctx, nil, []byte(content))
+		if parseErr == nil && tree != nil {
 			defer tree.Close()
-			sections = extractSectionsFromAST(tree.RootNode(), content)
+			rootNode := tree.RootNode()
+			if rootNode != nil {
+				// Use AST to detect functions/classes
+				sections = extractSectionsFromAST(rootNode, content, language)
+			}
 		}
 	}
 
@@ -102,21 +105,39 @@ func detectSections(content string, language string) []FileSection {
 }
 
 // extractSectionsFromAST extracts sections from AST tree
-func extractSectionsFromAST(node *sitter.Node, content string) []FileSection {
+func extractSectionsFromAST(node *sitter.Node, content string, language string) []FileSection {
 	var sections []FileSection
 
 	// Traverse AST to find function/class definitions
-	traverseASTForSections(node, func(n *sitter.Node) {
+	traverseAST(node, func(n *sitter.Node) bool {
 		nodeType := n.Type()
-		if nodeType == "function_declaration" || nodeType == "method_declaration" ||
-			nodeType == "class_declaration" || nodeType == "type_declaration" {
+		isSection := false
 
-			startLine := int(n.StartPoint().Row) + 1
-			endLine := int(n.EndPoint().Row) + 1
+		switch language {
+		case "go":
+			isSection = nodeType == "function_declaration" || nodeType == "method_declaration" || nodeType == "type_declaration"
+		case "javascript", "typescript":
+			isSection = nodeType == "function_declaration" || nodeType == "class_declaration"
+		case "python":
+			isSection = nodeType == "function_definition" || nodeType == "class_definition"
+		}
+
+		if isSection {
+			startPoint := n.StartPoint()
+			endPoint := n.EndPoint()
+			startLine := int(startPoint.Row) + 1
+			endLine := int(endPoint.Row) + 1
 			lines := endLine - startLine + 1
 
-			// Extract name
-			name := extractNodeName(n, content)
+			// Extract name (simplified - extract first identifier)
+			name := "unknown"
+			for i := 0; i < int(n.ChildCount()); i++ {
+				child := n.Child(i)
+				if child != nil && (child.Type() == "identifier" || child.Type() == "field_identifier" || child.Type() == "property_identifier") {
+					name = content[child.StartByte():child.EndByte()]
+					break
+				}
+			}
 
 			sections = append(sections, FileSection{
 				StartLine:   startLine,
@@ -126,7 +147,42 @@ func extractSectionsFromAST(node *sitter.Node, content string) []FileSection {
 				Lines:       lines,
 			})
 		}
+
+		return true
 	})
 
 	return sections
 }
+
+// extractSectionsFromAST extracts sections from AST tree
+// NOTE: Disabled until tree-sitter integration is complete
+// func extractSectionsFromAST(node *sitter.Node, content string) []FileSection {
+// 	var sections []FileSection
+//
+// 	// Traverse AST to find function/class definitions
+// 	traverseASTForSections(node, func(n *sitter.Node) {
+// 		nodeType := n.Type()
+// 		if nodeType == "function_declaration" || nodeType == "method_declaration" ||
+// 			nodeType == "class_declaration" || nodeType == "type_declaration" {
+//
+// 			startLine := int(n.StartPoint().Row) + 1
+// 			endLine := int(n.EndPoint().Row) + 1
+// 			lines := endLine - startLine + 1
+//
+// 			// Extract name
+// 			name := extractNodeName(n, content)
+//
+// 			sections = append(sections, FileSection{
+// 				StartLine:   startLine,
+// 				EndLine:     endLine,
+// 				Name:        name,
+// 				Description: fmt.Sprintf("%s definition", nodeType),
+// 				Lines:       lines,
+// 			})
+// 		}
+// 	})
+//
+// 	return sections
+// }
+
+// Note: traverseASTForSections and extractNodeName are defined in architecture_sections.go

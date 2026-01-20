@@ -1,5 +1,6 @@
 // Phase 14E: Task Storage Layer
 // Database operations for task management
+// Complies with CODING_STANDARDS.md: Repositories max 350 lines
 
 package repository
 
@@ -10,10 +11,11 @@ import (
 	"strings"
 	"time"
 
-	"github.com/google/uuid"
-	"github.com/lib/pq"
 	"sentinel-hub-api/models"
 	"sentinel-hub-api/pkg/database"
+
+	"github.com/google/uuid"
+	"github.com/lib/pq"
 )
 
 // GetTask retrieves a task by ID (with caching)
@@ -121,13 +123,13 @@ func CreateTask(ctx context.Context, projectID string, req models.CreateTaskRequ
 		return nil, fmt.Errorf("failed to create task: %w", err)
 	}
 
-	return GetTask(ctx, taskID)
+	return GetTask(ctx, db, taskID)
 }
 
 // UpdateTask updates an existing task with optimistic locking
 func UpdateTask(ctx context.Context, taskID string, req models.UpdateTaskRequest) (*models.Task, error) {
 	// Get current task to check version
-	currentTask, err := GetTask(ctx, taskID)
+	currentTask, err := GetTask(ctx, db, taskID)
 	if err != nil {
 		return nil, err
 	}
@@ -195,7 +197,7 @@ func UpdateTask(ctx context.Context, taskID string, req models.UpdateTaskRequest
 	// Invalidate cache after successful update
 	InvalidateTaskCache(taskID)
 
-	return GetTask(ctx, taskID)
+	return GetTask(ctx, db, taskID)
 }
 
 // ListTasks lists tasks with filters and pagination
@@ -211,11 +213,7 @@ func ListTasks(ctx context.Context, projectID string, req models.ListTasksReques
 	}
 
 	// Exclude archived tasks by default (unless explicitly included)
-	includeArchived := false
-	if req.IncludeArchived != nil && *req.IncludeArchived {
-		includeArchived = true
-	}
-	if !includeArchived {
+	if !req.IncludeArchived {
 		whereClauses = append(whereClauses, "archived_at IS NULL")
 	}
 	if req.PriorityFilter != "" {
@@ -228,14 +226,9 @@ func ListTasks(ctx context.Context, projectID string, req models.ListTasksReques
 		args = append(args, req.SourceFilter)
 		argIndex++
 	}
-	if req.AssignedTo != nil {
+	if req.AssignedTo != "" {
 		whereClauses = append(whereClauses, fmt.Sprintf("assigned_to = $%d", argIndex))
-		args = append(args, *req.AssignedTo)
-		argIndex++
-	}
-	if len(req.Tags) > 0 {
-		whereClauses = append(whereClauses, fmt.Sprintf("tags && $%d", argIndex))
-		args = append(args, pq.Array(req.Tags))
+		args = append(args, req.AssignedTo)
 		argIndex++
 	}
 
@@ -335,25 +328,18 @@ func ListTasks(ctx context.Context, projectID string, req models.ListTasksReques
 		tasks = append(tasks, task)
 	}
 
-	hasNext := offset+limit < total
-	hasPrevious := offset > 0
-
-	return &ListTasksResponse{
-		Tasks:       tasks,
-		Total:       total,
-		Limit:       limit,
-		Offset:      offset,
-		HasNext:     hasNext,
-		HasPrevious: hasPrevious,
+	return &models.ListTasksResponse{
+		Tasks:   tasks,
+		Total:   total,
+		Limit:   limit,
+		Offset:  offset,
+		HasMore: offset+limit < total,
 	}, nil
 }
 
-// DeleteTask soft deletes a task (marks as deleted)
+// DeleteTask deletes a task by ID
 func DeleteTask(ctx context.Context, taskID string) error {
-	// Invalidate cache
 	InvalidateTaskCache(taskID)
-
-	// For now, we'll do a hard delete. Can be changed to soft delete later
 	query := `DELETE FROM tasks WHERE id = $1`
 	_, err := database.ExecWithTimeout(ctx, db, query, taskID)
 	if err != nil {

@@ -111,7 +111,7 @@ func migrateKnowledgeHandler(w http.ResponseWriter, r *http.Request) {
 	// Check if user has permission (optional: add role check)
 	// For now, any authenticated user can trigger migration
 
-	LogInfo(ctx, "Knowledge migration requested by project %s", project.ID)
+	LogInfo(ctx, "Knowledge migration requested by project %s", project)
 
 	// Create context with timeout for migration
 	migrationCtx, cancel := context.WithTimeout(ctx, 30*time.Minute)

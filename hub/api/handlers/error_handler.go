@@ -7,9 +7,15 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"log"
 	"net/http"
 	"runtime"
 )
+
+// LogError logs an error message (local implementation)
+func LogError(ctx context.Context, msg string, args ...interface{}) {
+	log.Printf("ERROR: "+msg, args...)
+}
 
 // ValidationError represents a validation error
 type ValidationError struct {

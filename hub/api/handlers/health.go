@@ -6,6 +6,8 @@ import (
 	"encoding/json"
 	"net/http"
 	"time"
+	
+	"sentinel-hub-api/pkg"
 )
 
 // HealthHandler handles health check requests
@@ -23,6 +25,16 @@ func NewHealthHandler(db *sql.DB) *HealthHandler {
 
 // Health handles GET /health
 func (h *HealthHandler) Health(w http.ResponseWriter, r *http.Request) {
+	// Check if shutting down
+	if pkg.IsShuttingDown() {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status":    "shutting_down",
+			"timestamp": time.Now(),
+		})
+		return
+	}
+	
 	health := map[string]interface{}{
 		"status":    "healthy",
 		"timestamp": time.Now(),
@@ -82,6 +94,15 @@ func (h *HealthHandler) HealthDB(w http.ResponseWriter, r *http.Request) {
 
 // HealthReady handles GET /health/ready
 func (h *HealthHandler) HealthReady(w http.ResponseWriter, r *http.Request) {
+	if pkg.IsShuttingDown() {
+		w.WriteHeader(http.StatusServiceUnavailable)
+		json.NewEncoder(w).Encode(map[string]interface{}{
+			"status": "not_ready",
+			"reason": "shutting_down",
+		})
+		return
+	}
+	
 	// Check if all critical services are ready
 	if err := h.DB.Ping(); err != nil {
 		h.WriteErrorResponse(w, err, http.StatusServiceUnavailable)

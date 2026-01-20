@@ -3,8 +3,10 @@
 package ast
 
 import (
-	sitter "github.com/smacker/go-tree-sitter"
 	"strings"
+	"unicode"
+
+	sitter "github.com/smacker/go-tree-sitter"
 )
 
 // traverseAST traverses the AST tree with a visitor function
@@ -33,8 +35,20 @@ func countNodes(node *sitter.Node) int {
 
 // getLineColumn converts byte offset to line and column numbers
 func getLineColumn(code string, byteOffset int) (line, column int) {
+	codeLen := len(code)
+	if byteOffset > codeLen {
+		byteOffset = codeLen
+	}
+	if byteOffset < 0 {
+		byteOffset = 0
+	}
 	lines := strings.Split(code[:byteOffset], "\n")
 	line = len(lines)
+	if line == 0 {
+		line = 1
+		column = 1
+		return line, column
+	}
 	column = len(lines[len(lines)-1]) + 1
 	return line, column
 }
@@ -67,6 +81,42 @@ func contains(slice []string, item string) bool {
 		if s == item {
 			return true
 		}
+	}
+	return false
+}
+
+// safeSlice safely extracts a substring with bounds checking
+func safeSlice(code string, start, end uint32) string {
+	codeLen := uint32(len(code))
+	if start > codeLen {
+		start = codeLen
+	}
+	if end > codeLen {
+		end = codeLen
+	}
+	if start > end {
+		return ""
+	}
+	return code[start:end]
+}
+
+// shouldExcludeFunction checks if a function should be excluded from orphaned detection
+func shouldExcludeFunction(funcName string, config DetectionConfig) bool {
+	// Check exact matches
+	for _, excluded := range config.ExcludedFunctions {
+		if funcName == excluded {
+			return true
+		}
+	}
+	// Check prefixes
+	for _, prefix := range config.ExcludedPrefixes {
+		if strings.HasPrefix(funcName, prefix) {
+			return true
+		}
+	}
+	// Check exported functions (uppercase first letter)
+	if config.TrustExported && len(funcName) > 0 && unicode.IsUpper(rune(funcName[0])) {
+		return true
 	}
 	return false
 }

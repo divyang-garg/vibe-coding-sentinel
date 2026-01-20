@@ -32,17 +32,22 @@ type UpdateTaskRequest struct {
 	ActualEffort           *int     `json:"actual_effort,omitempty" validate:"omitempty,min=0"`
 	Tags                   []string `json:"tags,omitempty"`
 	VerificationConfidence *float64 `json:"verification_confidence,omitempty" validate:"omitempty,min=0,max=1"`
+	Version                int      `json:"version"` // For optimistic locking
 }
 
 // ListTasksRequest represents a request to list tasks with filtering and pagination
 type ListTasksRequest struct {
-	ProjectID  string `json:"project_id,omitempty"`
-	Status     string `json:"status,omitempty"`
-	Priority   string `json:"priority,omitempty"`
-	AssignedTo string `json:"assigned_to,omitempty"`
-	Source     string `json:"source,omitempty"`
-	Limit      int    `json:"limit"`
-	Offset     int    `json:"offset"`
+	ProjectID       string `json:"project_id,omitempty"`
+	Status          string `json:"status,omitempty"`
+	StatusFilter    string `json:"status_filter,omitempty"` // Alias for Status
+	Priority        string `json:"priority,omitempty"`
+	PriorityFilter  string `json:"priority_filter,omitempty"` // Alias for Priority
+	AssignedTo      string `json:"assigned_to,omitempty"`
+	Source          string `json:"source,omitempty"`
+	SourceFilter    string `json:"source_filter,omitempty"` // Alias for Source
+	IncludeArchived bool   `json:"include_archived,omitempty"`
+	Limit           int    `json:"limit"`
+	Offset          int    `json:"offset"`
 }
 
 // ListTasksResponse represents the response from listing tasks

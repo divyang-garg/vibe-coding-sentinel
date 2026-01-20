@@ -1,0 +1,27 @@
+{
+  "languages": {
+    "Go": 1
+  },
+  "frameworks": {},
+  "namingPatterns": {},
+  "fileExtensions": {
+    ".go": 1
+  },
+  "projectStructure": {},
+  "importPatterns": {
+    "style": "absolute",
+    "aliasing": {},
+    "barrelFiles": null,
+    "defaultImports": 0,
+    "namedImports": 1,
+    "examples": []
+  },
+  "codeStyle": {
+    "indentStyle": "tabs",
+    "indentSize": 0,
+    "quoteStyle": "",
+    "semicolons": "optional",
+    "lineEnding": "lf",
+    "trailingComma": ""
+  }
+}
