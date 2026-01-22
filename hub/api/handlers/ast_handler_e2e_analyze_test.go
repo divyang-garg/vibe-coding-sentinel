@@ -10,9 +10,10 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/go-chi/chi/v5"
 	"sentinel-hub-api/models"
 	"sentinel-hub-api/services"
+
+	"github.com/go-chi/chi/v5"
 )
 
 // setupTestRouter creates a test router with AST routes

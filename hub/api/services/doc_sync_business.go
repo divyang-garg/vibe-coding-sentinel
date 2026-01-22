@@ -69,26 +69,8 @@ func detectBusinessRuleImplementation(rule KnowledgeItem, codebasePath string) I
 		LineNumbers: make(map[string][]int),
 	}
 
-	// Extract keywords from rule title
-	words := regexp.MustCompile(`\s+|[_-]`).Split(rule.Title, -1)
-	var keywords []string
-	for _, word := range words {
-		word = strings.TrimSpace(word)
-		if len(word) > 2 {
-			wordLower := strings.ToLower(word)
-			common := []string{"the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by"}
-			isCommon := false
-			for _, c := range common {
-				if wordLower == c {
-					isCommon = true
-					break
-				}
-			}
-			if !isCommon {
-				keywords = append(keywords, word)
-			}
-		}
-	}
+	// Extract keywords from rule title and content
+	keywords := extractKeywordsFromRule(rule)
 
 	if len(keywords) == 0 {
 		return evidence
@@ -108,8 +90,10 @@ func detectBusinessRuleImplementation(rule KnowledgeItem, codebasePath string) I
 				continue
 			}
 
+			contentStr := string(content)
+
 			// Try AST-based analysis first
-			astMatches := detectBusinessRuleWithAST(string(content), file, keywordMap, keywords)
+			astMatches := detectBusinessRuleWithAST(contentStr, file, keywordMap, keywords)
 			if astMatches.Confidence > 0 {
 				// AST found matches
 				evidence.Files = appendIfNotExists(evidence.Files, file)
@@ -120,7 +104,7 @@ func detectBusinessRuleImplementation(rule KnowledgeItem, codebasePath string) I
 				evidence.Confidence += astMatches.Confidence
 			} else {
 				// Fallback to keyword matching
-				contentLower := strings.ToLower(string(content))
+				contentLower := strings.ToLower(contentStr)
 				matches := 0
 				for _, keyword := range keywords {
 					if strings.Contains(contentLower, strings.ToLower(keyword)) {
@@ -133,7 +117,23 @@ func detectBusinessRuleImplementation(rule KnowledgeItem, codebasePath string) I
 					evidence.Confidence += 0.2 // Lower confidence for keyword-only matches
 				}
 			}
+
+			// Detect endpoints in this file
+			detectedEndpoints := detectEndpoints(contentStr, file, keywords)
+			if len(detectedEndpoints) > 0 {
+				evidence.Endpoints = append(evidence.Endpoints, detectedEndpoints...)
+				// Add confidence for endpoint matches (0.4 weight)
+				evidence.Confidence += 0.4
+			}
 		}
+	}
+
+	// Detect tests related to this rule
+	detectedTests := detectTests(codebasePath, rule.Title, keywords)
+	if len(detectedTests) > 0 {
+		evidence.Tests = append(evidence.Tests, detectedTests...)
+		// Add confidence for test matches (0.2 weight)
+		evidence.Confidence += 0.2
 	}
 
 	// Cap confidence at 1.0
@@ -250,6 +250,66 @@ func detectBusinessRuleWithAST(code string, filePath string, keywordMap map[stri
 	})
 
 	return evidence
+}
+
+// extractKeywordsFromRule extracts keywords from rule title and content
+func extractKeywordsFromRule(rule KnowledgeItem) []string {
+	var keywords []string
+
+	// Extract from title
+	words := regexp.MustCompile(`\s+|[_-]`).Split(rule.Title, -1)
+	for _, word := range words {
+		word = strings.TrimSpace(word)
+		if len(word) > 2 {
+			wordLower := strings.ToLower(word)
+			common := []string{"the", "a", "an", "and", "or", "but", "in", "on", "at", "to", "for", "of", "with", "by"}
+			isCommon := false
+			for _, c := range common {
+				if wordLower == c {
+					isCommon = true
+					break
+				}
+			}
+			if !isCommon {
+				keywords = append(keywords, word)
+			}
+		}
+	}
+
+	// Extract from content if available
+	if rule.Content != "" {
+		contentKeywords := extractKeywords(rule.Content)
+		keywords = append(keywords, contentKeywords...)
+	}
+
+	// Extract from structured data if available
+	if rule.StructuredData != nil {
+		for key, value := range rule.StructuredData {
+			if strValue, ok := value.(string); ok && len(strValue) > 2 {
+				keywords = append(keywords, key)
+				valueKeywords := extractKeywords(strValue)
+				keywords = append(keywords, valueKeywords...)
+			}
+		}
+	}
+
+	// Deduplicate keywords
+	return deduplicateKeywords(keywords)
+}
+
+// deduplicateKeywords removes duplicate keywords while preserving order.
+// Case-insensitive deduplication (e.g., "User" and "user" are considered duplicates)
+func deduplicateKeywords(keywords []string) []string {
+	seen := make(map[string]bool)
+	var result []string
+	for _, kw := range keywords {
+		kwLower := strings.ToLower(kw)
+		if !seen[kwLower] {
+			seen[kwLower] = true
+			result = append(result, kw)
+		}
+	}
+	return result
 }
 
 // =============================================================================

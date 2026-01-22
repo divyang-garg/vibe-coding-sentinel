@@ -132,8 +132,35 @@ func updateLLMConfig(ctx context.Context, configID string, projectID string, con
 
 // deleteLLMConfig deletes LLM configuration
 func deleteLLMConfig(ctx context.Context, configID string, projectID string) error {
-	// Implementation extracted from main llm_integration.go
-	return fmt.Errorf("not implemented")
+	// Validate inputs
+	if configID == "" {
+		return fmt.Errorf("config ID cannot be empty")
+	}
+	if projectID == "" {
+		return fmt.Errorf("project ID cannot be empty")
+	}
+
+	// Delete config (ensuring it belongs to the project)
+	query := `
+		DELETE FROM llm_configurations
+		WHERE id = $1 AND project_id = $2
+	`
+
+	result, err := database.ExecWithTimeout(ctx, db, query, configID, projectID)
+	if err != nil {
+		return fmt.Errorf("failed to delete LLM config: %w", err)
+	}
+
+	rowsAffected, err := result.RowsAffected()
+	if err != nil {
+		return fmt.Errorf("failed to get rows affected: %w", err)
+	}
+
+	if rowsAffected == 0 {
+		return fmt.Errorf("LLM config not found or does not belong to project")
+	}
+
+	return nil
 }
 
 // ListLLMConfigs lists all configurations for a project

@@ -10,8 +10,9 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/go-chi/chi/v5"
 	"sentinel-hub-api/models"
+
+	"github.com/go-chi/chi/v5"
 )
 
 // mockOrganizationService implements OrganizationService for testing
@@ -69,11 +70,11 @@ func (m *mockOrganizationService) DeleteOrganization(ctx context.Context, id str
 
 func (m *mockOrganizationService) CreateProject(ctx context.Context, orgID string, req models.CreateProjectRequest) (*models.Project, error) {
 	project := &models.Project{
-		ID:        "proj_123",
-		OrgID:     orgID,
-		Name:      req.Name,
-		APIKey:    "test-api-key-12345",
-		APIKeyHash: "hash123",
+		ID:           "proj_123",
+		OrgID:        orgID,
+		Name:         req.Name,
+		APIKey:       "test-api-key-12345",
+		APIKeyHash:   "hash123",
 		APIKeyPrefix: "test-api",
 	}
 	m.projects[project.ID] = project
@@ -176,7 +177,7 @@ func TestOrganizationHandler_GenerateAPIKey(t *testing.T) {
 		},
 		{
 			name:      "project not found",
-			projectID:  "proj_nonexistent",
+			projectID: "proj_nonexistent",
 			mockService: func() *mockOrganizationService {
 				m := newMockOrganizationService()
 				// Service returns error, handler checks for "project not found" string
@@ -191,16 +192,16 @@ func TestOrganizationHandler_GenerateAPIKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			handler := NewOrganizationHandler(tt.mockService)
-			
+
 			// Create router to properly set URL params
 			r := chi.NewRouter()
 			r.Post("/api/v1/projects/{id}/api-key", handler.GenerateAPIKey)
-			
+
 			req := httptest.NewRequest("POST", "/api/v1/projects/"+tt.projectID+"/api-key", nil)
 			if tt.projectID == "" {
 				req = httptest.NewRequest("POST", "/api/v1/projects//api-key", nil)
 			}
-			
+
 			w := httptest.NewRecorder()
 			r.ServeHTTP(w, req)
 
@@ -254,7 +255,7 @@ func TestOrganizationHandler_RevokeAPIKey(t *testing.T) {
 		},
 		{
 			name:      "project not found",
-			projectID:  "proj_nonexistent",
+			projectID: "proj_nonexistent",
 			mockService: func() *mockOrganizationService {
 				m := newMockOrganizationService()
 				m.revokeAPIKeyErr = fmt.Errorf("project not found")
@@ -268,16 +269,16 @@ func TestOrganizationHandler_RevokeAPIKey(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			handler := NewOrganizationHandler(tt.mockService)
-			
+
 			// Create router to properly set URL params
 			r := chi.NewRouter()
 			r.Delete("/api/v1/projects/{id}/api-key", handler.RevokeAPIKey)
-			
+
 			req := httptest.NewRequest("DELETE", "/api/v1/projects/"+tt.projectID+"/api-key", nil)
 			if tt.projectID == "" {
 				req = httptest.NewRequest("DELETE", "/api/v1/projects//api-key", nil)
 			}
-			
+
 			w := httptest.NewRecorder()
 			r.ServeHTTP(w, req)
 
@@ -355,16 +356,16 @@ func TestOrganizationHandler_GetAPIKeyInfo(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			handler := NewOrganizationHandler(tt.mockService)
-			
+
 			// Create router to properly set URL params
 			r := chi.NewRouter()
 			r.Get("/api/v1/projects/{id}/api-key", handler.GetAPIKeyInfo)
-			
+
 			req := httptest.NewRequest("GET", "/api/v1/projects/"+tt.projectID+"/api-key", nil)
 			if tt.projectID == "" {
 				req = httptest.NewRequest("GET", "/api/v1/projects//api-key", nil)
 			}
-			
+
 			w := httptest.NewRecorder()
 			r.ServeHTTP(w, req)
 

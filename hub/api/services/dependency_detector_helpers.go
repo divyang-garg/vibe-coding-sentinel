@@ -106,6 +106,7 @@ func calculateKeywordOverlap(keywords1, keywords2 []string) float64 {
 }
 
 // checkCodeReference checks if other task's code is referenced in file using AST analysis
+// Falls back to keyword matching if AST analysis fails or is unavailable
 func checkCodeReference(codebasePath, filePath string, otherTask *Task) bool {
 	if filePath == "" || otherTask.FilePath == "" {
 		// Fallback to keyword matching if file paths not available
@@ -115,18 +116,18 @@ func checkCodeReference(codebasePath, filePath string, otherTask *Task) bool {
 	currentFilePath := filepath.Join(codebasePath, filePath)
 	otherFilePath := filepath.Join(codebasePath, otherTask.FilePath)
 
-	// Read both files (not used currently as AST parsing is stubbed)
-	_, err := os.ReadFile(currentFilePath)
+	// Read both files
+	currentContent, err := os.ReadFile(currentFilePath)
 	if err != nil {
 		return checkCodeReferenceKeywords(codebasePath, filePath, otherTask)
 	}
 
-	_, err = os.ReadFile(otherFilePath)
+	otherContent, err := os.ReadFile(otherFilePath)
 	if err != nil {
 		return checkCodeReferenceKeywords(codebasePath, filePath, otherTask)
 	}
 
-	// Determine language from file extensions (for future AST parsing)
+	// Determine language from file extensions
 	currentLang := detectLanguageFromFile(filePath)
 	otherLang := detectLanguageFromFile(otherTask.FilePath)
 
@@ -134,46 +135,213 @@ func checkCodeReference(codebasePath, filePath string, otherTask *Task) bool {
 		return checkCodeReferenceKeywords(codebasePath, filePath, otherTask)
 	}
 
-	// Note: AST parsing is currently stubbed out, so we fall back to keyword matching
-	// This will be enabled when tree-sitter integration is complete
-	// When implemented, this will extract symbols and check for references
+	// Extract symbols from other task's file using AST
+	otherSymbols := extractSymbolsFromAST(string(otherContent), otherLang, otherTask.FilePath)
+	if len(otherSymbols) == 0 {
+		// No symbols found or AST failed - fallback to keyword matching
+		return checkCodeReferenceKeywords(codebasePath, filePath, otherTask)
+	}
+
+	// Parse current file and check for symbol references
+	parser, err := GetParser(currentLang)
+	if err != nil {
+		return checkCodeReferenceKeywords(codebasePath, filePath, otherTask)
+	}
+
+	ctx := context.Background()
+	tree, err := parser.ParseCtx(ctx, nil, currentContent)
+	if err != nil {
+		return checkCodeReferenceKeywords(codebasePath, filePath, otherTask)
+	}
+	defer tree.Close()
+
+	rootNode := tree.RootNode()
+	if rootNode == nil {
+		return checkCodeReferenceKeywords(codebasePath, filePath, otherTask)
+	}
+
+	// Check if any symbols are referenced
+	if checkSymbolReferences(rootNode, string(currentContent), currentLang, otherSymbols) {
+		return true
+	}
+
+	// No AST matches found - fallback to keyword matching
 	return checkCodeReferenceKeywords(codebasePath, filePath, otherTask)
 }
 
 // extractSymbolsFromAST extracts symbols (functions, classes) from AST
-// Note: Currently returns empty map as AST parsing is stubbed out
-// This will be implemented when tree-sitter integration is complete
+// Returns a map of symbol names found in the code
 func extractSymbolsFromAST(code string, language string, filePath string) map[string]bool {
-	// AST parsing is currently stubbed out, return empty map
-	// This function will be implemented when tree-sitter integration is complete
-	return make(map[string]bool)
+	symbols := make(map[string]bool)
+
+	// Get parser using AST bridge
+	parser, err := GetParser(language)
+	if err != nil {
+		// Unsupported language - return empty map
+		return symbols
+	}
+
+	// Parse code
+	ctx := context.Background()
+	tree, err := parser.ParseCtx(ctx, nil, []byte(code))
+	if err != nil {
+		// Parse error - return empty map (fallback will handle)
+		return symbols
+	}
+	defer tree.Close()
+
+	rootNode := tree.RootNode()
+	if rootNode == nil {
+		return symbols
+	}
+
+	// Traverse AST to extract function/class names
+	TraverseAST(rootNode, func(node *sitter.Node) bool {
+		var symbolName string
+
+		switch language {
+		case "go":
+			if node.Type() == "function_declaration" || node.Type() == "method_declaration" {
+				symbolName = extractIdentifierFromNode(node, code)
+			} else if node.Type() == "type_declaration" {
+				symbolName = extractIdentifierFromNode(node, code)
+			}
+		case "javascript", "typescript":
+			if node.Type() == "function_declaration" || node.Type() == "function" {
+				symbolName = extractIdentifierFromNode(node, code)
+			} else if node.Type() == "class_declaration" {
+				symbolName = extractIdentifierFromNode(node, code)
+			} else if node.Type() == "variable_declarator" {
+				// Check for arrow functions assigned to variables
+				varName := extractIdentifierFromNode(node, code)
+				if varName != "" {
+					// Check if this is a function assignment
+					for i := 0; i < int(node.ChildCount()); i++ {
+						child := node.Child(i)
+						if child != nil && (child.Type() == "arrow_function" || child.Type() == "function_expression") {
+							symbols[varName] = true
+							break
+						}
+					}
+				}
+			}
+		case "python":
+			if node.Type() == "function_definition" {
+				symbolName = extractIdentifierFromNode(node, code)
+			} else if node.Type() == "class_definition" {
+				symbolName = extractIdentifierFromNode(node, code)
+			}
+		}
+
+		if symbolName != "" {
+			symbols[symbolName] = true
+		}
+
+		return true
+	})
+
+	return symbols
 }
 
 // checkSymbolReferences checks if symbols are referenced in AST
-// Note: Currently stubbed out as AST parsing is not yet implemented
-// This will be implemented when tree-sitter integration is complete
+// Returns true if any symbol from the map is found in the AST
 func checkSymbolReferences(root *sitter.Node, code string, language string, symbols map[string]bool) bool {
-	// AST parsing is currently stubbed out, return false
-	// This function will be implemented when tree-sitter integration is complete
-	return false
+	if root == nil || len(symbols) == 0 {
+		return false
+	}
+
+	found := false
+
+	// Safe slice helper
+	safeSlice := func(start, end uint32) string {
+		codeLen := uint32(len(code))
+		if start > codeLen {
+			start = codeLen
+		}
+		if end > codeLen {
+			end = codeLen
+		}
+		if start > end {
+			return ""
+		}
+		return code[start:end]
+	}
+
+	// Traverse AST to find identifier references
+	TraverseAST(root, func(node *sitter.Node) bool {
+		// Stop if we already found a match
+		if found {
+			return false
+		}
+
+		nodeType := node.Type()
+
+		// Check identifier nodes
+		if nodeType == "identifier" || nodeType == "property_identifier" ||
+			nodeType == "field_identifier" || nodeType == "type_identifier" {
+
+			identifier := safeSlice(node.StartByte(), node.EndByte())
+			if symbols[identifier] {
+				found = true
+				return false // Stop traversal
+			}
+		}
+
+		// For method calls, check the method name
+		if nodeType == "call_expression" || nodeType == "method_call" {
+			// Get the function/method name being called
+			for i := 0; i < int(node.ChildCount()); i++ {
+				child := node.Child(i)
+				if child != nil {
+					if child.Type() == "identifier" || child.Type() == "property_identifier" {
+						identifier := safeSlice(child.StartByte(), child.EndByte())
+						if symbols[identifier] {
+							found = true
+							return false
+						}
+					}
+				}
+			}
+		}
+
+		return true
+	})
+
+	return found
 }
 
 // extractIdentifierFromNode extracts identifier name from AST node
+// Uses safe string slicing to prevent panics
 func extractIdentifierFromNode(node *sitter.Node, code string) string {
 	if node == nil {
 		return ""
 	}
 
+	// Safe slice helper
+	safeSlice := func(start, end uint32) string {
+		codeLen := uint32(len(code))
+		if start > codeLen {
+			start = codeLen
+		}
+		if end > codeLen {
+			end = codeLen
+		}
+		if start > end {
+			return ""
+		}
+		return code[start:end]
+	}
+
 	// Check if node is directly an identifier
 	if node.Type() == "identifier" || node.Type() == "property_identifier" || node.Type() == "field_identifier" {
-		return code[node.StartByte():node.EndByte()]
+		return safeSlice(node.StartByte(), node.EndByte())
 	}
 
 	// Traverse children to find identifier
 	for i := 0; i < int(node.ChildCount()); i++ {
 		child := node.Child(i)
 		if child != nil && (child.Type() == "identifier" || child.Type() == "property_identifier" || child.Type() == "field_identifier") {
-			return code[child.StartByte():child.EndByte()]
+			return safeSlice(child.StartByte(), child.EndByte())
 		}
 	}
 

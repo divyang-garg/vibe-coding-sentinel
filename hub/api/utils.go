@@ -72,63 +72,24 @@ func isValidPath(p string) bool {
 	return true
 }
 
-// DEPRECATED: These stub functions have been replaced by the AST package.
-// Use github.com/divyang-garg/sentinel-hub-api/hub/api/ast instead:
-//   - getParser -> ast.GetParser
-//   - traverseAST -> ast.TraverseAST
-//   - analyzeAST -> ast.AnalyzeAST
-//
-// These stubs are kept for backward compatibility but will be removed in a future version.
-// All code should be migrated to use the AST package directly.
-
-// ASTFinding represents a finding from AST analysis
-// DEPRECATED: Use ast.ASTFinding from the AST package instead
-type ASTFinding struct {
-	Type    string `json:"type"`
-	Line    int    `json:"line"`
-	Column  int    `json:"column"`
-	Message string `json:"message"`
-}
-
-// getParser returns a parser for a language (DEPRECATED - use ast.GetParser)
-func getParser(language string) (interface{}, error) {
-	return nil, fmt.Errorf("getParser is deprecated - use ast.GetParser from github.com/divyang-garg/sentinel-hub-api/hub/api/ast")
-}
-
-// traverseAST traverses an AST tree (DEPRECATED - use ast.TraverseAST)
-func traverseAST(node interface{}, callback interface{}) {
-	// DEPRECATED: Use ast.TraverseAST from the AST package
-}
-
-// analyzeAST analyzes code using AST (DEPRECATED - use ast.AnalyzeAST)
-func analyzeAST(code, language string, options []string) (interface{}, []ASTFinding, error) {
-	return nil, []ASTFinding{}, fmt.Errorf("analyzeAST is deprecated - use ast.AnalyzeAST from github.com/divyang-garg/sentinel-hub-api/hub/api/ast")
-}
+// NOTE: Deprecated AST functions (getParser, traverseAST, analyzeAST, ASTFinding) have been removed.
+// All code should use the AST package directly: github.com/divyang-garg/sentinel-hub-api/hub/api/ast
 
 // ImplementationEvidence represents evidence of rule implementation
+// NOTE: This type is kept for backward compatibility with main package files.
+// The actual implementation is in hub/api/services/doc_sync_business.go
 type ImplementationEvidence struct {
-	Feature     string   `json:"feature"`
-	Files       []string `json:"files"`
-	Functions   []string `json:"functions"`
-	Endpoints   []string `json:"endpoints"`
-	Tests       []string `json:"tests"`
-	Confidence  float64  `json:"confidence"`
-	LineNumbers []int    `json:"line_numbers"`
+	Feature     string           `json:"feature"`
+	Files       []string         `json:"files"`
+	Functions   []string         `json:"functions"`
+	Endpoints   []string         `json:"endpoints"`
+	Tests       []string         `json:"tests"`
+	Confidence  float64          `json:"confidence"`
+	LineNumbers map[string][]int `json:"line_numbers"` // function name or file path -> line numbers
 }
 
-// detectBusinessRuleImplementation detects business rule implementations (stub)
-func detectBusinessRuleImplementation(rule KnowledgeItem, codebasePath string) ImplementationEvidence {
-	// Stub - would analyze codebase for business rule implementation
-	return ImplementationEvidence{
-		Feature:     "",
-		Files:       []string{},
-		Functions:   []string{},
-		Endpoints:   []string{},
-		Tests:       []string{},
-		Confidence:  0.0,
-		LineNumbers: []int{},
-	}
-}
+// NOTE: Business rule detection functions have been moved to utils_business_rule.go
+// to comply with CODING_STANDARDS.md file size limits (utilities max 250 lines)
 
 // getLineColumn gets line and column from byte offset
 func getLineColumn(code string, offset int) (int, int) {
@@ -143,12 +104,6 @@ func getLineColumn(code string, offset int) (int, int) {
 }
 
 // Note: detectLanguageFromFile is defined in task_verifier.go
-
-// extractFunctionSignature extracts function signature from code (stub)
-func extractFunctionSignature(node interface{}, code string, language string) string {
-	return ""
-}
-
 // Note: extractFunctionNameFromFile is defined in impact_analyzer.go
 
 // getProjectFromContext extracts project from context
@@ -214,19 +169,8 @@ func getLLMConfig(ctx context.Context, projectID string) (*LLMConfig, error) {
 	}, nil
 }
 
-// selectModelWithDepth selects LLM model based on depth (stub)
-func selectModelWithDepth(ctx context.Context, projectID string, config *LLMConfig, mode string, depth int, feature string) (string, error) {
-	if config != nil {
-		return config.Model, nil
-	}
-	return "", fmt.Errorf("no LLM config provided")
-}
-
-// callLLMWithDepth calls LLM with depth settings (stub)
-// Note: LLM functions are implemented in services package
-func callLLMWithDepth(ctx context.Context, config *LLMConfig, prompt string, taskType string, model string, mode string) (string, int, error) {
-	return "", 0, fmt.Errorf("callLLMWithDepth not implemented - use services package")
-}
+// NOTE: selectModelWithDepth and callLLMWithDepth have been moved to llm_cache_analysis.go
+// to support Phase 14D cost optimization features. They are no longer in this file.
 
 // requestIDKey is the context key for request ID
 type ctxKey string
@@ -284,51 +228,5 @@ func sanitizeString(s string, maxLen int) string {
 	return s
 }
 
-// extractFeatureKeywords extracts keywords from feature name
-func extractFeatureKeywordsFromUtils(featureName string) []string {
-	var keywords []string
-	words := []rune(featureName)
-	var current []rune
-	for _, r := range words {
-		if (r >= 'a' && r <= 'z') || (r >= 'A' && r <= 'Z') || (r >= '0' && r <= '9') {
-			current = append(current, r)
-		} else {
-			if len(current) > 0 {
-				keywords = append(keywords, string(current))
-				current = nil
-			}
-		}
-	}
-	if len(current) > 0 {
-		keywords = append(keywords, string(current))
-	}
-	return keywords
-}
-
-// extractKeywords extracts meaningful keywords from text
-// Phase 14E: Shared function for task verification and dependency detection
-func extractKeywords(text string) []string {
-	// Simple keyword extraction - split by common separators
-	words := strings.FieldsFunc(text, func(r rune) bool {
-		return r == ' ' || r == '-' || r == '_' || r == '(' || r == ')' || r == '[' || r == ']'
-	})
-
-	keywords := []string{}
-	stopWords := map[string]bool{
-		"the": true, "a": true, "an": true, "and": true, "or": true, "but": true,
-		"in": true, "on": true, "at": true, "to": true, "for": true, "of": true,
-		"with": true, "by": true, "is": true, "are": true, "was": true, "were": true,
-		"be": true, "been": true, "have": true, "has": true, "had": true,
-		"do": true, "does": true, "did": true, "will": true, "would": true,
-		"should": true, "could": true, "may": true, "might": true,
-	}
-
-	for _, word := range words {
-		word = strings.ToLower(strings.TrimSpace(word))
-		if len(word) > 2 && !stopWords[word] {
-			keywords = append(keywords, word)
-		}
-	}
-
-	return keywords
-}
+// NOTE: Keyword extraction functions have been moved to utils_keywords.go
+// to comply with CODING_STANDARDS.md file size limits (utilities max 250 lines)

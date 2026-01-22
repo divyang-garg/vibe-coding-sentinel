@@ -6,9 +6,10 @@ import (
 	"encoding/json"
 	"net/http"
 
-	"github.com/go-chi/chi/v5"
 	"sentinel-hub-api/models"
 	"sentinel-hub-api/services"
+
+	"github.com/go-chi/chi/v5"
 )
 
 // OrganizationHandler handles organization and project-related HTTP requests

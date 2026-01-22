@@ -8,6 +8,8 @@ import (
 	"os"
 	"path/filepath"
 	"strings"
+
+	"sentinel-hub-api/ast"
 )
 
 // BusinessLogicPattern represents a business logic pattern found in code
@@ -75,11 +77,67 @@ func extractBusinessLogicPatternsAST(codebasePath string) ([]BusinessLogicPatter
 }
 
 // extractPatternsFromCode extracts function definitions directly from code using AST
-// Note: AST parsing is currently stubbed out due to tree-sitter integration requirement
+// Falls back to pattern matching if AST extraction fails or no patterns found
 func extractPatternsFromCode(filePath, code string, language string) []BusinessLogicPattern {
-	// AST parsing disabled - tree-sitter integration required
-	// Fallback to simple pattern matching
+	var patterns []BusinessLogicPattern
+
+	// Try AST extraction first
+	functions, err := ast.ExtractFunctions(code, language, "")
+	if err == nil && len(functions) > 0 {
+		// Convert FunctionInfo to BusinessLogicPattern
+		for _, fn := range functions {
+			// Check if function contains business keywords
+			funcNameLower := strings.ToLower(fn.Name)
+			keyword := extractKeywordFromFunctionName(funcNameLower)
+
+			// If no keyword in name, check function code
+			if keyword == "" {
+				keyword = extractKeywordFromFunctionName(strings.ToLower(fn.Code))
+			}
+
+			// Only include if it has business keywords
+			if keyword != "" || containsBusinessKeywordsInName(funcNameLower) {
+				patterns = append(patterns, BusinessLogicPattern{
+					FilePath:     filePath,
+					FunctionName: fn.Name,
+					Keyword:      keyword,
+					LineNumber:   fn.Line,
+					Signature:    fn.Code, // Full function code
+				})
+			}
+		}
+
+		if len(patterns) > 0 {
+			return patterns
+		}
+	}
+
+	// Fallback to pattern matching if AST fails or no patterns found
 	return extractBusinessLogicPatternsSimple(filePath, code)
+}
+
+// extractKeywordFromFunctionName extracts keyword from function name
+func extractKeywordFromFunctionName(name string) string {
+	keywords := []string{"order", "payment", "user", "account", "transaction", "rule", "validate", "check"}
+	nameLower := strings.ToLower(name)
+	for _, keyword := range keywords {
+		if strings.Contains(nameLower, keyword) {
+			return keyword
+		}
+	}
+	return ""
+}
+
+// containsBusinessKeywordsInName checks if function name contains business keywords
+func containsBusinessKeywordsInName(name string) bool {
+	keywords := []string{"order", "payment", "user", "account", "transaction", "rule", "validate", "check", "process", "create", "update", "delete"}
+	nameLower := strings.ToLower(name)
+	for _, keyword := range keywords {
+		if strings.Contains(nameLower, keyword) {
+			return true
+		}
+	}
+	return false
 }
 
 // extractBusinessLogicPatternsSimple is a fallback for when AST analysis fails

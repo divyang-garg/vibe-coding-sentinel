@@ -42,7 +42,7 @@ func (s *OrganizationServiceImpl) GenerateAPIKey(ctx context.Context, projectID 
 	project.APIKeyPrefix = prefix
 	// Clear any old plaintext API key
 	project.APIKey = ""
-	
+
 	if err := s.projectRepo.Update(ctx, project); err != nil {
 		return "", fmt.Errorf("failed to update project API key: %w", err)
 	}
@@ -123,19 +123,19 @@ func (s *OrganizationServiceImpl) generateAPIKey() (string, error) {
 	// Generate 32 bytes of cryptographically secure random data
 	// This provides 256 bits of entropy
 	const keyLength = 32
-	
+
 	key := make([]byte, keyLength)
 	if _, err := rand.Read(key); err != nil {
 		return "", fmt.Errorf("failed to generate secure random key: %w", err)
 	}
-	
+
 	// Base64 URL encoding produces a URL-safe string with 43-44 characters
 	// Using URL encoding to avoid special characters that might cause issues
 	apiKey := base64.URLEncoding.EncodeToString(key)
-	
+
 	// Remove padding if present (optional, but cleaner)
 	apiKey = strings.TrimRight(apiKey, "=")
-	
+
 	return apiKey, nil
 }
 

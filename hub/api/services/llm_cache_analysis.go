@@ -1,7 +1,26 @@
 // LLM Cache - Progressive Depth Analysis
-// Implements progressive depth analysis for LLM calls
+//
+// This package implements progressive depth analysis for general code quality checks.
+// Unlike the main package version, this focuses on standard code analysis workflows
+// without complex cost optimization features.
+//
+// Depth Levels:
+//   - quick: Brief summary, 3-5 findings - Fast feedback
+//   - medium: Moderate analysis with examples - Standard reviews
+//   - deep: Comprehensive with all details - Thorough analysis
+//
+// Analysis Types Supported:
+//   - security: Security vulnerabilities and best practices
+//   - performance: Performance issues and optimization opportunities
+//   - maintainability: Code quality and maintainability metrics
+//   - architecture: Design patterns and architectural concerns
+//
+// Differences from Main Package:
+//   - Simpler implementation without dynamic model selection
+//   - Uses configured model (no cost optimization)
+//   - Focuses on code quality analysis rather than cost optimization
+//
 // Complies with CODING_STANDARDS.md: Business Services max 400 lines
-
 package services
 
 import (
@@ -37,36 +56,7 @@ func analyzeWithProgressiveDepth(ctx context.Context, config *LLMConfig, fileCon
 }
 
 // generatePrompt generates a prompt based on analysis type and depth
+// This is a wrapper that delegates to the unified prompt builder
 func generatePrompt(analysisType string, depth string, fileContent string) string {
-	var systemPrompt string
-	var userPrompt string
-
-	// System prompt based on analysis type
-	switch analysisType {
-	case "security":
-		systemPrompt = "You are a security analysis expert. Analyze code for security vulnerabilities and best practices."
-	case "performance":
-		systemPrompt = "You are a performance optimization expert. Analyze code for performance issues and optimization opportunities."
-	case "maintainability":
-		systemPrompt = "You are a code quality expert. Analyze code for maintainability, readability, and best practices."
-	case "architecture":
-		systemPrompt = "You are an architecture expert. Analyze code structure, design patterns, and architectural concerns."
-	default:
-		systemPrompt = "You are a code analysis expert. Analyze the provided code."
-	}
-
-	// User prompt based on depth
-	switch depth {
-	case "quick":
-		userPrompt = fmt.Sprintf("Quick analysis: Provide a brief summary of key findings in the following code:\n\n%s", fileContent)
-	case "medium":
-		userPrompt = fmt.Sprintf("Medium analysis: Analyze the code and provide findings with examples. Focus on the most important issues:\n\n%s", fileContent)
-	case "deep":
-		userPrompt = fmt.Sprintf("Deep analysis: Perform comprehensive analysis of the code. Include detailed findings, recommendations, and examples:\n\n%s", fileContent)
-	default:
-		userPrompt = fmt.Sprintf("Analyze the following code:\n\n%s", fileContent)
-	}
-
-	// Combine into structured prompt
-	return fmt.Sprintf("System: %s\n\nUser: %s", systemPrompt, userPrompt)
+	return GeneratePrompt(analysisType, depth, fileContent)
 }

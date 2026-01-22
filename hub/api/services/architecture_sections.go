@@ -6,40 +6,7 @@ package services
 import (
 	"fmt"
 	"strings"
-
-	_ "github.com/smacker/go-tree-sitter" // Reserved for tree-sitter integration
 )
-
-// traverseASTForSections traverses AST tree and calls callback for each node (for section detection)
-// NOTE: Stubbed until tree-sitter integration is complete
-func traverseASTForSections(node interface{}, callback func(interface{})) {
-	// Stub - tree-sitter integration required
-	// callback(node)
-	// for i := 0; i < int(node.ChildCount()); i++ {
-	// 	child := node.Child(i)
-	// 	if child != nil {
-	// 		traverseASTForSections(child, callback)
-	// 	}
-	// }
-}
-
-// extractNodeName extracts the name from an AST node
-// NOTE: Stubbed until tree-sitter integration is complete
-func extractNodeName(node interface{}, content string) string {
-	// Stub - tree-sitter integration required
-	// Look for name field in node
-	// for i := 0; i < int(node.ChildCount()); i++ {
-	// 	child := node.Child(i)
-	// 	if child != nil && (child.Type() == "identifier" || child.Type() == "type_identifier") {
-	// 		start := int(child.StartByte())
-	// 		end := int(child.EndByte())
-	// 		if start < len(content) && end <= len(content) {
-	// 			return strings.TrimSpace(content[start:end])
-	// 		}
-	// 	}
-	// }
-	return "unknown"
-}
 
 // detectSectionsPattern detects sections using pattern matching (fallback)
 func detectSectionsPattern(content string, language string) []FileSection {

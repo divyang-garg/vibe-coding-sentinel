@@ -28,7 +28,7 @@ func NewMockImpactAnalyzer() *MockImpactAnalyzer {
 // AnalyzeImpact analyzes impact of task changes (mockable)
 func (m *MockImpactAnalyzer) AnalyzeImpact(ctx context.Context, taskID string, changeType string, tasks []models.Task, dependencies []models.TaskDependency) (*models.TaskImpactAnalysis, error) {
 	args := m.Called(ctx, taskID, changeType, tasks, dependencies)
-	
+
 	// If mock was set up, return the mocked values (even if nil)
 	if args.Error(1) != nil {
 		// Error case: return nil analysis and the error
@@ -37,12 +37,12 @@ func (m *MockImpactAnalyzer) AnalyzeImpact(ctx context.Context, taskID string, c
 		}
 		return nil, args.Error(1)
 	}
-	
+
 	// Success case: return the mocked analysis
 	if args.Get(0) != nil {
 		return args.Get(0).(*models.TaskImpactAnalysis), nil
 	}
-	
+
 	// Fallback to real implementation only if mock was not set up
 	return m.ImpactAnalyzerImpl.AnalyzeImpact(ctx, taskID, changeType, tasks, dependencies)
 }

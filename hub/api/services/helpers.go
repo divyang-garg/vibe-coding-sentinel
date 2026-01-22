@@ -9,9 +9,11 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/http"
+	"path/filepath"
 	"strings"
 	"time"
 
+	"sentinel-hub-api/ast"
 	"sentinel-hub-api/utils"
 )
 
@@ -264,35 +266,17 @@ func ListTasks(ctx context.Context, projectID string, req ListTasksRequest) (*Li
 	}, nil
 }
 
-// detectLanguageFromFile detects programming language from file path (stub)
+// detectLanguageFromFile detects programming language from file path
+// Uses AST package's DetectLanguage for consistency
 func detectLanguageFromFile(filePath string) string {
-	ext := ""
-	for i := len(filePath) - 1; i >= 0; i-- {
-		if filePath[i] == '.' {
-			ext = filePath[i:]
-			break
-		}
-	}
-
-	switch ext {
-	case ".go":
-		return "go"
-	case ".js", ".jsx":
-		return "javascript"
-	case ".ts", ".tsx":
-		return "typescript"
-	case ".py":
-		return "python"
-	case ".java":
-		return "java"
-	default:
-		return "unknown"
-	}
+	// Use AST package's DetectLanguage for consistency
+	return ast.DetectLanguage("", filePath)
 }
 
 // detectTestFramework detects test framework from file path
 func detectTestFramework(filePath string) string {
 	lower := strings.ToLower(filePath)
+	baseName := strings.ToLower(filepath.Base(filePath))
 	switch {
 	case strings.HasSuffix(lower, "_test.go"):
 		return "go-testing"
@@ -300,7 +284,9 @@ func detectTestFramework(filePath string) string {
 		return "jest"
 	case strings.Contains(lower, ".test.ts") || strings.Contains(lower, ".spec.ts"):
 		return "jest"
-	case strings.Contains(lower, "test_") && strings.HasSuffix(lower, ".py"):
+	case strings.HasPrefix(baseName, "test_") && strings.HasSuffix(lower, ".py"):
+		return "pytest"
+	case strings.HasSuffix(lower, "_test.py"):
 		return "pytest"
 	default:
 		return "unknown"
