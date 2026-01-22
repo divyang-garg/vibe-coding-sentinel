@@ -1,0 +1,6 @@
+{
+  "jsonrpc": "2.0",
+  "id": 301,
+  "method": "tools/call",
+  "params": {"name": "sentinel_create_task", "arguments": {"title": "Implement Password Reset", "description": "Based on intent analysis, create password reset functionality", "priority": "high"}}
+}

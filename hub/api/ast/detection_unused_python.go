@@ -18,7 +18,7 @@ func detectUnusedVariablesPython(root *sitter.Node, code string) []ASTFinding {
 	importedNames := make(map[string]bool)
 
 	// First pass: collect all variable declarations and imports
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		nodeType := node.Type()
 
 		// Track imports (imported names should not be flagged as unused)
@@ -55,7 +55,7 @@ func detectUnusedVariablesPython(root *sitter.Node, code string) []ASTFinding {
 							}
 						} else {
 							// Handle tuple/list unpacking: a, b = ...
-							traverseAST(child, func(destNode *sitter.Node) bool {
+							TraverseAST(child, func(destNode *sitter.Node) bool {
 								if destNode.Type() == "identifier" && destNode.Parent() != nil && destNode.Parent().Type() == "tuple" {
 									varName := safeSlice(code, destNode.StartByte(), destNode.EndByte())
 									if !strings.HasPrefix(varName, "_") || varName == "_" {
@@ -76,7 +76,7 @@ func detectUnusedVariablesPython(root *sitter.Node, code string) []ASTFinding {
 			for i := 0; i < int(node.ChildCount()); i++ {
 				child := node.Child(i)
 				if child != nil && child.Type() == "parameters" {
-					traverseAST(child, func(paramNode *sitter.Node) bool {
+					TraverseAST(child, func(paramNode *sitter.Node) bool {
 						if paramNode.Type() == "identifier" {
 							paramName := safeSlice(code, paramNode.StartByte(), paramNode.EndByte())
 							// Skip self/cls and single underscore
@@ -95,7 +95,7 @@ func detectUnusedVariablesPython(root *sitter.Node, code string) []ASTFinding {
 	})
 
 	// Second pass: collect all variable usages (excluding declaration positions)
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		if node.Type() == "identifier" {
 			// Skip if this identifier is at a declaration position
 			if !declarationPositions[node.StartByte()] {

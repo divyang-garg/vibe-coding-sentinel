@@ -1,0 +1,6 @@
+{
+  "jsonrpc": "2.0",
+  "id": 311,
+  "method": "tools/call",
+  "params": {"name": "sentinel_apply_fix", "arguments": {"filePath": "test.js", "fixType": "validation"}}
+}

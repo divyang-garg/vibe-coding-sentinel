@@ -12,7 +12,7 @@ func detectUnusedVariablesJS(root *sitter.Node, code string) []ASTFinding {
 	variableUsages := make(map[string]bool)
 	importedNames := make(map[string]bool)
 
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		nodeType := node.Type()
 
 		if nodeType == "import_statement" || nodeType == "import_declaration" {
@@ -44,7 +44,7 @@ func detectUnusedVariablesJS(root *sitter.Node, code string) []ASTFinding {
 									varName := safeSlice(code, grandchild.StartByte(), grandchild.EndByte())
 									variableDeclarations[varName] = node
 								} else if grandchild.Type() == "array_pattern" || grandchild.Type() == "object_pattern" {
-									traverseAST(grandchild, func(destNode *sitter.Node) bool {
+									TraverseAST(grandchild, func(destNode *sitter.Node) bool {
 										if destNode.Type() == "identifier" || destNode.Type() == "shorthand_property_identifier" {
 											varName := safeSlice(code, destNode.StartByte(), destNode.EndByte())
 											variableDeclarations[varName] = node
@@ -62,7 +62,7 @@ func detectUnusedVariablesJS(root *sitter.Node, code string) []ASTFinding {
 		return true
 	})
 
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		if node.Type() == "identifier" || node.Type() == "shorthand_property_identifier" {
 			parent := node.Parent()
 			inDeclaration := false

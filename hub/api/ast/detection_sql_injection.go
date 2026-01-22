@@ -115,7 +115,7 @@ func detectSQLInjectionGo(root *sitter.Node, code string) []SecurityVulnerabilit
 	}
 
 	// AST-based detection for more complex patterns
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		// Look for database query calls
 		if node.Type() == "call_expression" {
 			codeSnippet := safeSlice(code, node.StartByte(), node.EndByte())
@@ -186,7 +186,7 @@ func detectSQLInjectionGo(root *sitter.Node, code string) []SecurityVulnerabilit
 func detectSQLInjectionJS(root *sitter.Node, code string) []SecurityVulnerability {
 	vulnerabilities := []SecurityVulnerability{}
 
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		// Look for database query calls
 		if node.Type() == "call_expression" {
 			funcName := getFunctionName(node, code)
@@ -219,7 +219,7 @@ func detectSQLInjectionJS(root *sitter.Node, code string) []SecurityVulnerabilit
 func detectSQLInjectionPython(root *sitter.Node, code string) []SecurityVulnerability {
 	vulnerabilities := []SecurityVulnerability{}
 
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		// Look for database query calls
 		if node.Type() == "call_expression" {
 			funcName := getFunctionName(node, code)

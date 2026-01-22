@@ -61,8 +61,9 @@ func AnalyzeCrossFile(ctx context.Context, files []FileInput, analyses []string)
 		go func(f FileInput) {
 			defer wg.Done()
 
-			// Get parser
-			parser, err := getParser(f.Language)
+			// Get parser - tree-sitter parsers are not thread-safe, so we need to
+			// create a new parser instance for each goroutine
+			parser, err := createParserForLanguage(f.Language)
 			if err != nil {
 				parseMutex.Lock()
 				if parseErr == nil {

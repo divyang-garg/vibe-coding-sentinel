@@ -8,18 +8,18 @@ import (
 	"time"
 
 	"sentinel-hub-api/models"
-	"sentinel-hub-api/repository"
 )
 
 // TaskServiceImpl implements TaskService
 type TaskServiceImpl struct {
 	taskRepo       TaskRepository
-	depAnalyzer    *repository.DependencyAnalyzerImpl
-	impactAnalyzer *repository.ImpactAnalyzerImpl
+	depAnalyzer    DependencyAnalyzer
+	impactAnalyzer ImpactAnalyzer
 }
 
 // NewTaskService creates a new task service instance
-func NewTaskService(taskRepo TaskRepository, depAnalyzer *repository.DependencyAnalyzerImpl, impactAnalyzer *repository.ImpactAnalyzerImpl) TaskService {
+// Complies with CODING_STANDARDS.md: Constructor injection with interfaces
+func NewTaskService(taskRepo TaskRepository, depAnalyzer DependencyAnalyzer, impactAnalyzer ImpactAnalyzer) TaskService {
 	return &TaskServiceImpl{
 		taskRepo:       taskRepo,
 		depAnalyzer:    depAnalyzer,

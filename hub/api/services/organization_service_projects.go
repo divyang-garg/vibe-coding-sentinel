@@ -37,23 +37,32 @@ func (s *OrganizationServiceImpl) CreateProject(ctx context.Context, orgID strin
 		}
 	}
 
-	// Generate API key
+	// Generate API key and hash it for secure storage
 	apiKey, err := s.generateAPIKey()
 	if err != nil {
 		return nil, fmt.Errorf("failed to generate API key: %w", err)
 	}
 
+	// Generate hash and prefix for secure storage
+	hash, prefix := s.hashAPIKey(apiKey)
+
 	project := &models.Project{
-		ID:        generateProjectID(),
-		OrgID:     orgID,
-		Name:      req.Name,
-		APIKey:    apiKey,
-		CreatedAt: time.Now(),
+		ID:           generateProjectID(),
+		OrgID:        orgID,
+		Name:         req.Name,
+		APIKey:       "", // Don't store plaintext - only return it once
+		APIKeyHash:   hash,
+		APIKeyPrefix: prefix,
+		CreatedAt:    time.Now(),
 	}
 
 	if err := s.projectRepo.Save(ctx, project); err != nil {
 		return nil, fmt.Errorf("failed to save project: %w", err)
 	}
+
+	// Set APIKey in returned object only (for user to save)
+	// This is the only time the plaintext key is available
+	project.APIKey = apiKey
 
 	return project, nil
 }

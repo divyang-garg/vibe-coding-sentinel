@@ -25,6 +25,7 @@ type TaskRepository interface {
 
 // DependencyAnalyzer defines the interface for dependency analysis
 type DependencyAnalyzer interface {
+	AnalyzeDependencies(ctx context.Context, tasks []models.Task) (*models.TaskDependencyGraph, error)
 	DetectCycles(ctx context.Context, dependencies []models.TaskDependency) ([][]string, error)
 }
 

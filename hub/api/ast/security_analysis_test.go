@@ -97,7 +97,7 @@ import "database/sql"
 func test(db *sql.DB, id string) {
 	db.Query("SELECT * FROM users WHERE id = " + id)
 }`
-	parser, _ := getParser("go")
+	parser, _ := GetParser("go")
 	tree, _ := parser.ParseCtx(context.Background(), nil, []byte(code))
 	defer tree.Close()
 
@@ -109,7 +109,7 @@ func TestDetectXSS(t *testing.T) {
 	code := `function render(input) {
 	document.write(input);
 }`
-	parser, _ := getParser("javascript")
+	parser, _ := GetParser("javascript")
 	tree, _ := parser.ParseCtx(context.Background(), nil, []byte(code))
 	defer tree.Close()
 
@@ -120,7 +120,7 @@ func TestDetectXSS(t *testing.T) {
 func TestDetectCommandInjection(t *testing.T) {
 	code := `import subprocess
 subprocess.call(["sh", "-c", user_input])`
-	parser, _ := getParser("python")
+	parser, _ := GetParser("python")
 	tree, _ := parser.ParseCtx(context.Background(), nil, []byte(code))
 	defer tree.Close()
 
@@ -131,7 +131,7 @@ subprocess.call(["sh", "-c", user_input])`
 func TestDetectInsecureCrypto(t *testing.T) {
 	code := `import hashlib
 hashlib.md5(data)`
-	parser, _ := getParser("python")
+	parser, _ := GetParser("python")
 	tree, _ := parser.ParseCtx(context.Background(), nil, []byte(code))
 	defer tree.Close()
 
@@ -142,7 +142,7 @@ hashlib.md5(data)`
 func TestDetectSecrets(t *testing.T) {
 	code := `const password = "secret123"
 const api_key = "sk_live_abc123"`
-	parser, _ := getParser("javascript")
+	parser, _ := GetParser("javascript")
 	tree, _ := parser.ParseCtx(context.Background(), nil, []byte(code))
 	defer tree.Close()
 

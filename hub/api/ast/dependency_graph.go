@@ -145,7 +145,7 @@ func ExtractDependenciesFromFile(rootNode *sitter.Node, code, filePath, language
 		return true
 	}
 
-	traverseAST(rootNode, visitor)
+	TraverseAST(rootNode, visitor)
 	return dependencies, nil
 }
 

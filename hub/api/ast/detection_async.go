@@ -12,7 +12,7 @@ import (
 func detectEmptyCatchBlocks(root *sitter.Node, code string, language string) []ASTFinding {
 	findings := []ASTFinding{}
 
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		var catchBody *sitter.Node
 		var isCatch bool
 
@@ -109,7 +109,7 @@ func detectMissingAwait(root *sitter.Node, code string, language string) []ASTFi
 	asyncFunctions := make(map[*sitter.Node]*sitter.Node) // function node -> body node
 
 	// First pass: find all async functions
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		isAsyncFunc := false
 		var bodyNode *sitter.Node
 
@@ -138,7 +138,7 @@ func detectMissingAwait(root *sitter.Node, code string, language string) []ASTFi
 
 	// Second pass: check for async calls without await in async function bodies
 	for _, bodyNode := range asyncFunctions {
-		traverseAST(bodyNode, func(node *sitter.Node) bool {
+		TraverseAST(bodyNode, func(node *sitter.Node) bool {
 			// Look for call expressions that might need await
 			if node.Type() == "call_expression" {
 				// Check if this call is awaited

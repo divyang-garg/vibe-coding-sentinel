@@ -47,6 +47,11 @@ func (rl *RateLimiter) Allow(identifier string) bool {
 	rl.mu.Lock()
 	defer rl.mu.Unlock()
 
+	// If capacity is 0, no requests are allowed
+	if rl.capacity <= 0 {
+		return false
+	}
+
 	bucket, exists := rl.buckets[identifier]
 	if !exists {
 		bucket = &tokenBucket{

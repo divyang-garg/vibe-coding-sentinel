@@ -1,0 +1,6 @@
+{
+  "jsonrpc": "2.0",
+  "id": 310,
+  "method": "tools/call",
+  "params": {"name": "sentinel_validate_code", "arguments": {"code": "if(user && user.name) { login(user); }", "language": "javascript"}}
+}

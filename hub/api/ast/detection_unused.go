@@ -32,11 +32,11 @@ func detectUnusedVariablesGo(root *sitter.Node, code string) []ASTFinding {
 	variableUsages := make(map[string]bool)
 
 	// First pass: collect all variable declarations and their positions
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		if node.Type() == "short_var_declaration" || node.Type() == "var_declaration" {
 			// For both types, collect all identifier nodes within the declaration
 			// that are not part of type annotations
-			traverseAST(node, func(declNode *sitter.Node) bool {
+			TraverseAST(node, func(declNode *sitter.Node) bool {
 				if declNode.Type() == "identifier" {
 					// Check if this identifier is in a type context (should be excluded)
 					parent := declNode.Parent()
@@ -59,7 +59,7 @@ func detectUnusedVariablesGo(root *sitter.Node, code string) []ASTFinding {
 	})
 
 	// Second pass: collect all variable usages (excluding declaration positions)
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		if node.Type() == "identifier" {
 			// Skip if this identifier is at a declaration position
 			if !declarationPositions[node.StartByte()] {

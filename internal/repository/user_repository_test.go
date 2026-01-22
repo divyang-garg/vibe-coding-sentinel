@@ -402,3 +402,35 @@ func (suite *UserRepositoryTestSuite) TestList_RowsError() {
 	suite.Nil(result)
 	suite.Contains(err.Error(), "error iterating users")
 }
+
+func (suite *UserRepositoryTestSuite) TestGetByID_DatabaseError() {
+	// Given: Database error (non-NotFound)
+	suite.mock.ExpectQuery(`SELECT .* FROM users WHERE id = \$1`).
+		WithArgs(1).
+		WillReturnError(sql.ErrConnDone)
+
+	// When: Getting user by ID
+	user, err := suite.repo.GetByID(context.Background(), 1)
+
+	// Then: Should return error
+	suite.Error(err)
+	suite.Nil(user)
+	suite.Contains(err.Error(), "failed to get user")
+}
+
+func (suite *UserRepositoryTestSuite) TestGetByEmail_NotFound() {
+	// Given: Email that doesn't exist
+	suite.mock.ExpectQuery(`SELECT .* FROM users WHERE email = \$1`).
+		WithArgs("nonexistent@example.com").
+		WillReturnError(sql.ErrNoRows)
+
+	// When: Getting user by email
+	user, err := suite.repo.GetByEmail(context.Background(), "nonexistent@example.com")
+
+	// Then: Should return NotFoundError
+	suite.Error(err)
+	suite.Nil(user)
+	var notFoundErr *models.NotFoundError
+	suite.ErrorAs(err, &notFoundErr)
+	suite.Equal("user", notFoundErr.Resource)
+}

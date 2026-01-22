@@ -13,7 +13,7 @@ func detectUnreachableCodePython(root *sitter.Node, code string) []ASTFinding {
 	findings := []ASTFinding{}
 
 	// Traverse AST to find functions
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		var bodyNode *sitter.Node
 
 		// Find function body

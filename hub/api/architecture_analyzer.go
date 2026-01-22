@@ -4,11 +4,13 @@
 package main
 
 import (
+	"context"
 	"fmt"
 	"path/filepath"
 	"strings"
 
-	_ "github.com/smacker/go-tree-sitter" // Reserved for tree-sitter integration
+	"sentinel-hub-api/ast"
+	sitter "github.com/smacker/go-tree-sitter"
 )
 
 // FileContent represents a file to be analyzed
@@ -164,18 +166,16 @@ func detectSections(content string, language string) []FileSection {
 	var sections []FileSection
 
 	// Try to use AST parser if available
-	// NOTE: AST parsing disabled - tree-sitter integration required
-	_, err := getParser(language)
+	parser, err := ast.GetParser(language)
 	if err == nil {
 		// Use AST to detect functions/classes
-		// ctx := context.Background()
-		// tree, err := parser.ParseCtx(ctx, nil, []byte(content))
-		// if err == nil {
-		// 	defer tree.Close()
-		// 	sections = extractSectionsFromAST(tree.RootNode(), content)
-		// }
+		ctx := context.Background()
+		tree, err := parser.ParseCtx(ctx, nil, []byte(content))
+		if err == nil {
+			defer tree.Close()
+			sections = extractSectionsFromAST(tree.RootNode(), content)
+		}
 	}
-	_ = err // Ignore err since AST is disabled
 
 	// Fallback to pattern-based detection if AST fails
 	if len(sections) == 0 {
@@ -186,22 +186,96 @@ func detectSections(content string, language string) []FileSection {
 }
 
 // extractSectionsFromAST extracts sections from AST tree
-// NOTE: AST parsing disabled - tree-sitter integration required
-func extractSectionsFromAST(node interface{}, content string) []FileSection {
-	// AST parsing disabled - tree-sitter integration required
-	return []FileSection{}
+func extractSectionsFromAST(node *sitter.Node, content string) []FileSection {
+	var sections []FileSection
+
+	// Traverse AST to find function/class declarations
+	ast.TraverseAST(node, func(n *sitter.Node) bool {
+		nodeType := n.Type()
+		startPoint := n.StartPoint()
+		endPoint := n.EndPoint()
+
+		// Detect function/class declarations based on node type
+		if isFunctionOrClassNode(nodeType) {
+			sectionName := extractNodeName(n, content)
+			if sectionName != "" {
+				sections = append(sections, FileSection{
+					StartLine:   int(startPoint.Row) + 1, // Convert from 0-based to 1-based
+					EndLine:     int(endPoint.Row) + 1,
+					Name:        sectionName,
+					Description: getNodeDescription(nodeType),
+					Lines:       int(endPoint.Row-startPoint.Row) + 1,
+				})
+			}
+		}
+		return true // Continue traversal
+	})
+
+	return sections
 }
 
-// traverseASTForSections traverses AST tree and calls callback for each node (for section detection)
-// NOTE: AST parsing disabled - tree-sitter integration required
-func traverseASTForSections(node interface{}, callback func(interface{})) {
-	// AST parsing disabled - tree-sitter integration required
+// isFunctionOrClassNode checks if a node type represents a function or class declaration
+func isFunctionOrClassNode(nodeType string) bool {
+	// Common function/class node types across languages
+	functionTypes := []string{
+		"function_declaration", "function_definition", "method_declaration",
+		"class_declaration", "type_declaration", "struct_declaration",
+		"func", "def", "class", "type",
+	}
+	for _, ft := range functionTypes {
+		if nodeType == ft || strings.Contains(nodeType, ft) {
+			return true
+		}
+	}
+	return false
+}
+
+// getNodeDescription returns a human-readable description for a node type
+func getNodeDescription(nodeType string) string {
+	if strings.Contains(nodeType, "function") || strings.Contains(nodeType, "func") || strings.Contains(nodeType, "def") {
+		return "Function definition"
+	}
+	if strings.Contains(nodeType, "class") || strings.Contains(nodeType, "type") || strings.Contains(nodeType, "struct") {
+		return "Type/Class definition"
+	}
+	return "Code section"
 }
 
 // extractNodeName extracts the name from an AST node
-// NOTE: AST parsing disabled - tree-sitter integration required
-func extractNodeName(node interface{}, content string) string {
-	// AST parsing disabled - tree-sitter integration required
+func extractNodeName(node *sitter.Node, content string) string {
+	// Try to find identifier child node
+	childCount := int(node.ChildCount())
+	for i := 0; i < childCount; i++ {
+		child := node.Child(i)
+		if child == nil {
+			continue
+		}
+		childType := child.Type()
+		// Identifier nodes typically contain the name
+		if childType == "identifier" || childType == "type_identifier" || childType == "field_identifier" {
+			startByte := int(child.StartByte())
+			endByte := int(child.EndByte())
+			if startByte < len(content) && endByte <= len(content) {
+				return strings.TrimSpace(content[startByte:endByte])
+			}
+		}
+		// For some languages, the name might be in the second child
+		if i == 1 && (childType == "identifier" || childType == "type_identifier") {
+			startByte := int(child.StartByte())
+			endByte := int(child.EndByte())
+			if startByte < len(content) && endByte <= len(content) {
+				return strings.TrimSpace(content[startByte:endByte])
+			}
+		}
+	}
+	// Fallback: extract from first line of node
+	startPoint := node.StartPoint()
+	if int(startPoint.Row) < len(strings.Split(content, "\n")) {
+		lines := strings.Split(content, "\n")
+		line := lines[int(startPoint.Row)]
+		// Try to extract name from line
+		return extractFunctionName(line, "")
+	}
 	return "unknown"
 }
 

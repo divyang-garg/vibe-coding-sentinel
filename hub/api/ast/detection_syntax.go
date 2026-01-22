@@ -22,7 +22,7 @@ func detectBraceMismatch(tree *sitter.Tree, code string, language string) []ASTF
 	}
 
 	// Tree-sitter reports parse errors as ERROR nodes
-	traverseAST(rootNode, func(node *sitter.Node) bool {
+	TraverseAST(rootNode, func(node *sitter.Node) bool {
 		if node.Type() == "ERROR" || node.IsError() || node.HasError() {
 			// This is a parse error - likely brace/bracket mismatch
 			startLine, startCol := getLineColumn(code, int(node.StartByte()))

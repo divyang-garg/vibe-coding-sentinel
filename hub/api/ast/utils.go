@@ -10,8 +10,9 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-// traverseAST traverses the AST tree with a visitor function
-func traverseAST(node *sitter.Node, visitor func(*sitter.Node) bool) {
+// TraverseAST traverses the AST tree with a visitor function
+// Exported for use by other packages that need direct AST traversal
+func TraverseAST(node *sitter.Node, visitor func(*sitter.Node) bool) {
 	if node == nil {
 		return
 	}
@@ -21,7 +22,7 @@ func traverseAST(node *sitter.Node, visitor func(*sitter.Node) bool) {
 	}
 
 	for i := 0; i < int(node.ChildCount()); i++ {
-		traverseAST(node.Child(i), visitor)
+		TraverseAST(node.Child(i), visitor)
 	}
 }
 
@@ -142,7 +143,6 @@ func DetectLanguage(code string, filePath string) string {
 	}
 
 	// 2. Try code patterns (shebang, imports, syntax)
-	codeLower := strings.ToLower(code)
 	codeTrimmed := strings.TrimSpace(code)
 
 	// Check for Go: "package", "func ", "import ("

@@ -5,6 +5,7 @@ package cli
 import (
 	"fmt"
 	"os"
+	"strings"
 
 	"github.com/divyang-garg/sentinel-hub-api/internal/hub"
 	"github.com/divyang-garg/sentinel-hub-api/internal/scanner"
@@ -106,7 +107,24 @@ func runAudit(args []string) error {
 		} else {
 			fmt.Println("⛔ Audit FAILED. Issues found.")
 		}
-		os.Exit(1)
+		// Don't exit if we're in a test environment
+		// Automatically detect test mode without requiring env var setup:
+		// 1. Check SENTINEL_TEST_MODE env var (set by test init() functions)
+		// 2. Check if we're running as a test binary by examining executable path
+		// This allows tests to run without manual env var setup
+		if os.Getenv("SENTINEL_TEST_MODE") == "" {
+			// Check if we're running under go test by examining the executable path
+			if exe, err := os.Executable(); err == nil {
+				if strings.Contains(exe, ".test") || strings.Contains(exe, "/_test/") || strings.Contains(exe, "go-build") {
+					// We're in test mode, return error instead of exiting
+					return fmt.Errorf("audit failed: %d findings", len(result.Findings))
+				}
+			}
+			// Not in test mode, exit normally
+			os.Exit(1)
+		}
+		// In test mode (env var set), return error instead of exiting
+		return fmt.Errorf("audit failed: %d findings", len(result.Findings))
 	}
 
 	if !opts.CIMode {

@@ -1,0 +1,52 @@
+{
+  "test_suite": "document_processing_e2e",
+  "timestamp": "2026-01-20 21:07:07",
+  "duration_seconds": 0,
+  "test_categories": {
+    "document_ingestion": {
+      "tests_run": 4,
+      "description": "Document upload, validation, storage, and listing"
+    },
+    "document_analysis": {
+      "tests_run": 4,
+      "description": "Content analysis, result validation, error handling"
+    },
+    "document_search": {
+      "tests_run": 4,
+      "description": "Keyword search, type filtering, ID retrieval"
+    },
+    "processing_workflow": {
+      "tests_run": 4,
+      "description": "Complete ingest-analyze-search workflow"
+    },
+    "concurrent_processing": {
+      "tests_run": 2,
+      "description": "Parallel document operations and data integrity"
+    }
+  },
+  "configuration": {
+    "hub_host": "localhost",
+    "hub_port": 8080,
+    "test_timeout": 600,
+    "fixtures_directory": "/Users/divyanggarg/VicecodingSentinel/tests/fixtures"
+  },
+  "codings_standards_compliance": {
+    "end_to_end_workflow": true,
+    "error_handling_tested": true,
+    "concurrent_access_tested": true,
+    "data_integrity_verified": true,
+    "timeout_protection": true
+  },
+  "documents_processed": [
+    "test_requirements.txt",
+    "test_scope.md",
+    "workflow_test.txt",
+    "concurrent_1.txt",
+    "concurrent_2.txt",
+    "concurrent_3.txt"
+  ],
+  "report_files": [
+    "/Users/divyanggarg/VicecodingSentinel/tests/e2e/reports/response_*.json",
+    "/Users/divyanggarg/VicecodingSentinel/tests/e2e/reports/document_processing_e2e_report_20260120_210707.json"
+  ]
+}

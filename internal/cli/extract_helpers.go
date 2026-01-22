@@ -7,8 +7,6 @@ import (
 	"fmt"
 	"os"
 	"sync"
-
-	llm "sentinel-hub-api/llm"
 )
 
 // simpleCache implements extraction.Cache
@@ -60,8 +58,12 @@ func (l *cliLogger) Error(msg string, args ...interface{}) {
 }
 
 // llmClientAdapter implements extraction.LLMClient
+// Note: This is a stub implementation that returns an error
+// Full LLM integration requires Hub API dependency which is not available in standalone CLI
 type llmClientAdapter struct {
-	config *llm.LLMConfig
+	provider string
+	apiKey   string
+	model    string
 }
 
 func newLLMClientAdapter() (*llmClientAdapter, error) {
@@ -91,20 +93,16 @@ func newLLMClientAdapter() (*llmClientAdapter, error) {
 	}
 
 	return &llmClientAdapter{
-		config: &llm.LLMConfig{
-			Provider: provider,
-			APIKey:   apiKey,
-			Model:    model,
-			CostOptimization: &llm.CostOptimizationConfig{
-				UseCache:      true,
-				CacheTTLHours: 24,
-			},
-		},
+		provider: provider,
+		apiKey:   apiKey,
+		model:    model,
 	}, nil
 }
 
 func (a *llmClientAdapter) Call(ctx context.Context, prompt string, taskType string) (string, int, error) {
-	return llm.CallLLM(ctx, a.config, prompt, taskType)
+	// LLM calls require Hub API integration
+	// For standalone CLI, return error indicating Hub API is required
+	return "", 0, fmt.Errorf("LLM functionality requires Hub API integration. Please use 'sentinel knowledge extract --fallback' for pattern-based extraction")
 }
 
 // noOpLLMClient implements extraction.LLMClient for when LLM is disabled

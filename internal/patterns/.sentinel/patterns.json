@@ -9,15 +9,15 @@
   },
   "projectStructure": {},
   "importPatterns": {
-    "style": "absolute",
+    "style": "",
     "aliasing": {},
     "barrelFiles": null,
     "defaultImports": 0,
-    "namedImports": 1,
+    "namedImports": 0,
     "examples": []
   },
   "codeStyle": {
-    "indentStyle": "tabs",
+    "indentStyle": "",
     "indentSize": 0,
     "quoteStyle": "",
     "semicolons": "optional",

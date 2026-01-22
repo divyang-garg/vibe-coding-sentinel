@@ -85,3 +85,29 @@ func TestFormatMessage(t *testing.T) {
 		assert.Contains(t, result, "key=value")
 	})
 }
+
+func TestStructuredLogger_Warn(t *testing.T) {
+	t.Run("calls warn with formatted message", func(t *testing.T) {
+		mockLogger := &MockBasicLogger{}
+		mockLogger.On("Warn", mock.MatchedBy(func(msg string) bool {
+			return msg != "" && len(msg) > 0
+		}), mock.Anything).Return()
+
+		sl := NewStructuredLogger(mockLogger)
+		sl.Warn("warning message", map[string]interface{}{
+			"key": "value",
+		})
+
+		mockLogger.AssertExpectations(t)
+	})
+
+	t.Run("handles warn with empty fields", func(t *testing.T) {
+		mockLogger := &MockBasicLogger{}
+		mockLogger.On("Warn", "simple warning", mock.Anything).Return()
+
+		sl := NewStructuredLogger(mockLogger)
+		sl.Warn("simple warning", map[string]interface{}{})
+
+		mockLogger.AssertExpectations(t)
+	})
+}

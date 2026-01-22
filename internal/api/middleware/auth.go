@@ -52,9 +52,13 @@ func (m *AuthMiddleware) Authenticate(next http.Handler) http.Handler {
 
 		// Extract claims and set in context
 		if claims, ok := token.Claims.(jwt.MapClaims); ok {
-			userID := int(claims["user_id"].(float64))
-			ctx := context.WithValue(r.Context(), "user_id", userID)
-			r = r.WithContext(ctx)
+			if userIDVal, exists := claims["user_id"]; exists {
+				if userIDFloat, ok := userIDVal.(float64); ok {
+					userID := int(userIDFloat)
+					ctx := context.WithValue(r.Context(), "user_id", userID)
+					r = r.WithContext(ctx)
+				}
+			}
 		}
 
 		next.ServeHTTP(w, r)

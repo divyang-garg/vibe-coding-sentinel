@@ -226,6 +226,204 @@ sentinel doc-sync --report
 sentinel tasks list --assigned-to team
 ```
 
+## Hub REST API
+
+The Sentinel Hub provides a RESTful API for programmatic access. All endpoints require authentication via API key.
+
+### Base URL
+
+```
+http://localhost:8080/api/v1
+```
+
+### Authentication
+
+All Hub API endpoints require authentication using the `X-API-Key` header:
+
+```bash
+curl -H "X-API-Key: your-api-key" http://localhost:8080/api/v1/projects
+```
+
+### API Key Management
+
+#### Generate API Key
+
+**Endpoint:** `POST /api/v1/projects/{id}/api-key`
+
+Generates a new API key for a project. The old key (if any) is automatically revoked.
+
+**Request:**
+```bash
+curl -X POST http://localhost:8080/api/v1/projects/proj_123/api-key \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-admin-key"
+```
+
+**Response (200 OK):**
+```json
+{
+  "api_key": "xK9mP2qR7vT4wY8zA1bC3dE5fG6hI0j",
+  "api_key_prefix": "xK9mP2qR",
+  "message": "API key generated successfully. Save this key - it will not be shown again.",
+  "warning": "This is the only time you will see this key. Store it securely."
+}
+```
+
+**Error Responses:**
+- `400 Bad Request` - Missing project ID
+- `401 Unauthorized` - Invalid or missing API key
+- `404 Not Found` - Project not found
+- `500 Internal Server Error` - Server error
+
+#### Get API Key Info
+
+**Endpoint:** `GET /api/v1/projects/{id}/api-key`
+
+Returns API key information (prefix only, for security). The full key is never returned.
+
+**Request:**
+```bash
+curl -X GET http://localhost:8080/api/v1/projects/proj_123/api-key \
+  -H "X-API-Key: your-admin-key"
+```
+
+**Response (200 OK):**
+```json
+{
+  "has_api_key": true,
+  "api_key_prefix": "xK9mP2qR",
+  "message": "Full API key is never returned for security reasons. Use POST to generate a new key."
+}
+```
+
+**Error Responses:**
+- `400 Bad Request` - Missing project ID
+- `401 Unauthorized` - Invalid or missing API key
+- `404 Not Found` - Project not found
+- `500 Internal Server Error` - Server error
+
+#### Revoke API Key
+
+**Endpoint:** `DELETE /api/v1/projects/{id}/api-key`
+
+Revokes a project's API key. After revocation, all requests using that key will fail.
+
+**Request:**
+```bash
+curl -X DELETE http://localhost:8080/api/v1/projects/proj_123/api-key \
+  -H "X-API-Key: your-admin-key"
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "API key revoked successfully"
+}
+```
+
+**Error Responses:**
+- `400 Bad Request` - Missing project ID
+- `401 Unauthorized` - Invalid or missing API key
+- `404 Not Found` - Project not found
+- `500 Internal Server Error` - Server error
+
+### Projects API
+
+#### Create Project
+
+**Endpoint:** `POST /api/v1/projects`
+
+Creates a new project. An API key is automatically generated and returned in the response.
+
+**Request:**
+```bash
+curl -X POST http://localhost:8080/api/v1/projects \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-admin-key" \
+  -d '{"name": "My Project"}'
+```
+
+**Response (201 Created):**
+```json
+{
+  "id": "proj_123",
+  "org_id": "org_456",
+  "name": "My Project",
+  "api_key": "xK9mP2qR7vT4wY8zA1bC3dE5fG6hI0j",
+  "api_key_prefix": "xK9mP2qR",
+  "created_at": "2026-01-21T12:00:00Z"
+}
+```
+
+**Important:** The `api_key` field is only returned once in this response. You must save it immediately.
+
+#### Get Project
+
+**Endpoint:** `GET /api/v1/projects/{id}`
+
+Retrieves project information.
+
+**Request:**
+```bash
+curl -X GET http://localhost:8080/api/v1/projects/proj_123 \
+  -H "X-API-Key: your-api-key"
+```
+
+**Response (200 OK):**
+```json
+{
+  "id": "proj_123",
+  "org_id": "org_456",
+  "name": "My Project",
+  "api_key_prefix": "xK9mP2qR",
+  "created_at": "2026-01-21T12:00:00Z"
+}
+```
+
+**Note:** The full API key is never returned in GET requests for security reasons.
+
+#### List Projects
+
+**Endpoint:** `GET /api/v1/projects?org_id={org_id}`
+
+Lists all projects for an organization.
+
+**Request:**
+```bash
+curl -X GET "http://localhost:8080/api/v1/projects?org_id=org_456" \
+  -H "X-API-Key: your-api-key"
+```
+
+**Response (200 OK):**
+```json
+{
+  "projects": [
+    {
+      "id": "proj_123",
+      "org_id": "org_456",
+      "name": "My Project",
+      "api_key_prefix": "xK9mP2qR",
+      "created_at": "2026-01-21T12:00:00Z"
+    }
+  ],
+  "total": 1
+}
+```
+
+### API Key Security
+
+The Hub API implements several security measures for API keys:
+
+1. **Secure Generation:** API keys are generated using cryptographically secure random number generation (`crypto/rand`)
+2. **Hashed Storage:** Keys are stored as SHA-256 hashes in the database, never in plaintext
+3. **One-Time Display:** Full keys are only shown once when generated or created
+4. **Prefix Display:** Only the first 8 characters (prefix) are shown in subsequent requests
+5. **Audit Logging:** All API key operations are logged for security auditing
+
+For detailed information on API key implementation, see:
+- `docs/API_KEY_IMPLEMENTATION_FLOW.md` - Technical implementation details
+- `API_KEY_ENDPOINTS_IMPLEMENTATION.md` - Endpoint documentation
+
 ## Error Handling
 
 ### Common Exit Codes

@@ -27,7 +27,7 @@ func detectUnreachableCodeGo(root *sitter.Node, code string) []ASTFinding {
 	findings := []ASTFinding{}
 
 	// Simple implementation: look for statements after return statements in functions
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		if node.Type() == "function_declaration" || node.Type() == "method_declaration" {
 			// Check function body for return statements followed by more statements
 			for i := 0; i < int(node.ChildCount()); i++ {

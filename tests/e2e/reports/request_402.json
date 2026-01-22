@@ -1,0 +1,6 @@
+{
+  "jsonrpc": "2.0",
+  "id": 402,
+  "method": "tools/call",
+  "params": {"name": "sentinel_analyze_intent", "arguments": {"request": "create admin dashboard"}}
+}

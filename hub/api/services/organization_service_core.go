@@ -60,7 +60,8 @@ type ProjectRepository interface {
 	Save(ctx context.Context, project *models.Project) error
 	FindByID(ctx context.Context, id string) (*models.Project, error)
 	FindByOrganizationID(ctx context.Context, orgID string) ([]models.Project, error)
-	FindByAPIKey(ctx context.Context, apiKey string) (*models.Project, error)
+	FindByAPIKey(ctx context.Context, apiKey string) (*models.Project, error)      // Legacy: for migration support
+	FindByAPIKeyHash(ctx context.Context, apiKeyHash string) (*models.Project, error) // Secure: hash-based lookup
 	Update(ctx context.Context, project *models.Project) error
 	Delete(ctx context.Context, id string) error
 }

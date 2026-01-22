@@ -567,6 +567,110 @@ All endpoints are now fully functional and production-ready:
 
 **Status**: All endpoints are production-ready with no stub implementations remaining.
 
+## API Key Management Endpoints
+
+The Hub API provides endpoints for managing project API keys. These endpoints allow you to generate, view information about, and revoke API keys.
+
+### POST /api/v1/projects/{id}/api-key
+
+Generates a new API key for a project. The old key (if any) is automatically revoked.
+
+**Authentication:** Requires valid API key (admin or project key)
+
+**Request:**
+```bash
+curl -X POST https://hub.example.com/api/v1/projects/proj_123/api-key \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: your-admin-key"
+```
+
+**Response (200 OK):**
+```json
+{
+  "api_key": "xK9mP2qR7vT4wY8zA1bC3dE5fG6hI0j",
+  "api_key_prefix": "xK9mP2qR",
+  "message": "API key generated successfully. Save this key - it will not be shown again.",
+  "warning": "This is the only time you will see this key. Store it securely."
+}
+```
+
+**Important:** The full API key is only returned once. Save it immediately!
+
+### GET /api/v1/projects/{id}/api-key
+
+Returns API key information (prefix only, for security). The full key is never returned.
+
+**Authentication:** Requires valid API key
+
+**Request:**
+```bash
+curl -X GET https://hub.example.com/api/v1/projects/proj_123/api-key \
+  -H "X-API-Key: your-admin-key"
+```
+
+**Response (200 OK):**
+```json
+{
+  "has_api_key": true,
+  "api_key_prefix": "xK9mP2qR",
+  "message": "Full API key is never returned for security reasons. Use POST to generate a new key."
+}
+```
+
+### DELETE /api/v1/projects/{id}/api-key
+
+Revokes a project's API key. After revocation, all requests using that key will fail.
+
+**Authentication:** Requires valid API key (admin or project key)
+
+**Request:**
+```bash
+curl -X DELETE https://hub.example.com/api/v1/projects/proj_123/api-key \
+  -H "X-API-Key: your-admin-key"
+```
+
+**Response (200 OK):**
+```json
+{
+  "message": "API key revoked successfully"
+}
+```
+
+### API Key Security Features
+
+1. **Secure Generation:** API keys are generated using `crypto/rand` for cryptographic security
+2. **Hashed Storage:** Keys are stored as SHA-256 hashes in the database, never in plaintext
+3. **One-Time Display:** Full keys are only shown once when generated
+4. **Prefix Display:** Only the first 8 characters are shown in subsequent requests
+5. **Audit Logging:** All API key operations are logged for security auditing
+
+### Initial Project Setup
+
+When deploying the Hub, you'll need to create an initial project and API key:
+
+```bash
+# 1. Create a project (auto-generates API key)
+PROJECT_RESPONSE=$(curl -s -X POST https://hub.example.com/api/v1/projects \
+  -H "Content-Type: application/json" \
+  -H "X-API-Key: $ADMIN_API_KEY" \
+  -d '{"name": "Default Project"}')
+
+# 2. Extract and save the API key
+PROJECT_ID=$(echo $PROJECT_RESPONSE | jq -r '.id')
+API_KEY=$(echo $PROJECT_RESPONSE | jq -r '.api_key')
+
+# 3. Store in environment or secret management
+export SENTINEL_API_KEY="$API_KEY"
+
+# 4. Verify the key works
+curl -X GET https://hub.example.com/api/v1/projects/$PROJECT_ID \
+  -H "X-API-Key: $API_KEY"
+```
+
+For detailed API key management documentation, see:
+- `docs/API_KEY_MANAGEMENT_GUIDE.md` - User guide for API key management
+- `docs/API_KEY_IMPLEMENTATION_FLOW.md` - Technical implementation details
+
 ### Backup Strategy
 
 1. **Database Backups**

@@ -1,0 +1,6 @@
+{
+  "jsonrpc": "2.0",
+  "id": 412,
+  "method": "tools/call",
+  "params": {"name": "sentinel_create_task", "arguments": {"title": "Concurrent Test", "description": "Testing parallel execution", "priority": "low"}}
+}

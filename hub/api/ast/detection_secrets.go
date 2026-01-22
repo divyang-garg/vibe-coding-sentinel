@@ -68,7 +68,7 @@ func detectSecrets(root *sitter.Node, code string, language string) []SecurityVu
 	}
 
 	// Also check AST for variable assignments
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		// Look for variable assignments with potential secrets
 		if node.Type() == "assignment_expression" || node.Type() == "short_var_declaration" {
 			codeSnippet := safeSlice(code, node.StartByte(), node.EndByte())

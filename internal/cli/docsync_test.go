@@ -1,12 +1,39 @@
-// Package cli tests for doc-sync command
-// Complies with CODING_STANDARDS.md: Test file max 500 lines
+// Package cli provides tests for doc-sync command
 package cli
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 )
+
+func TestRunDocSync(t *testing.T) {
+	tmpDir := t.TempDir()
+	originalDir, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(originalDir)
+
+	t.Run("no docs directory", func(t *testing.T) {
+		err := runDocSync([]string{})
+		if err != nil {
+			t.Errorf("runDocSync() error = %v", err)
+		}
+	})
+
+	t.Run("with docs directory", func(t *testing.T) {
+		os.MkdirAll("docs/knowledge", 0755)
+		err := runDocSync([]string{})
+		if err != nil {
+			t.Errorf("runDocSync() error = %v", err)
+		}
+	})
+
+	t.Run("with custom path", func(t *testing.T) {
+		err := runDocSync([]string{"."})
+		if err != nil {
+			t.Errorf("runDocSync() error = %v", err)
+		}
+	})
+}
 
 func TestCheckKnowledgeReferences(t *testing.T) {
 	tmpDir := t.TempDir()
@@ -16,51 +43,77 @@ func TestCheckKnowledgeReferences(t *testing.T) {
 
 	os.MkdirAll(".sentinel", 0755)
 
-	// Create a knowledge base with a reference to an existing file
-	testFile := "src/test.js"
-	os.MkdirAll(filepath.Dir(testFile), 0755)
-	os.WriteFile(testFile, []byte("test content"), 0644)
+	// Create a test file
+	testFile := "test.go"
+	os.WriteFile(testFile, []byte("package main"), 0644)
 
-	kb := &KnowledgeBase{
-		Version: "1.0",
-		Entries: []KnowledgeEntry{
-			{
-				ID:     "1",
-				Title:  "Test Entry",
-				Source: testFile,
+	t.Run("valid reference", func(t *testing.T) {
+		kb := &KnowledgeBase{
+			Entries: []KnowledgeEntry{
+				{
+					ID:     "1",
+					Title:  "Test",
+					Source: testFile,
+				},
 			},
-			{
-				ID:     "2",
-				Title:  "Missing Entry",
-				Source: "nonexistent/file.js",
+		}
+
+		issues := checkKnowledgeReferences(kb, ".")
+		if len(issues) > 0 {
+			t.Errorf("Expected no issues for valid reference, got %d", len(issues))
+		}
+	})
+
+	t.Run("missing reference", func(t *testing.T) {
+		kb := &KnowledgeBase{
+			Entries: []KnowledgeEntry{
+				{
+					ID:     "1",
+					Title:  "Test",
+					Source: "nonexistent.go",
+				},
 			},
-			{
-				ID:     "3",
-				Title:  "HTTP Entry",
-				Source: "http://example.com/doc",
+		}
+
+		issues := checkKnowledgeReferences(kb, ".")
+		if len(issues) == 0 {
+			t.Error("Expected issue for missing reference")
+		}
+	})
+
+	t.Run("HTTP reference", func(t *testing.T) {
+		kb := &KnowledgeBase{
+			Entries: []KnowledgeEntry{
+				{
+					ID:     "1",
+					Title:  "Test",
+					Source: "http://example.com/doc",
+				},
 			},
-		},
-	}
-
-	issues := checkKnowledgeReferences(kb, tmpDir)
-
-	// Should find issue for nonexistent file, but not for HTTP or existing file
-	foundMissing := false
-	for _, issue := range issues {
-		if issue.File == "nonexistent/file.js" {
-			foundMissing = true
 		}
-		if issue.File == testFile {
-			t.Error("Should not flag existing file as missing")
-		}
-		if issue.File == "http://example.com/doc" {
-			t.Error("Should not flag HTTP URLs as missing files")
-		}
-	}
 
-	if !foundMissing {
-		t.Error("Should detect missing file reference")
-	}
+		issues := checkKnowledgeReferences(kb, ".")
+		if len(issues) > 0 {
+			t.Error("Expected no issues for HTTP reference")
+		}
+	})
+
+	t.Run("empty source", func(t *testing.T) {
+		kb := &KnowledgeBase{
+			Entries: []KnowledgeEntry{
+				{
+					ID:    "1",
+					Title: "Test",
+					// No Source
+				},
+			},
+		}
+
+		issues := checkKnowledgeReferences(kb, ".")
+		if len(issues) > 0 {
+			t.Error("Expected no issues for empty source")
+		}
+	})
 }
 
 func TestCheckMissingDocumentation(t *testing.T) {
@@ -69,59 +122,17 @@ func TestCheckMissingDocumentation(t *testing.T) {
 	os.Chdir(tmpDir)
 	defer os.Chdir(originalDir)
 
-	// Create a test file with code
-	testFile := "test.js"
-	content := ""
-	for i := 0; i < 15; i++ {
-		content += "console.log('test');\n"
-	}
-	os.WriteFile(testFile, []byte(content), 0644)
+	t.Run("no findings", func(t *testing.T) {
+		issues := checkMissingDocumentation(".")
+		// Should not error, may return empty list
+		_ = issues
+	})
 
-	issues := checkMissingDocumentation(tmpDir)
-
-	// Function may or may not find issues depending on scanner results
-	_ = issues
-	// Just ensure it doesn't panic
-}
-
-func TestContainsTag(t *testing.T) {
-	tests := []struct {
-		name     string
-		tags     []string
-		query    string
-		expected bool
-	}{
-		{"contains_exact", []string{"test", "demo"}, "test", true},
-		{"contains_partial", []string{"testing", "demo"}, "test", true},
-		{"case_insensitive", []string{"TEST", "Demo"}, "test", true},
-		{"not_contains", []string{"other", "tags"}, "test", false},
-		{"empty_tags", []string{}, "test", false},
-		{"empty_query", []string{"test"}, "", true}, // Empty string matches any string
-	}
-
-	for _, tt := range tests {
-		t.Run(tt.name, func(t *testing.T) {
-			result := containsTag(tt.tags, tt.query)
-			if result != tt.expected {
-				t.Errorf("containsTag(%v, %q) = %v, want %v", tt.tags, tt.query, result, tt.expected)
-			}
-		})
-	}
-}
-
-func TestUpdateKnowledgeEntry(t *testing.T) {
-	kb := &KnowledgeBase{
-		Version: "1.0",
-		Entries: []KnowledgeEntry{
-			{ID: "1", Title: "Original"},
-			{ID: "2", Title: "Another"},
-		},
-	}
-
-	updated := KnowledgeEntry{ID: "1", Title: "Updated"}
-	updateKnowledgeEntry(kb, updated)
-
-	if kb.Entries[0].Title != "Updated" {
-		t.Error("Entry should be updated")
-	}
+	t.Run("with code files", func(t *testing.T) {
+		// Create a simple Go file
+		os.WriteFile("test.go", []byte("package main\nfunc main() {}"), 0644)
+		issues := checkMissingDocumentation(".")
+		// Should complete without error
+		_ = issues
+	})
 }

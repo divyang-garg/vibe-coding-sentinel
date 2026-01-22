@@ -82,4 +82,49 @@ func TestTextParser(t *testing.T) {
 		require.NoError(t, err)
 		assert.Equal(t, content, result)
 	})
+
+	t.Run("returns error for missing file", func(t *testing.T) {
+		parser := &textParser{}
+		_, err := parser.Parse("/nonexistent/file.txt")
+		assert.Error(t, err)
+	})
+}
+
+func TestDocxParser(t *testing.T) {
+	t.Run("supports docx files", func(t *testing.T) {
+		parser := &docxParser{}
+		assert.True(t, parser.Supports("test.docx"))
+		assert.False(t, parser.Supports("test.pdf"))
+	})
+
+	t.Run("handles missing docx file", func(t *testing.T) {
+		parser := &docxParser{}
+		_, err := parser.Parse("/nonexistent/file.docx")
+		assert.Error(t, err)
+	})
+}
+
+func TestPdfParser(t *testing.T) {
+	t.Run("supports pdf files", func(t *testing.T) {
+		parser := &pdfParser{}
+		assert.True(t, parser.Supports("test.pdf"))
+		assert.False(t, parser.Supports("test.docx"))
+	})
+
+	t.Run("handles missing pdf file", func(t *testing.T) {
+		parser := &pdfParser{}
+		_, err := parser.Parse("/nonexistent/file.pdf")
+		assert.Error(t, err)
+	})
+
+	t.Run("handles invalid pdf file", func(t *testing.T) {
+		tmpFile := filepath.Join(os.TempDir(), "test_invalid.pdf")
+		os.WriteFile(tmpFile, []byte("not a valid pdf"), 0644)
+		defer os.Remove(tmpFile)
+
+		parser := &pdfParser{}
+		_, err := parser.Parse(tmpFile)
+		// May error or return empty, both are acceptable
+		_ = err
+	})
 }

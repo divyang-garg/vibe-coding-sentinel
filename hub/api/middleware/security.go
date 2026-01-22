@@ -4,13 +4,16 @@ package middleware
 
 import (
 	"context"
-	"crypto/subtle"
 	"log"
 	"net"
 	"net/http"
+	"os"
 	"strings"
 	"sync"
 	"time"
+
+	"sentinel-hub-api/pkg/security"
+	"sentinel-hub-api/services"
 )
 
 // RateLimiter implements token bucket rate limiting
@@ -69,15 +72,57 @@ func RateLimitMiddleware(maxTokens, refillRate float64) func(http.Handler) http.
 	}
 }
 
-// CORSMiddleware creates CORS middleware with security headers
-func CORSMiddleware() func(http.Handler) http.Handler {
+// CORSMiddlewareConfig holds CORS configuration
+type CORSMiddlewareConfig struct {
+	AllowedOrigins []string
+}
+
+// CORSMiddleware creates CORS middleware with origin validation
+func CORSMiddleware(config CORSMiddlewareConfig) func(http.Handler) http.Handler {
+	originMap := make(map[string]bool)
+	for _, origin := range config.AllowedOrigins {
+		originMap[origin] = true
+	}
+
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			origin := r.Header.Get("Origin")
+
+			// Determine allowed origin based on environment
+			var allowedOrigin string
+			env := os.Getenv("ENV")
+
+			if env == "development" || env == "dev" {
+				// Development: allow all origins or specific ones
+				if origin != "" {
+					allowedOrigin = origin
+				} else if len(config.AllowedOrigins) > 0 && originMap["*"] {
+					allowedOrigin = "*"
+				} else {
+					allowedOrigin = "*"
+				}
+			} else {
+				// Production: strict whitelist validation
+				if origin == "" {
+					// No origin header - reject CORS requests
+					allowedOrigin = ""
+				} else if originMap[origin] || originMap["*"] {
+					allowedOrigin = origin
+				} else {
+					// Origin not in whitelist - reject
+					http.Error(w, "CORS: Origin not allowed", http.StatusForbidden)
+					return
+				}
+			}
+
 			// Set CORS headers
-			w.Header().Set("Access-Control-Allow-Origin", "*")
+			if allowedOrigin != "" {
+				w.Header().Set("Access-Control-Allow-Origin", allowedOrigin)
+			}
 			w.Header().Set("Access-Control-Allow-Methods", "GET, POST, PUT, DELETE, OPTIONS")
 			w.Header().Set("Access-Control-Allow-Headers", "Content-Type, Authorization, X-API-Key")
 			w.Header().Set("Access-Control-Max-Age", "86400")
+			w.Header().Set("Access-Control-Allow-Credentials", "true")
 
 			// Handle preflight requests
 			if r.Method == "OPTIONS" {
@@ -90,48 +135,145 @@ func CORSMiddleware() func(http.Handler) http.Handler {
 	}
 }
 
-// AuthMiddleware creates basic authentication middleware
-func AuthMiddleware() func(http.Handler) http.Handler {
+// AuthMiddlewareConfig holds configuration for authentication middleware
+type AuthMiddlewareConfig struct {
+	OrganizationService services.OrganizationService
+	SkipPaths           []string // Paths to skip authentication
+	Logger              Logger
+	AuditLogger         security.AuditLogger // Security event logging
+}
+
+// Logger interface for structured logging
+type Logger interface {
+	Info(msg string, fields ...interface{})
+	Warn(msg string, fields ...interface{})
+	Error(msg string, fields ...interface{})
+}
+
+// AuthMiddleware creates authentication middleware with service integration
+func AuthMiddleware(config AuthMiddlewareConfig) func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-			// Skip auth for health endpoints
-			if strings.HasPrefix(r.URL.Path, "/health") {
+			// Skip auth for configured paths
+			if shouldSkipAuth(r.URL.Path, config.SkipPaths) {
 				next.ServeHTTP(w, r)
 				return
 			}
 
-			// Check for API key in header
-			apiKey := r.Header.Get("X-API-Key")
+			// Extract API key from headers
+			apiKey := extractAPIKey(r)
 			if apiKey == "" {
-				apiKey = r.Header.Get("Authorization")
-				if strings.HasPrefix(apiKey, "Bearer ") {
-					apiKey = strings.TrimPrefix(apiKey, "Bearer ")
+				ipAddr := getClientIP(r)
+				userAgent := r.UserAgent()
+				
+				if config.Logger != nil {
+					config.Logger.Warn("Authentication failed: missing API key",
+						"path", r.URL.Path,
+						"ip", ipAddr,
+					)
 				}
-			}
-
-			// Simple API key validation (in production, use proper auth service)
-			validKeys := []string{"dev-api-key-123", "test-api-key-456"}
-			valid := false
-			for _, key := range validKeys {
-				if subtle.ConstantTimeCompare([]byte(apiKey), []byte(key)) == 1 {
-					valid = true
-					break
+				
+				// Log security event
+				if config.AuditLogger != nil {
+					config.AuditLogger.LogAuthFailure(r.Context(), "missing API key", ipAddr, userAgent, r.URL.Path)
 				}
-			}
-
-			if !valid {
-				http.Error(w, "Unauthorized", http.StatusUnauthorized)
+				
+				http.Error(w, "Unauthorized: API key required", http.StatusUnauthorized)
 				return
 			}
 
-			// Add user context (simplified)
-			ctx := context.WithValue(r.Context(), "user_id", "user-123")
-			ctx = context.WithValue(ctx, "api_key", apiKey)
+			// Validate API key via service layer
+			if config.OrganizationService == nil {
+				log.Printf("ERROR: OrganizationService not configured in AuthMiddleware")
+				http.Error(w, "Internal server error: authentication service not configured", http.StatusInternalServerError)
+				return
+			}
+
+			project, err := config.OrganizationService.ValidateAPIKey(r.Context(), apiKey)
+			if err != nil || project == nil {
+				ipAddr := getClientIP(r)
+				userAgent := r.UserAgent()
+				reason := "invalid API key"
+				if err != nil {
+					reason = err.Error()
+				}
+				
+				if config.Logger != nil {
+					config.Logger.Warn("Authentication failed: invalid API key",
+						"path", r.URL.Path,
+						"ip", ipAddr,
+						"error", err,
+					)
+				}
+				
+				// Log security event
+				if config.AuditLogger != nil {
+					config.AuditLogger.LogAuthFailure(r.Context(), reason, ipAddr, userAgent, r.URL.Path)
+				}
+				
+				http.Error(w, "Unauthorized: invalid API key", http.StatusUnauthorized)
+				return
+			}
+
+			// Add authenticated context with project information
+			ctx := r.Context()
+			ctx = context.WithValue(ctx, "project_id", project.ID)
+			ctx = context.WithValue(ctx, "org_id", project.OrgID)
+			ctx = context.WithValue(ctx, "api_key_prefix", project.APIKeyPrefix)
 			r = r.WithContext(ctx)
+
+			// Log successful authentication
+			ipAddr := getClientIP(r)
+			userAgent := r.UserAgent()
+			
+			if config.Logger != nil {
+				config.Logger.Info("Authentication successful",
+					"project_id", project.ID,
+					"org_id", project.OrgID,
+					"path", r.URL.Path,
+				)
+			}
+			
+			// Log security event
+			if config.AuditLogger != nil {
+				config.AuditLogger.LogAuthSuccess(r.Context(), project.ID, project.OrgID, ipAddr, userAgent)
+			}
 
 			next.ServeHTTP(w, r)
 		})
 	}
+}
+
+// extractAPIKey extracts API key from request headers
+func extractAPIKey(r *http.Request) string {
+	// Check X-API-Key header first
+	if apiKey := r.Header.Get("X-API-Key"); apiKey != "" {
+		return apiKey
+	}
+
+	// Check Authorization header (Bearer token)
+	auth := r.Header.Get("Authorization")
+	if strings.HasPrefix(auth, "Bearer ") {
+		return strings.TrimPrefix(auth, "Bearer ")
+	}
+
+	return ""
+}
+
+// shouldSkipAuth checks if path should skip authentication
+func shouldSkipAuth(path string, skipPaths []string) bool {
+	// Always skip health endpoints
+	if strings.HasPrefix(path, "/health") {
+		return true
+	}
+
+	for _, skipPath := range skipPaths {
+		if strings.HasPrefix(path, skipPath) {
+			return true
+		}
+	}
+
+	return false
 }
 
 // SecurityHeadersMiddleware adds security headers

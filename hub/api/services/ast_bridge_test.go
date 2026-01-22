@@ -6,6 +6,8 @@ import (
 	"context"
 	"testing"
 
+	"sentinel-hub-api/ast"
+
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
@@ -128,7 +130,7 @@ func TestTraverseAST(t *testing.T) {
 
 	// Traverse and count nodes
 	nodeCount := 0
-	traverseAST(rootNode, func(node *sitter.Node) bool {
+	ast.TraverseAST(rootNode, func(node *sitter.Node) bool {
 		nodeCount++
 		return true
 	})

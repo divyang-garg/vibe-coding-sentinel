@@ -7,6 +7,8 @@ import (
 	"regexp"
 	"strings"
 	"time"
+
+	"sentinel-hub-api/ast"
 )
 
 // inferLanguageFromPath infers language from file path
@@ -83,7 +85,7 @@ func applySecurityFixesInternal(ctx context.Context, code string, language strin
 	// Use AST analysis to detect SQL injection vulnerabilities
 	if language == "javascript" || language == "typescript" || language == "python" || language == "go" {
 		// Use AST to find SQL queries with string interpolation
-		_, findings, err := analyzeAST(fixedCode, language, []string{"sql_injection"})
+		findings, _, err := ast.AnalyzeAST(fixedCode, language, []string{"sql_injection"})
 		if err == nil {
 			for _, finding := range findings {
 				if finding.Type == "sql_injection" || strings.Contains(strings.ToLower(finding.Message), "sql") {
@@ -177,7 +179,7 @@ func applySecurityFixesInternal(ctx context.Context, code string, language strin
 	// Fix 3: Add input sanitization for XSS prevention
 	if language == "javascript" || language == "typescript" {
 		// Use AST to find XSS vulnerabilities
-		_, findings, err := analyzeAST(fixedCode, language, []string{"xss"})
+		findings, _, err := ast.AnalyzeAST(fixedCode, language, []string{"xss"})
 		if err == nil {
 			for _, finding := range findings {
 				if finding.Type == "xss" || strings.Contains(strings.ToLower(finding.Message), "innerhtml") {
@@ -227,7 +229,8 @@ func applySecurityFixesInternal(ctx context.Context, code string, language strin
 // verifyFix verifies that the fixed code is syntactically valid and fixes are correct
 func verifyFix(code string, language string) error {
 	// Parse fixed code with AST to verify syntax
-	_, _, err := analyzeAST(code, language, []string{"syntax"})
+	// Note: Using empty analysis list to perform basic syntax validation
+	_, _, err := ast.AnalyzeAST(code, language, []string{})
 	if err != nil {
 		return fmt.Errorf("fixed code has syntax errors: %w", err)
 	}
@@ -364,7 +367,8 @@ func applyPerformanceFixesInternal(ctx context.Context, code string, language st
 
 	// Fix 1: Optimize nested loops - enhanced with AST-based detection
 	// Use AST to detect actual nested loop structures
-	_, findings, err := analyzeAST(code, language, []string{"complexity"})
+	// Note: Complexity analysis not directly available, using general analysis
+	findings, _, err := ast.AnalyzeAST(code, language, []string{})
 	if err == nil {
 		for _, finding := range findings {
 			if finding.Type == "complexity" && strings.Contains(finding.Message, "nested loop") {

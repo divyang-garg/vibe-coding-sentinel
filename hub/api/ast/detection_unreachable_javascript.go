@@ -9,7 +9,7 @@ import (
 func detectUnreachableCodeJS(root *sitter.Node, code string) []ASTFinding {
 	findings := []ASTFinding{}
 
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		var bodyNode *sitter.Node
 
 		if node.Type() == "function_declaration" || node.Type() == "function" || node.Type() == "arrow_function" || node.Type() == "function_expression" {

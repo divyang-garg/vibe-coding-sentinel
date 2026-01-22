@@ -33,7 +33,6 @@ import (
 	"context"
 	"fmt"
 	"strings"
-	"unicode"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
@@ -42,7 +41,7 @@ import (
 // Returns a slice of FunctionInfo for functions whose names contain the keyword (case-insensitive partial match)
 // If keyword is empty, returns all functions
 func ExtractFunctions(code string, language string, keyword string) ([]FunctionInfo, error) {
-	parser, err := getParser(language)
+	parser, err := GetParser(language)
 	if err != nil {
 		return nil, fmt.Errorf("unsupported language: %w", err)
 	}
@@ -63,7 +62,7 @@ func ExtractFunctions(code string, language string, keyword string) ([]FunctionI
 	var functions []FunctionInfo
 	keywordLower := strings.ToLower(keyword)
 
-	traverseAST(rootNode, func(node *sitter.Node) bool {
+	TraverseAST(rootNode, func(node *sitter.Node) bool {
 		funcInfo := extractFunctionFromNode(node, code, language)
 		if funcInfo != nil {
 			// Match keyword (case-insensitive partial match)
@@ -140,6 +139,54 @@ func extractFunctionFromNode(node *sitter.Node, code string, language string) *F
 					break
 				}
 			}
+		} else if node.Type() == "arrow_function" || node.Type() == "function_expression" {
+			// Arrow functions and function expressions need to get name from parent
+			startByte = node.StartByte()
+			endByte = node.EndByte()
+			funcName = extractFunctionNameFromParent(node, code, language)
+			if funcName != "" {
+				isFunction = true
+			}
+		} else if node.Type() == "variable_declarator" {
+			// Check if this variable declarator contains an arrow function or function expression
+			var varName string
+			var funcNode *sitter.Node
+			for i := 0; i < int(node.ChildCount()); i++ {
+				child := node.Child(i)
+				if child != nil {
+					if child.Type() == "identifier" {
+						// This is the variable name
+						varName = safeSlice(code, child.StartByte(), child.EndByte())
+					} else if child.Type() == "arrow_function" || child.Type() == "function_expression" {
+						// Found the function node
+						funcNode = child
+					}
+				}
+			}
+			// If we found both variable name and function, extract it
+			if varName != "" && funcNode != nil {
+				funcName = varName
+				startByte = funcNode.StartByte()
+				endByte = funcNode.EndByte()
+				isFunction = true
+			}
+		} else if node.Type() == "method_definition" {
+			// Class method in JavaScript/TypeScript
+			startByte = node.StartByte()
+			endByte = node.EndByte()
+			// Find the method name (property_identifier or private_property_identifier)
+			for i := 0; i < int(node.ChildCount()); i++ {
+				child := node.Child(i)
+				if child != nil && (child.Type() == "property_identifier" || child.Type() == "private_property_identifier" || child.Type() == "string") {
+					funcName = safeSlice(code, child.StartByte(), child.EndByte())
+					// Remove quotes if it's a string
+					if len(funcName) >= 2 && funcName[0] == '"' && funcName[len(funcName)-1] == '"' {
+						funcName = funcName[1 : len(funcName)-1]
+					}
+					isFunction = true
+					break
+				}
+			}
 		}
 	case "python":
 		if node.Type() == "function_definition" {
@@ -150,6 +197,16 @@ func extractFunctionFromNode(node *sitter.Node, code string, language string) *F
 				child := node.Child(i)
 				if child != nil && child.Type() == "identifier" {
 					funcName = safeSlice(code, child.StartByte(), child.EndByte())
+					// Check if this is a method (within a class)
+					parent := node.Parent()
+					if parent != nil && parent.Type() == "class_definition" {
+						// Extract class name from parent
+						className := extractClassNameFromParent(parent, code)
+						if className != "" {
+							// Format as ClassName.methodName or just methodName
+							funcName = className + "." + funcName
+						}
+					}
 					isFunction = true
 					break
 				}
@@ -171,45 +228,29 @@ func extractFunctionFromNode(node *sitter.Node, code string, language string) *F
 	// Determine visibility
 	visibility := determineVisibility(funcName, language)
 
+	// Extract parameters
+	parameters := extractParameters(node, code, language)
+
+	// Extract return type
+	returnType := extractReturnType(node, code, language)
+
+	// Extract documentation
+	documentation := extractDocumentation(node, code, language)
+
 	funcInfo := &FunctionInfo{
-		Name:       funcName,
-		Language:   language,
-		Line:       startLine,
-		Column:     startCol,
-		EndLine:    endLine,
-		EndColumn:  endCol,
-		Code:       funcCode,
-		Visibility: visibility,
-		Metadata:   make(map[string]string),
+		Name:          funcName,
+		Language:      language,
+		Line:          startLine,
+		Column:        startCol,
+		EndLine:       endLine,
+		EndColumn:     endCol,
+		Code:          funcCode,
+		Visibility:    visibility,
+		Parameters:    parameters,
+		ReturnType:    returnType,
+		Documentation: documentation,
+		Metadata:      make(map[string]string),
 	}
 
 	return funcInfo
-}
-
-// determineVisibility determines if a function is public/exported or private
-func determineVisibility(funcName string, language string) string {
-	if funcName == "" {
-		return "private"
-	}
-
-	switch language {
-	case "go":
-		// In Go, exported functions start with uppercase
-		if len(funcName) > 0 && unicode.IsUpper(rune(funcName[0])) {
-			return "exported"
-		}
-		return "private"
-	case "javascript", "typescript":
-		// In JavaScript/TypeScript, there's no strict visibility, but we can check for export
-		// For now, assume all are public (can be enhanced later)
-		return "public"
-	case "python":
-		// In Python, functions starting with underscore are private
-		if strings.HasPrefix(funcName, "_") {
-			return "private"
-		}
-		return "public"
-	default:
-		return "public"
-	}
 }

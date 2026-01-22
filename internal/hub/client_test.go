@@ -327,3 +327,474 @@ func TestClientStructure(t *testing.T) {
 		t.Errorf("expected apiKey secret-key, got %s", client.apiKey)
 	}
 }
+
+func TestAnalyzeVibe_ErrorHandling(t *testing.T) {
+	t.Run("handles marshal error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/health" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+		}))
+		defer server.Close()
+
+		client := NewClient(server.URL, "key")
+		// Create request that might cause issues
+		_, err := client.AnalyzeVibe(&VibeAnalysisRequest{})
+		// May error, that's OK
+		_ = err
+	})
+
+	t.Run("handles decode error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/health" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			if r.URL.Path == "/api/v1/vibe/analyze" {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("invalid json"))
+				return
+			}
+		}))
+		defer server.Close()
+
+		client := NewClient(server.URL, "key")
+		_, err := client.AnalyzeVibe(&VibeAnalysisRequest{})
+		if err == nil {
+			t.Error("should error on invalid JSON")
+		}
+	})
+}
+
+func TestAnalyzeStructure_ErrorHandling(t *testing.T) {
+	t.Run("handles decode error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/health" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			if r.URL.Path == "/api/v1/structure/analyze" {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("invalid json"))
+				return
+			}
+		}))
+		defer server.Close()
+
+		client := NewClient(server.URL, "key")
+		_, err := client.AnalyzeStructure(&StructureAnalysisRequest{})
+		if err == nil {
+			t.Error("should error on invalid JSON")
+		}
+	})
+}
+
+func TestGetHookPolicy_ErrorHandling(t *testing.T) {
+	t.Run("handles decode error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/health" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			if r.URL.Path == "/api/v1/hooks/policies" {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("invalid json"))
+				return
+			}
+		}))
+		defer server.Close()
+
+		client := NewClient(server.URL, "key")
+		_, err := client.GetHookPolicy("org-123")
+		if err == nil {
+			t.Error("should error on invalid JSON")
+		}
+	})
+
+	t.Run("handles network error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/health" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			if r.URL.Path == "/api/v1/hooks/policies" {
+				// Simulate network error by closing connection
+				return
+			}
+		}))
+		defer server.Close()
+
+		client := NewClient(server.URL, "key")
+		_, err := client.GetHookPolicy("org-123")
+		// May or may not error depending on timing
+		_ = err
+	})
+}
+
+func TestAnalyzeAST_ErrorHandling(t *testing.T) {
+	t.Run("handles marshal error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/health" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+		}))
+		defer server.Close()
+
+		client := NewClient(server.URL, "key")
+		// Create request that might cause issues
+		_, err := client.AnalyzeAST(&ASTAnalysisRequest{})
+		// May error, that's OK
+		_ = err
+	})
+
+	t.Run("handles decode error", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/health" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			if r.URL.Path == "/api/v1/ast/analyze" {
+				w.WriteHeader(http.StatusOK)
+				w.Write([]byte("invalid json"))
+				return
+			}
+		}))
+		defer server.Close()
+
+		client := NewClient(server.URL, "key")
+		_, err := client.AnalyzeAST(&ASTAnalysisRequest{})
+		if err == nil {
+			t.Error("should error on invalid JSON")
+		}
+	})
+}
+
+func TestSendTelemetry_ErrorHandling(t *testing.T) {
+	t.Run("handles marshal error gracefully", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/health" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+		}))
+		defer server.Close()
+
+		client := NewClient(server.URL, "key")
+		// Send telemetry - should not error even if marshal fails
+		err := client.SendTelemetry(&TelemetryData{EventType: "test"})
+		if err != nil {
+			t.Errorf("SendTelemetry should not error, got %v", err)
+		}
+	})
+
+	t.Run("handles network error silently", func(t *testing.T) {
+		client := NewClient("http://localhost:99999", "key")
+		err := client.SendTelemetry(&TelemetryData{EventType: "test"})
+		if err != nil {
+			t.Errorf("SendTelemetry should not error on network failure, got %v", err)
+		}
+	})
+}
+
+func TestAnalyzeAST_MoreScenarios(t *testing.T) {
+	t.Run("handles successful AST analysis", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/health" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			if r.URL.Path == "/api/v1/ast/analyze" {
+				w.WriteHeader(http.StatusOK)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"complexity": 10,
+					"functions":  []interface{}{},
+				})
+				return
+			}
+		}))
+		defer server.Close()
+
+		client := NewClient(server.URL, "key")
+		result, err := client.AnalyzeAST(&ASTAnalysisRequest{
+			Code: "function test() { return 1; }",
+		})
+		if err != nil {
+			t.Errorf("AnalyzeAST() error = %v", err)
+		}
+		if result == nil {
+			t.Error("result should not be nil")
+		}
+	})
+
+	t.Run("handles non-200 status", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/health" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			if r.URL.Path == "/api/v1/ast/analyze" {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}))
+		defer server.Close()
+
+		client := NewClient(server.URL, "key")
+		_, err := client.AnalyzeAST(&ASTAnalysisRequest{})
+		if err == nil {
+			t.Error("should error on non-200 status")
+		}
+	})
+}
+
+func TestAnalyzeVibe_MoreScenarios(t *testing.T) {
+	t.Run("handles successful vibe analysis", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/health" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			if r.URL.Path == "/api/v1/vibe/analyze" {
+				w.WriteHeader(http.StatusOK)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"score": 0.8,
+					"issues": []interface{}{},
+				})
+				return
+			}
+		}))
+		defer server.Close()
+
+		client := NewClient(server.URL, "key")
+		result, err := client.AnalyzeVibe(&VibeAnalysisRequest{
+			CodebasePath: ".",
+		})
+		if err != nil {
+			t.Errorf("AnalyzeVibe() error = %v", err)
+		}
+		if result == nil {
+			t.Error("result should not be nil")
+		}
+	})
+
+	t.Run("handles non-200 status", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/health" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			if r.URL.Path == "/api/v1/vibe/analyze" {
+				w.WriteHeader(http.StatusBadRequest)
+				return
+			}
+		}))
+		defer server.Close()
+
+		client := NewClient(server.URL, "key")
+		_, err := client.AnalyzeVibe(&VibeAnalysisRequest{})
+		if err == nil {
+			t.Error("should error on non-200 status")
+		}
+	})
+}
+
+func TestAnalyzeStructure_MoreScenarios(t *testing.T) {
+	t.Run("handles successful structure analysis", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/health" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			if r.URL.Path == "/api/v1/structure/analyze" {
+				w.WriteHeader(http.StatusOK)
+				json.NewEncoder(w).Encode(map[string]interface{}{
+					"modules": []interface{}{},
+				})
+				return
+			}
+		}))
+		defer server.Close()
+
+		client := NewClient(server.URL, "key")
+		result, err := client.AnalyzeStructure(&StructureAnalysisRequest{})
+		if err != nil {
+			t.Errorf("AnalyzeStructure() error = %v", err)
+		}
+		if result == nil {
+			t.Error("result should not be nil")
+		}
+	})
+
+	t.Run("handles non-200 status", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/health" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			if r.URL.Path == "/api/v1/structure/analyze" {
+				w.WriteHeader(http.StatusNotFound)
+				return
+			}
+		}))
+		defer server.Close()
+
+		client := NewClient(server.URL, "key")
+		_, err := client.AnalyzeStructure(&StructureAnalysisRequest{})
+		if err == nil {
+			t.Error("should error on non-200 status")
+		}
+	})
+}
+
+func TestAnalyzeAST_NetworkErrors(t *testing.T) {
+	t.Run("handles connection timeout", func(t *testing.T) {
+		// Use unreachable address
+		client := NewClient("http://192.0.2.1:8080", "key")
+		_, err := client.AnalyzeAST(&ASTAnalysisRequest{})
+		if err == nil {
+			t.Error("should error on connection failure")
+		}
+	})
+
+	t.Run("handles HTTP request errors", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/health" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			// Close connection immediately to simulate error
+			hj, ok := w.(http.Hijacker)
+			if ok {
+				conn, _, _ := hj.Hijack()
+				conn.Close()
+			}
+		}))
+		defer server.Close()
+
+		client := NewClient(server.URL, "key")
+		_, err := client.AnalyzeAST(&ASTAnalysisRequest{})
+		// May or may not error depending on timing
+		_ = err
+	})
+}
+
+func TestAnalyzeVibe_NetworkErrors(t *testing.T) {
+	t.Run("handles connection timeout", func(t *testing.T) {
+		client := NewClient("http://192.0.2.1:8080", "key")
+		_, err := client.AnalyzeVibe(&VibeAnalysisRequest{})
+		if err == nil {
+			t.Error("should error on connection failure")
+		}
+	})
+
+	t.Run("handles HTTP request errors", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/health" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			// Simulate connection error
+			hj, ok := w.(http.Hijacker)
+			if ok {
+				conn, _, _ := hj.Hijack()
+				conn.Close()
+			}
+		}))
+		defer server.Close()
+
+		client := NewClient(server.URL, "key")
+		_, err := client.AnalyzeVibe(&VibeAnalysisRequest{})
+		// May or may not error
+		_ = err
+	})
+}
+
+func TestAnalyzeStructure_NetworkErrors(t *testing.T) {
+	t.Run("handles connection timeout", func(t *testing.T) {
+		client := NewClient("http://192.0.2.1:8080", "key")
+		_, err := client.AnalyzeStructure(&StructureAnalysisRequest{})
+		if err == nil {
+			t.Error("should error on connection failure")
+		}
+	})
+}
+
+func TestGetHookPolicy_EdgeCases(t *testing.T) {
+	t.Run("handles non-200 status", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/health" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			if r.URL.Path == "/api/v1/hooks/policies" {
+				w.WriteHeader(http.StatusUnauthorized)
+				return
+			}
+		}))
+		defer server.Close()
+
+		client := NewClient(server.URL, "key")
+		_, err := client.GetHookPolicy("org-123")
+		if err == nil {
+			t.Error("should error on non-200 status")
+		}
+	})
+
+	t.Run("handles empty org ID", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/health" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			if r.URL.Path == "/api/v1/hooks/policies" {
+				policy := HookPolicy{AuditEnabled: true}
+				json.NewEncoder(w).Encode(policy)
+				return
+			}
+		}))
+		defer server.Close()
+
+		client := NewClient(server.URL, "key")
+		policy, err := client.GetHookPolicy("")
+		if err != nil {
+			t.Errorf("GetHookPolicy() error = %v", err)
+		}
+		if policy == nil {
+			t.Error("should return policy even with empty org ID")
+		}
+	})
+}
+
+func TestSendTelemetry_EdgeCases(t *testing.T) {
+	t.Run("handles non-200 status silently", func(t *testing.T) {
+		server := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+			if r.URL.Path == "/health" {
+				w.WriteHeader(http.StatusOK)
+				return
+			}
+			if r.URL.Path == "/api/v1/telemetry" {
+				w.WriteHeader(http.StatusInternalServerError)
+				return
+			}
+		}))
+		defer server.Close()
+
+		client := NewClient(server.URL, "key")
+		err := client.SendTelemetry(&TelemetryData{EventType: "test"})
+		// Should not error even on non-200
+		if err != nil {
+			t.Errorf("SendTelemetry should not error, got %v", err)
+		}
+	})
+
+	t.Run("handles connection error silently", func(t *testing.T) {
+		client := NewClient("http://192.0.2.1:8080", "key")
+		err := client.SendTelemetry(&TelemetryData{EventType: "test"})
+		// Should not error on connection failure
+		if err != nil {
+			t.Errorf("SendTelemetry should not error on network failure, got %v", err)
+		}
+	})
+}

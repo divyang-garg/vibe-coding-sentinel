@@ -177,3 +177,100 @@ func BenchmarkRateLimiter_RateLimit(b *testing.B) {
 		rl.RateLimit(nextHandler).ServeHTTP(w, req)
 	}
 }
+
+func TestRateLimiter_CleanupWorker(t *testing.T) {
+	// Create rate limiter with short cleanup interval for testing
+	rl := NewRateLimiter(10, time.Minute)
+	
+	// Override cleanup interval to be shorter for testing
+	rl.cleanup = 200 * time.Millisecond
+	
+	// Create some buckets
+	rl.mu.Lock()
+	rl.buckets["old-ip"] = &tokenBucket{
+		tokens:     5,
+		lastRefill: time.Now().Add(-2 * time.Minute), // Old bucket
+	}
+	newBucketTime := time.Now()
+	rl.buckets["new-ip"] = &tokenBucket{
+		tokens:     5,
+		lastRefill: newBucketTime, // Recent bucket
+	}
+	initialCount := len(rl.buckets)
+	rl.mu.Unlock()
+
+	// Wait for cleanup to run (but not long enough to remove new bucket)
+	// Cleanup removes buckets older than cleanup interval (200ms), so new bucket should remain
+	time.Sleep(150 * time.Millisecond)
+
+	// Update new bucket's lastRefill to ensure it's still recent
+	rl.mu.Lock()
+	if bucket, exists := rl.buckets["new-ip"]; exists {
+		bucket.lastRefill = time.Now()
+	}
+	rl.mu.Unlock()
+
+	// Wait a bit more for cleanup cycle
+	time.Sleep(100 * time.Millisecond)
+
+	// Check that old bucket was cleaned up
+	rl.mu.Lock()
+	finalCount := len(rl.buckets)
+	_, oldExists := rl.buckets["old-ip"]
+	_, newExists := rl.buckets["new-ip"]
+	rl.mu.Unlock()
+
+	// Old bucket should be removed (if cleanup ran), new bucket should remain
+	// Note: cleanup is non-deterministic, so we just verify the structure is correct
+	if !oldExists {
+		assert.True(t, finalCount < initialCount, "Old bucket should be cleaned up")
+	}
+	// New bucket should still exist since we updated its lastRefill
+	assert.True(t, newExists, "New bucket should still exist")
+}
+
+func TestRateLimiter_Allow_TokenRefillOverCapacity(t *testing.T) {
+	rl := NewRateLimiter(5, time.Second)
+
+	// Create a bucket and simulate time passing
+	rl.mu.Lock()
+	bucket := &tokenBucket{
+		tokens:     0,
+		lastRefill: time.Now().Add(-3 * time.Second), // 3 seconds ago
+	}
+	rl.buckets["test-ip"] = bucket
+	rl.mu.Unlock()
+
+	// Allow should refill tokens (3 seconds * rate) but cap at capacity
+	allowed := rl.Allow("test-ip")
+	
+	rl.mu.Lock()
+	finalTokens := rl.buckets["test-ip"].tokens
+	rl.mu.Unlock()
+
+	assert.True(t, allowed)
+	assert.LessOrEqual(t, finalTokens, 5, "Tokens should not exceed capacity")
+}
+
+func TestRateLimiter_RateLimit_EdgeCases(t *testing.T) {
+	rl := NewRateLimiter(1, time.Minute)
+
+	nextHandler := http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		w.WriteHeader(http.StatusOK)
+	})
+
+	// Test with empty RemoteAddr
+	req1 := httptest.NewRequest("GET", "/test", nil)
+	req1.RemoteAddr = ""
+	w1 := httptest.NewRecorder()
+	rl.RateLimit(nextHandler).ServeHTTP(w1, req1)
+	// Should handle gracefully
+	assert.True(t, w1.Code == http.StatusOK || w1.Code == http.StatusTooManyRequests)
+
+	// Test with X-Forwarded-For with single IP
+	req2 := httptest.NewRequest("GET", "/test", nil)
+	req2.Header.Set("X-Forwarded-For", "203.0.113.1")
+	w2 := httptest.NewRecorder()
+	rl.RateLimit(nextHandler).ServeHTTP(w2, req2)
+	assert.Equal(t, http.StatusOK, w2.Code)
+}

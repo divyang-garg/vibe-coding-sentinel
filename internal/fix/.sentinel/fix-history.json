@@ -189,5 +189,573 @@
     "session_id": "session-1768903241",
     "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix528532785/001",
     "timestamp": "2026-01-20T15:30:41+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768912580",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix3082347901/001",
+    "timestamp": "2026-01-20T18:06:20+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768912987",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix3762082615/001",
+    "timestamp": "2026-01-20T18:13:07+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768913095",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix99697021/001",
+    "timestamp": "2026-01-20T18:14:55+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768913096",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix1168145129/001",
+    "timestamp": "2026-01-20T18:14:56+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768913266",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix4040854091/001",
+    "timestamp": "2026-01-20T18:17:46+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768913268",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix3905363633/001",
+    "timestamp": "2026-01-20T18:17:48+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768913271",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix3080960510/001",
+    "timestamp": "2026-01-20T18:17:51+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768913274",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix1574224339/001",
+    "timestamp": "2026-01-20T18:17:54+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768913288",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix2021445670/001",
+    "timestamp": "2026-01-20T18:18:08+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768913289",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix312295638/001",
+    "timestamp": "2026-01-20T18:18:09+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768913290",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix1004430388/001",
+    "timestamp": "2026-01-20T18:18:10+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768920107",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix975470181/001",
+    "timestamp": "2026-01-20T20:11:47+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768920122",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix1375720608/001",
+    "timestamp": "2026-01-20T20:12:02+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768920123",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix3875257369/001",
+    "timestamp": "2026-01-20T20:12:03+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768920124",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix2153374937/001",
+    "timestamp": "2026-01-20T20:12:04+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768920133",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix343234758/001",
+    "timestamp": "2026-01-20T20:12:13+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768920134",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix953151530/001",
+    "timestamp": "2026-01-20T20:12:14+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768920347",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix3523914261/001",
+    "timestamp": "2026-01-20T20:15:47+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768920530",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix2314343100/001",
+    "timestamp": "2026-01-20T20:18:50+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768920589",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix979919299/001",
+    "timestamp": "2026-01-20T20:19:49+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768920626",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix3636805032/001",
+    "timestamp": "2026-01-20T20:20:26+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768920698",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix394425635/001",
+    "timestamp": "2026-01-20T20:21:38+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768920709",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix713581468/001",
+    "timestamp": "2026-01-20T20:21:49+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768920730",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix3323670905/001",
+    "timestamp": "2026-01-20T20:22:10+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768920750",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix880038080/001",
+    "timestamp": "2026-01-20T20:22:30+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768921678",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix3284055873/001",
+    "timestamp": "2026-01-20T20:37:58+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768921720",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix1636433562/001",
+    "timestamp": "2026-01-20T20:38:40+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768922729",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix1915541751/001",
+    "timestamp": "2026-01-20T20:55:29+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768922817",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix784848352/001",
+    "timestamp": "2026-01-20T20:56:57+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768923811",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix3455202638/001",
+    "timestamp": "2026-01-20T21:13:31+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768923822",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix2474896620/001",
+    "timestamp": "2026-01-20T21:13:42+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768923828",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix1192865488/001",
+    "timestamp": "2026-01-20T21:13:48+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768923830",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix2960008495/001",
+    "timestamp": "2026-01-20T21:13:50+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768924013",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix1443326355/001",
+    "timestamp": "2026-01-20T21:16:53+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768924150",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix1295499277/001",
+    "timestamp": "2026-01-20T21:19:10+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768924170",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix322930416/001",
+    "timestamp": "2026-01-20T21:19:30+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768924180",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix2855038351/001",
+    "timestamp": "2026-01-20T21:19:40+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768924228",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix133981540/001",
+    "timestamp": "2026-01-20T21:20:28+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768924240",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix356889893/001",
+    "timestamp": "2026-01-20T21:20:40+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768926774",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix1366843428/001",
+    "timestamp": "2026-01-20T22:02:54+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768981645",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix2177143151/001",
+    "timestamp": "2026-01-21T13:17:25+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768981648",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix3076686552/001",
+    "timestamp": "2026-01-21T13:17:28+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768981650",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix3927727059/001",
+    "timestamp": "2026-01-21T13:17:30+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768981652",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix3975553829/001",
+    "timestamp": "2026-01-21T13:17:32+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768981662",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix3356928873/001",
+    "timestamp": "2026-01-21T13:17:42+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768985983",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix4250169234/001",
+    "timestamp": "2026-01-21T14:29:43+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768985996",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix3560460839/001",
+    "timestamp": "2026-01-21T14:29:56+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768986015",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix2071154186/001",
+    "timestamp": "2026-01-21T14:30:15+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768987785",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix3722990113/001",
+    "timestamp": "2026-01-21T14:59:45+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768987843",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix3355068533/001",
+    "timestamp": "2026-01-21T15:00:43+05:30"
+  },
+  {
+    "backups_created": 1,
+    "files_modified": 1,
+    "fixes_applied": 1,
+    "session_id": "session-1768987843",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix_ErrorHandlinghandles_backup_file_creation_errors737459401/001",
+    "timestamp": "2026-01-21T15:00:43+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768987851",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix3836924146/001",
+    "timestamp": "2026-01-21T15:00:51+05:30"
+  },
+  {
+    "backups_created": 1,
+    "files_modified": 1,
+    "fixes_applied": 1,
+    "session_id": "session-1768987851",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix_ErrorHandlinghandles_backup_file_creation_errors723446414/001",
+    "timestamp": "2026-01-21T15:00:51+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768987894",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix878901841/001",
+    "timestamp": "2026-01-21T15:01:34+05:30"
+  },
+  {
+    "backups_created": 1,
+    "files_modified": 1,
+    "fixes_applied": 1,
+    "session_id": "session-1768987894",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix_ErrorHandlinghandles_backup_file_creation_errors129495976/001",
+    "timestamp": "2026-01-21T15:01:34+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768988741",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix1820545381/001",
+    "timestamp": "2026-01-21T15:15:41+05:30"
+  },
+  {
+    "backups_created": 1,
+    "files_modified": 1,
+    "fixes_applied": 1,
+    "session_id": "session-1768988741",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix_ErrorHandlinghandles_backup_file_creation_errors2044508468/001",
+    "timestamp": "2026-01-21T15:15:41+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768988748",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix1068591899/001",
+    "timestamp": "2026-01-21T15:15:48+05:30"
+  },
+  {
+    "backups_created": 1,
+    "files_modified": 1,
+    "fixes_applied": 1,
+    "session_id": "session-1768988748",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix_ErrorHandlinghandles_backup_file_creation_errors3110330700/001",
+    "timestamp": "2026-01-21T15:15:48+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768988755",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix714589952/001",
+    "timestamp": "2026-01-21T15:15:55+05:30"
+  },
+  {
+    "backups_created": 1,
+    "files_modified": 1,
+    "fixes_applied": 1,
+    "session_id": "session-1768988755",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix_ErrorHandlinghandles_backup_file_creation_errors1758042550/001",
+    "timestamp": "2026-01-21T15:15:55+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768988763",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix1238919231/001",
+    "timestamp": "2026-01-21T15:16:03+05:30"
+  },
+  {
+    "backups_created": 1,
+    "files_modified": 1,
+    "fixes_applied": 1,
+    "session_id": "session-1768988763",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix_ErrorHandlinghandles_backup_file_creation_errors3173677814/001",
+    "timestamp": "2026-01-21T15:16:03+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768988771",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix3899955996/001",
+    "timestamp": "2026-01-21T15:16:11+05:30"
+  },
+  {
+    "backups_created": 1,
+    "files_modified": 1,
+    "fixes_applied": 1,
+    "session_id": "session-1768988771",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix_ErrorHandlinghandles_backup_file_creation_errors1450893664/001",
+    "timestamp": "2026-01-21T15:16:11+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768988778",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix1601171826/001",
+    "timestamp": "2026-01-21T15:16:18+05:30"
+  },
+  {
+    "backups_created": 1,
+    "files_modified": 1,
+    "fixes_applied": 1,
+    "session_id": "session-1768988778",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix_ErrorHandlinghandles_backup_file_creation_errors1026112500/001",
+    "timestamp": "2026-01-21T15:16:18+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768988793",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix436869149/001",
+    "timestamp": "2026-01-21T15:16:33+05:30"
+  },
+  {
+    "backups_created": 1,
+    "files_modified": 1,
+    "fixes_applied": 1,
+    "session_id": "session-1768988793",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix_ErrorHandlinghandles_backup_file_creation_errors1603286744/001",
+    "timestamp": "2026-01-21T15:16:33+05:30"
+  },
+  {
+    "backups_created": 2,
+    "files_modified": 2,
+    "fixes_applied": 2,
+    "session_id": "session-1768988801",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix328936082/001",
+    "timestamp": "2026-01-21T15:16:41+05:30"
+  },
+  {
+    "backups_created": 1,
+    "files_modified": 1,
+    "fixes_applied": 1,
+    "session_id": "session-1768988801",
+    "target_path": "/var/folders/70/3_vxgjnj769_kbqh07llz4140000gn/T/TestFix_ErrorHandlinghandles_backup_file_creation_errors2067963705/001",
+    "timestamp": "2026-01-21T15:16:41+05:30"
   }
 ]

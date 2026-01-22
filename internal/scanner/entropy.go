@@ -3,6 +3,7 @@
 package scanner
 
 import (
+	"fmt"
 	"math"
 	"regexp"
 )
@@ -35,18 +36,36 @@ func calculateShannonEntropy(s string) float64 {
 
 // isHighEntropySecret determines if a string is likely a secret based on entropy
 // Secrets typically have high entropy (>4.5) and sufficient length (>=20 chars)
+// For hex strings (16 possible chars), use lower threshold (>=3.8) since max entropy is ~4.0
 func isHighEntropySecret(s string) bool {
 	if len(s) < 20 {
 		return false
 	}
 
 	entropy := calculateShannonEntropy(s)
+	
+	// Check if string is hex-only (only contains 0-9, a-f, A-F)
+	isHex := true
+	for _, c := range s {
+		if !((c >= '0' && c <= '9') || (c >= 'a' && c <= 'f') || (c >= 'A' && c <= 'F')) {
+			isHex = false
+			break
+		}
+	}
+	
+	// Hex strings have lower max entropy (~4.0), so use lower threshold for long hex strings
+	if isHex && len(s) >= 40 {
+		return entropy >= 3.8
+	}
+	
+	// For other strings, use standard threshold
 	return entropy > 4.5
 }
 
 // detectEntropySecrets scans content for high-entropy strings that might be secrets
 func detectEntropySecrets(content string, filePath string) []Finding {
 	var findings []Finding
+	seenPositions := make(map[string]bool) // Track seen positions to deduplicate
 
 	// Pattern to match potential secret-like strings
 	// Matches: variable assignments with long alphanumeric values
@@ -71,6 +90,13 @@ func detectEntropySecrets(content string, filePath string) []Finding {
 						if idx >= 0 {
 							column = idx + 1
 						}
+
+						// Deduplicate by position (line, column)
+						positionKey := fmt.Sprintf("%d:%d", lineNum+1, column)
+						if seenPositions[positionKey] {
+							continue
+						}
+						seenPositions[positionKey] = true
 
 						finding := Finding{
 							Type:     "high_entropy_secret",

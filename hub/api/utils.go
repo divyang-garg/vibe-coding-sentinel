@@ -72,17 +72,17 @@ func isValidPath(p string) bool {
 	return true
 }
 
-// getParser returns a parser for a language (stub - requires tree-sitter)
-func getParser(language string) (interface{}, error) {
-	return nil, fmt.Errorf("getParser not implemented (tree-sitter integration required)")
-}
-
-// traverseAST traverses an AST tree (stub - requires tree-sitter)
-func traverseAST(node interface{}, callback interface{}) {
-	// Stub - tree-sitter integration required
-}
+// DEPRECATED: These stub functions have been replaced by the AST package.
+// Use github.com/divyang-garg/sentinel-hub-api/hub/api/ast instead:
+//   - getParser -> ast.GetParser
+//   - traverseAST -> ast.TraverseAST
+//   - analyzeAST -> ast.AnalyzeAST
+//
+// These stubs are kept for backward compatibility but will be removed in a future version.
+// All code should be migrated to use the AST package directly.
 
 // ASTFinding represents a finding from AST analysis
+// DEPRECATED: Use ast.ASTFinding from the AST package instead
 type ASTFinding struct {
 	Type    string `json:"type"`
 	Line    int    `json:"line"`
@@ -90,10 +90,19 @@ type ASTFinding struct {
 	Message string `json:"message"`
 }
 
-// analyzeAST analyzes code using AST (stub - requires tree-sitter)
+// getParser returns a parser for a language (DEPRECATED - use ast.GetParser)
+func getParser(language string) (interface{}, error) {
+	return nil, fmt.Errorf("getParser is deprecated - use ast.GetParser from github.com/divyang-garg/sentinel-hub-api/hub/api/ast")
+}
+
+// traverseAST traverses an AST tree (DEPRECATED - use ast.TraverseAST)
+func traverseAST(node interface{}, callback interface{}) {
+	// DEPRECATED: Use ast.TraverseAST from the AST package
+}
+
+// analyzeAST analyzes code using AST (DEPRECATED - use ast.AnalyzeAST)
 func analyzeAST(code, language string, options []string) (interface{}, []ASTFinding, error) {
-	// Stub - tree-sitter integration required
-	return nil, []ASTFinding{}, fmt.Errorf("analyzeAST not implemented (tree-sitter integration required)")
+	return nil, []ASTFinding{}, fmt.Errorf("analyzeAST is deprecated - use ast.AnalyzeAST from github.com/divyang-garg/sentinel-hub-api/hub/api/ast")
 }
 
 // ImplementationEvidence represents evidence of rule implementation

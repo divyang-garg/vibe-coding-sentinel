@@ -1,18 +1,18 @@
 {
   "languages": {
-    "Go": 25
+    "Go": 44
   },
   "frameworks": {},
   "namingPatterns": {
-    "PascalCase": 84,
-    "camelCase": 322,
-    "snake_case": 50
+    "PascalCase": 326,
+    "camelCase": 1310,
+    "snake_case": 311
   },
   "fileExtensions": {
     ".gitignore": 1,
-    ".go": 25,
+    ".go": 44,
     ".json": 1,
-    ".md": 298,
+    ".md": 1266,
     ".yml": 1
   },
   "projectStructure": {},
@@ -21,7 +21,7 @@
     "aliasing": {},
     "barrelFiles": null,
     "defaultImports": 0,
-    "namedImports": 2,
+    "namedImports": 3,
     "examples": []
   },
   "codeStyle": {

@@ -1,0 +1,54 @@
+{
+  "test_suite": "mcp_toolchain_e2e",
+  "timestamp": "2026-01-20 21:06:22",
+  "duration_seconds": 2,
+  "test_categories": {
+    "tool_discovery": {
+      "tests_run": 3,
+      "description": "Tool listing, availability verification, error handling"
+    },
+    "individual_tools": {
+      "tests_run": 5,
+      "description": "Individual tool execution and validation"
+    },
+    "tool_chaining": {
+      "tests_run": 5,
+      "description": "Multi-step tool workflows and data flow"
+    },
+    "concurrent_execution": {
+      "tests_run": 2,
+      "description": "Parallel tool execution and resource management"
+    },
+    "error_handling": {
+      "tests_run": 4,
+      "description": "Error scenarios, timeout handling, recovery"
+    }
+  },
+  "configuration": {
+    "hub_host": "localhost",
+    "hub_port": 8080,
+    "test_timeout": 900,
+    "mcp_server_pid": "75723"
+  },
+  "tools_tested": [
+    "tools/list",
+    "sentinel_analyze_intent",
+    "sentinel_validate_code",
+    "sentinel_create_task",
+    "sentinel_list_tasks",
+    "sentinel_apply_fix"
+  ],
+  "codings_standards_compliance": {
+    "tool_discovery_tested": true,
+    "chain_execution_verified": true,
+    "concurrent_access_tested": true,
+    "error_recovery_validated": true,
+    "timeout_protection": true
+  },
+  "report_files": [
+    "/Users/divyanggarg/VicecodingSentinel/tests/e2e/reports/response_*.json",
+    "/Users/divyanggarg/VicecodingSentinel/tests/e2e/reports/request_*.json",
+    "/Users/divyanggarg/VicecodingSentinel/tests/e2e/reports/mcp_server.log",
+    "/Users/divyanggarg/VicecodingSentinel/tests/e2e/reports/mcp_toolchain_e2e_report_20260120_210622.json"
+  ]
+}

@@ -104,3 +104,22 @@ func getTestDSN() string {
 	// Port: 5432
 	return "postgres://sentinel:password@localhost:5432/sentinel?sslmode=disable"
 }
+
+func TestNewDatabaseConnection_OpenError(t *testing.T) {
+	// Given: Invalid DSN that causes Open to fail
+	// Using an invalid driver name would cause Open to fail immediately
+	// But since we're using postgres driver, we'll test with malformed DSN
+	invalidDSN := "postgres://invalid:format@[::1]:5432/db?sslmode=disable"
+
+	// When: Creating database connection
+	db, err := NewDatabaseConnection(invalidDSN)
+
+	// Then: Should return error (either from Open or Ping)
+	// The error might come from Open or Ping, both are acceptable
+	if err == nil {
+		t.Error("Expected error for invalid DSN")
+		if db != nil {
+			db.Close()
+		}
+	}
+}

@@ -1,0 +1,6 @@
+{
+  "jsonrpc": "2.0",
+  "id": 500,
+  "method": "tools/call",
+  "params": {"name": "sentinel_create_task", "arguments": {"invalid_field": "value"}}
+}

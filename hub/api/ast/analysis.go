@@ -59,7 +59,7 @@ func analyzeASTInternal(code string, language string, analyses []string) ([]ASTF
 	cacheMutex.RUnlock()
 
 	// Get parser for language
-	parser, err := getParser(language)
+	parser, err := GetParser(language)
 	if err != nil {
 		return nil, AnalysisStats{}, fmt.Errorf("parser error: %w", err)
 	}

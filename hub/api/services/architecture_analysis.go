@@ -109,7 +109,7 @@ func extractSectionsFromAST(node *sitter.Node, content string, language string) 
 	var sections []FileSection
 
 	// Traverse AST to find function/class definitions
-	traverseAST(node, func(n *sitter.Node) bool {
+	TraverseAST(node, func(n *sitter.Node) bool {
 		nodeType := n.Type()
 		isSection := false
 

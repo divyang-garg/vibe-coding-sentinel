@@ -513,3 +513,67 @@ func (suite *UserServiceTestSuite) TestAuthenticateUser_UserNotFound() {
 func stringPtr(s string) *string {
 	return &s
 }
+
+func (suite *UserServiceTestSuite) TestCreateUser_HashError() {
+	// Given: Valid request but password hashing fails
+	req := &services.CreateUserRequest{
+		Email:    "test@example.com",
+		Name:     "Test User",
+		Password: "password123",
+	}
+
+	suite.mockRepo.On("GetByEmail", mock.Anything, "test@example.com").Return(nil, nil)
+	hashError := errors.New("hashing failed")
+	suite.mockHasher.On("Hash", "password123").Return("", hashError)
+
+	// When: Creating user
+	user, err := suite.service.CreateUser(context.Background(), req)
+
+	// Then: Should return error
+	suite.Error(err)
+	suite.Nil(user)
+	suite.Contains(err.Error(), "failed to hash password")
+	suite.mockRepo.AssertExpectations(suite.T())
+	suite.mockHasher.AssertExpectations(suite.T())
+}
+
+func (suite *UserServiceTestSuite) TestCreateUser_RepositoryCreateError() {
+	// Given: Valid request but repository.Create fails
+	req := &services.CreateUserRequest{
+		Email:    "test@example.com",
+		Name:     "Test User",
+		Password: "password123",
+	}
+
+	suite.mockRepo.On("GetByEmail", mock.Anything, "test@example.com").Return(nil, nil)
+	suite.mockHasher.On("Hash", "password123").Return("hashedpassword", nil)
+	createError := errors.New("database error")
+	suite.mockRepo.On("Create", mock.Anything, mock.Anything).Return(nil, createError)
+
+	// When: Creating user
+	user, err := suite.service.CreateUser(context.Background(), req)
+
+	// Then: Should return error
+	suite.Error(err)
+	suite.Nil(user)
+	suite.Contains(err.Error(), "failed to create user")
+	suite.mockRepo.AssertExpectations(suite.T())
+	suite.mockHasher.AssertExpectations(suite.T())
+}
+
+func (suite *UserServiceTestSuite) TestValidateCreateUserRequest_AllFields() {
+	// This tests the validateCreateUserRequest function indirectly through CreateUser
+	// Additional validation edge cases are tested above
+	// Test empty name
+	req := &services.CreateUserRequest{
+		Email:    "test@example.com",
+		Name:     "",
+		Password: "password123",
+	}
+	user, err := suite.service.CreateUser(context.Background(), req)
+	suite.Error(err)
+	suite.Nil(user)
+	var validationErr *models.ValidationError
+	suite.ErrorAs(err, &validationErr)
+	suite.Equal("name", validationErr.Field)
+}

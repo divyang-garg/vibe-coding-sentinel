@@ -143,7 +143,77 @@ else
     check_result "TODO/FIXME Check" "WARN" "$TODO_COUNT TODO/FIXME comments found - consider resolving"
 fi
 
-# 8. Test Existence Check (for existing test files)
+# 8. Stub Function Detection (Critical for production readiness)
+echo "Checking for stub implementations..."
+# Check for common stub patterns in Go files
+STUB_PATTERNS=(
+    "// Stub"
+    "// stub"
+    "// STUB"
+    "not implemented"
+    "not yet implemented"
+    "would be implemented"
+    "placeholder"
+    "PLACEHOLDER"
+    "return nil.*//.*stub"
+    "return.*fmt\.Errorf.*not implemented"
+)
+
+STUB_FOUND=0
+STUB_FILES=""
+
+for pattern in "${STUB_PATTERNS[@]}"; do
+    # Search in Go files, exclude test files and fixtures
+    STUB_MATCHES=$(grep -r -l --include="*.go" -E "$pattern" . 2>/dev/null | \
+        grep -v "_test.go$" | \
+        grep -v "/tests/fixtures/" | \
+        grep -v "/test" | \
+        wc -l | tr -d ' ')
+    
+    if [ "$STUB_MATCHES" -gt "0" ]; then
+        STUB_FOUND=$((STUB_FOUND + STUB_MATCHES))
+        # Get file list for this pattern
+        FILES=$(grep -r -l --include="*.go" -E "$pattern" . 2>/dev/null | \
+            grep -v "_test.go$" | \
+            grep -v "/tests/fixtures/" | \
+            grep -v "/test" | \
+            head -5)
+        if [ -n "$FILES" ]; then
+            STUB_FILES="${STUB_FILES}${FILES}"$'\n'
+        fi
+    fi
+done
+
+# Also check for function names ending in "Stub"
+STUB_FUNC_MATCHES=$(grep -r --include="*.go" -E "func.*Stub\(" . 2>/dev/null | \
+    grep -v "_test.go$" | \
+    grep -v "/tests/fixtures/" | \
+    grep -v "/test" | \
+    wc -l | tr -d ' ')
+
+if [ "$STUB_FUNC_MATCHES" -gt "0" ]; then
+    STUB_FOUND=$((STUB_FOUND + STUB_FUNC_MATCHES))
+    STUB_FUNC_FILES=$(grep -r --include="*.go" -l -E "func.*Stub\(" . 2>/dev/null | \
+        grep -v "_test.go$" | \
+        grep -v "/tests/fixtures/" | \
+        grep -v "/test" | \
+        head -5)
+    if [ -n "$STUB_FUNC_FILES" ]; then
+        STUB_FILES="${STUB_FILES}${STUB_FUNC_FILES}"$'\n'
+    fi
+fi
+
+# Remove duplicates and format
+if [ "$STUB_FOUND" -gt "0" ]; then
+    UNIQUE_FILES=$(echo "$STUB_FILES" | sort -u | head -5 | tr '\n' ', ' | sed 's/,$//')
+    check_result "Stub Detection" "FAIL" "$STUB_FOUND stub implementation(s) found in: $UNIQUE_FILES"
+    echo -e "${RED}   └─ Stub functions must be implemented before production deployment${NC}"
+    echo -e "${RED}   └─ Run: grep -r 'Stub\\|stub\\|not implemented' --include='*.go' . to find all stubs${NC}"
+else
+    check_result "Stub Detection" "PASS" "No stub implementations found"
+fi
+
+# 9. Test Existence Check (for existing test files)
 echo "Checking test file existence..."
 GO_FILES=$(find . -name "*.go" -not -path "./vendor/*" | wc -l)
 TEST_FILES=$(find . -name "*_test.go" -not -path "./vendor/*" | wc -l)

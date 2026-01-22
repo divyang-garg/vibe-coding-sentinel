@@ -189,7 +189,7 @@ func detectBusinessRuleWithAST(code string, filePath string, keywordMap map[stri
 	}
 
 	// Extract function and class definitions from AST
-	traverseAST(rootNode, func(node *sitter.Node) bool {
+	TraverseAST(rootNode, func(node *sitter.Node) bool {
 		var funcName string
 		var isFunction bool
 		var line int

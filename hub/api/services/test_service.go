@@ -7,7 +7,6 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"strings"
 	"time"
 
 	"sentinel-hub-api/pkg/database"
@@ -308,7 +307,25 @@ func (s *TestServiceImpl) RunTests(ctx context.Context, req TestExecutionRequest
 
 	// Execute tests in sandbox (async)
 	go func() {
-		result := executeTestsInSandbox(req)
+		// Use actual Docker implementation instead of stub
+		result, err := executeTestInSandbox(ctx, req)
+		if err != nil {
+			execution.Status = "failed"
+			errorResult := ExecutionResult{
+				ExitCode: 1,
+				Stdout:   "",
+				Stderr:   err.Error(),
+			}
+			resultJSON, _ := json.Marshal(errorResult)
+			execution.Result = resultJSON
+			now := time.Now().UTC()
+			execution.CompletedAt = &now
+			if err := saveTestExecution(ctx, execution); err != nil {
+				LogError(ctx, "Failed to update execution record: %v", err)
+			}
+			return
+		}
+
 		execution.Status = "completed"
 		// ExecutionTimeMs will be set when execution completes
 		if result.ExitCode != 0 {
@@ -376,7 +393,7 @@ func (s *TestServiceImpl) GetTestExecutionStatus(ctx context.Context, executionI
 	return &execution, nil
 }
 
-// Helper functions (stubs - would be implemented in production)
+// Helper functions
 
 func analyzeCoverageForRequirement(requirementID string, testFiles []TestFile) TestCoverage {
 	// Simplified - would analyze test files against requirement
@@ -390,11 +407,6 @@ func analyzeCoverageForRequirement(requirementID string, testFiles []TestFile) T
 	}
 }
 
-func saveTestCoverageStub(ctx context.Context, coverage TestCoverage) error {
-	// Stub - would save to database
-	return nil
-}
-
 func validateTestForRequirement(requirementID, testCode, language string) TestValidation {
 	// Simplified - would validate test code
 	return TestValidation{
@@ -406,32 +418,4 @@ func validateTestForRequirement(requirementID, testCode, language string) TestVa
 		ValidatedAt:       time.Now().UTC(),
 		CreatedAt:         time.Now().UTC(),
 	}
-}
-
-func saveTestValidationStub(ctx context.Context, validation TestValidation) error {
-	// Stub - would save to database
-	return nil
-}
-
-func executeTestsInSandbox(req TestExecutionRequest) ExecutionResult {
-	// Stub - would execute tests in Docker sandbox
-	return ExecutionResult{
-		ExitCode: 0,
-		Stdout:   "Tests passed",
-		Stderr:   "",
-	}
-}
-
-func detectLanguageStub(filePath, code string) string {
-	// Simplified language detection
-	if strings.Contains(filePath, ".go") || strings.Contains(code, "package ") {
-		return "go"
-	}
-	if strings.Contains(filePath, ".js") || strings.Contains(filePath, ".ts") {
-		return "javascript"
-	}
-	if strings.Contains(filePath, ".py") {
-		return "python"
-	}
-	return "unknown"
 }

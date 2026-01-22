@@ -1,0 +1,6 @@
+{
+  "jsonrpc": "2.0",
+  "id": 411,
+  "method": "tools/call",
+  "params": {"name": "sentinel_validate_code", "arguments": {"code": "const user = getUser();", "language": "javascript"}}
+}

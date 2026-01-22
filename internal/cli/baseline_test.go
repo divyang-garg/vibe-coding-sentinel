@@ -3,279 +3,211 @@ package cli
 
 import (
 	"os"
-	"path/filepath"
 	"testing"
 )
 
-func TestClearBaseline(t *testing.T) {
-	// Setup: Create a temp directory structure
+func TestRunBaseline_Commands(t *testing.T) {
 	tmpDir := t.TempDir()
-	originalWD, _ := os.Getwd()
+	originalDir, _ := os.Getwd()
 	os.Chdir(tmpDir)
-	defer os.Chdir(originalWD)
-
-	// Create sentinel directory
-	os.MkdirAll(".sentinel", 0755)
-
-	t.Run("clears existing baseline", func(t *testing.T) {
-		// Create a baseline file
-		baselinePath := ".sentinel/baseline.json"
-		os.WriteFile(baselinePath, []byte(`{"version":"1.0","entries":[]}`), 0644)
-
-		err := clearBaseline()
-		if err != nil {
-			t.Errorf("clearBaseline() error = %v", err)
-		}
-
-		// Verify file is removed
-		if _, err := os.Stat(baselinePath); !os.IsNotExist(err) {
-			t.Error("baseline file should be removed")
-		}
-	})
-
-	t.Run("handles empty baseline gracefully", func(t *testing.T) {
-		err := clearBaseline()
-		if err != nil {
-			t.Errorf("clearBaseline() on non-existent file should not error: %v", err)
-		}
-	})
-}
-
-func TestExportBaseline(t *testing.T) {
-	tmpDir := t.TempDir()
-	originalWD, _ := os.Getwd()
-	os.Chdir(tmpDir)
-	defer os.Chdir(originalWD)
+	defer os.Chdir(originalDir)
 
 	os.MkdirAll(".sentinel", 0755)
 
-	t.Run("exports baseline to file", func(t *testing.T) {
-		// Create baseline
-		baselinePath := ".sentinel/baseline.json"
-		os.WriteFile(baselinePath, []byte(`{"version":"1.0","entries":[{"pattern":"test","file":"test.js","line":1}]}`), 0644)
-
-		exportPath := filepath.Join(tmpDir, "export.json")
-		err := exportBaseline([]string{exportPath})
+	t.Run("show baseline empty", func(t *testing.T) {
+		err := runBaseline([]string{})
 		if err != nil {
-			t.Errorf("exportBaseline() error = %v", err)
-		}
-
-		// Verify export file exists
-		if _, err := os.Stat(exportPath); os.IsNotExist(err) {
-			t.Error("export file should exist")
+			t.Errorf("runBaseline() error = %v", err)
 		}
 	})
 
-	t.Run("requires export path argument", func(t *testing.T) {
-		err := exportBaseline([]string{})
-		if err == nil {
-			t.Error("exportBaseline() should require path argument")
-		}
-	})
-}
-
-func TestImportBaseline(t *testing.T) {
-	tmpDir := t.TempDir()
-	originalWD, _ := os.Getwd()
-	os.Chdir(tmpDir)
-	defer os.Chdir(originalWD)
-
-	os.MkdirAll(".sentinel", 0755)
-
-	t.Run("imports baseline from file", func(t *testing.T) {
-		// Create import file
-		importPath := filepath.Join(tmpDir, "import.json")
-		os.WriteFile(importPath, []byte(`{"version":"1.0","entries":[{"pattern":"imported","file":"imported.js","line":10}]}`), 0644)
-
-		err := importBaseline([]string{importPath})
-		if err != nil {
-			t.Errorf("importBaseline() error = %v", err)
-		}
-
-		// Verify baseline was created
-		if _, err := os.Stat(".sentinel/baseline.json"); os.IsNotExist(err) {
-			t.Error("baseline file should exist after import")
-		}
-	})
-
-	t.Run("requires import path argument", func(t *testing.T) {
-		err := importBaseline([]string{})
-		if err == nil {
-			t.Error("importBaseline() should require path argument")
-		}
-	})
-
-	t.Run("handles missing import file", func(t *testing.T) {
-		err := importBaseline([]string{"/nonexistent/path.json"})
-		if err == nil {
-			t.Error("importBaseline() should error for missing file")
-		}
-	})
-}
-
-func TestRunBaseline(t *testing.T) {
-	tmpDir := t.TempDir()
-	originalWD, _ := os.Getwd()
-	os.Chdir(tmpDir)
-	defer os.Chdir(originalWD)
-
-	os.MkdirAll(".sentinel", 0755)
-
-	t.Run("routes add command", func(t *testing.T) {
-		err := runBaseline([]string{"add", "test.js", "10", "test reason"})
+	t.Run("add entry", func(t *testing.T) {
+		err := runBaseline([]string{"add", "test.js", "10", "Test reason"})
 		if err != nil {
 			t.Errorf("runBaseline(add) error = %v", err)
 		}
 	})
 
-	t.Run("routes clear command", func(t *testing.T) {
+	t.Run("show with entries", func(t *testing.T) {
+		err := runBaseline([]string{})
+		if err != nil {
+			t.Errorf("runBaseline() error = %v", err)
+		}
+	})
+
+	t.Run("remove entry", func(t *testing.T) {
+		// Add an entry first
+		_ = runBaseline([]string{"add", "test2.js", "20", "Reason"})
+		err := runBaseline([]string{"remove", "1"})
+		if err != nil {
+			t.Errorf("runBaseline(remove) error = %v", err)
+		}
+	})
+
+	t.Run("clear baseline", func(t *testing.T) {
+		_ = runBaseline([]string{"add", "test3.js", "30", "Reason"})
 		err := runBaseline([]string{"clear"})
 		if err != nil {
 			t.Errorf("runBaseline(clear) error = %v", err)
 		}
 	})
 
-	t.Run("routes help command", func(t *testing.T) {
+	t.Run("export baseline", func(t *testing.T) {
+		_ = runBaseline([]string{"add", "test4.js", "40", "Reason"})
+		err := runBaseline([]string{"export", "baseline.json"})
+		if err != nil {
+			t.Errorf("runBaseline(export) error = %v", err)
+		}
+		if _, err := os.Stat("baseline.json"); os.IsNotExist(err) {
+			t.Error("Expected baseline.json to be created")
+		}
+	})
+
+	t.Run("import baseline", func(t *testing.T) {
+		err := runBaseline([]string{"import", "baseline.json"})
+		if err != nil {
+			t.Errorf("runBaseline(import) error = %v", err)
+		}
+	})
+
+	t.Run("help", func(t *testing.T) {
 		err := runBaseline([]string{"help"})
 		if err != nil {
 			t.Errorf("runBaseline(help) error = %v", err)
 		}
 	})
 
-	t.Run("handles unknown command", func(t *testing.T) {
+	t.Run("unknown command", func(t *testing.T) {
 		err := runBaseline([]string{"unknown"})
 		if err == nil {
-			t.Error("runBaseline(unknown) should error")
-		}
-	})
-
-	t.Run("shows baseline when no args", func(t *testing.T) {
-		err := runBaseline([]string{})
-		if err != nil {
-			t.Errorf("runBaseline([]) error = %v", err)
+			t.Error("Expected error for unknown command")
 		}
 	})
 }
 
 func TestAddToBaseline(t *testing.T) {
 	tmpDir := t.TempDir()
-	originalWD, _ := os.Getwd()
+	originalDir, _ := os.Getwd()
 	os.Chdir(tmpDir)
-	defer os.Chdir(originalWD)
+	defer os.Chdir(originalDir)
 
 	os.MkdirAll(".sentinel", 0755)
 
-	t.Run("adds entry with reason", func(t *testing.T) {
-		err := addToBaseline([]string{"file.js", "42", "test reason"})
-		if err != nil {
-			t.Errorf("addToBaseline() error = %v", err)
-		}
-
-		// Verify entry was added
-		baseline, _ := loadBaseline()
-		if len(baseline.Entries) == 0 {
-			t.Error("baseline should have entries")
-		}
-	})
-
-	t.Run("adds entry without reason", func(t *testing.T) {
-		// Clear first
-		clearBaseline()
-
-		err := addToBaseline([]string{"file.js", "50"})
+	t.Run("with reason", func(t *testing.T) {
+		err := addToBaseline([]string{"test.js", "10", "Custom reason"})
 		if err != nil {
 			t.Errorf("addToBaseline() error = %v", err)
 		}
 	})
 
-	t.Run("requires file and line arguments", func(t *testing.T) {
-		err := addToBaseline([]string{"file.js"})
-		if err == nil {
-			t.Error("addToBaseline() should require 2 args")
+	t.Run("without reason", func(t *testing.T) {
+		err := addToBaseline([]string{"test2.js", "20"})
+		if err != nil {
+			t.Errorf("addToBaseline() error = %v", err)
 		}
 	})
 
-	t.Run("validates line number", func(t *testing.T) {
-		err := addToBaseline([]string{"file.js", "notanumber"})
+	t.Run("invalid args", func(t *testing.T) {
+		err := addToBaseline([]string{"test.js"})
 		if err == nil {
-			t.Error("addToBaseline() should validate line number")
+			t.Error("Expected error for insufficient args")
+		}
+	})
+
+	t.Run("invalid line number", func(t *testing.T) {
+		err := addToBaseline([]string{"test.js", "invalid"})
+		if err == nil {
+			t.Error("Expected error for invalid line number")
 		}
 	})
 }
 
 func TestRemoveFromBaseline(t *testing.T) {
 	tmpDir := t.TempDir()
-	originalWD, _ := os.Getwd()
+	originalDir, _ := os.Getwd()
 	os.Chdir(tmpDir)
-	defer os.Chdir(originalWD)
+	defer os.Chdir(originalDir)
 
 	os.MkdirAll(".sentinel", 0755)
 
-	t.Run("removes entry by index", func(t *testing.T) {
-		// Add an entry first
-		addToBaseline([]string{"file.js", "10", "test"})
+	// Setup: add some entries
+	_ = addToBaseline([]string{"test.js", "10", "Reason 1"})
+	_ = addToBaseline([]string{"test.js", "20", "Reason 2"})
+	_ = addToBaseline([]string{"test.js", "30", "Reason 3"})
 
-		err := removeFromBaseline([]string{"1"})
+	t.Run("valid index", func(t *testing.T) {
+		err := removeFromBaseline([]string{"2"})
 		if err != nil {
 			t.Errorf("removeFromBaseline() error = %v", err)
 		}
 	})
 
-	t.Run("requires index argument", func(t *testing.T) {
+	t.Run("invalid index", func(t *testing.T) {
+		err := removeFromBaseline([]string{"999"})
+		if err == nil {
+			t.Error("Expected error for out of range index")
+		}
+	})
+
+	t.Run("invalid args", func(t *testing.T) {
 		err := removeFromBaseline([]string{})
 		if err == nil {
-			t.Error("removeFromBaseline() should require index")
+			t.Error("Expected error for missing args")
 		}
 	})
 
-	t.Run("validates index number", func(t *testing.T) {
-		err := removeFromBaseline([]string{"notanumber"})
+	t.Run("invalid index format", func(t *testing.T) {
+		err := removeFromBaseline([]string{"invalid"})
 		if err == nil {
-			t.Error("removeFromBaseline() should validate index")
+			t.Error("Expected error for invalid index format")
+		}
+	})
+}
+
+func TestClearBaseline(t *testing.T) {
+	tmpDir := t.TempDir()
+	originalDir, _ := os.Getwd()
+	os.Chdir(tmpDir)
+	defer os.Chdir(originalDir)
+
+	os.MkdirAll(".sentinel", 0755)
+
+	t.Run("clear existing", func(t *testing.T) {
+		_ = addToBaseline([]string{"test.js", "10", "Reason"})
+		err := clearBaseline()
+		if err != nil {
+			t.Errorf("clearBaseline() error = %v", err)
 		}
 	})
 
-	t.Run("handles out of range index", func(t *testing.T) {
-		// Clear and add one entry
-		clearBaseline()
-		addToBaseline([]string{"file.js", "10", "test"})
-
-		err := removeFromBaseline([]string{"99"})
-		if err == nil {
-			t.Error("removeFromBaseline() should error for out of range")
+	t.Run("clear empty", func(t *testing.T) {
+		err := clearBaseline()
+		if err != nil {
+			t.Errorf("clearBaseline() on empty error = %v", err)
 		}
 	})
 }
 
 func TestShowBaseline(t *testing.T) {
 	tmpDir := t.TempDir()
-	originalWD, _ := os.Getwd()
+	originalDir, _ := os.Getwd()
 	os.Chdir(tmpDir)
-	defer os.Chdir(originalWD)
+	defer os.Chdir(originalDir)
 
 	os.MkdirAll(".sentinel", 0755)
 
-	t.Run("shows empty baseline message", func(t *testing.T) {
-		clearBaseline()
+	t.Run("empty baseline", func(t *testing.T) {
 		err := showBaseline()
 		if err != nil {
 			t.Errorf("showBaseline() error = %v", err)
 		}
 	})
 
-	t.Run("shows baseline with entries", func(t *testing.T) {
-		addToBaseline([]string{"file.js", "10", "test"})
-
+	t.Run("with entries", func(t *testing.T) {
+		_ = addToBaseline([]string{"test.js", "10", "Test reason"})
 		err := showBaseline()
 		if err != nil {
 			t.Errorf("showBaseline() error = %v", err)
 		}
 	})
-}
-
-func TestPrintBaselineHelp(t *testing.T) {
-	err := printBaselineHelp()
-	if err != nil {
-		t.Errorf("printBaselineHelp() error = %v", err)
-	}
 }

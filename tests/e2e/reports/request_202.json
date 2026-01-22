@@ -1,0 +1,6 @@
+{
+  "jsonrpc": "2.0",
+  "id": 202,
+  "method": "tools/call",
+  "params": {"name": "sentinel_create_task", "arguments": {"title": "E2E Test Task", "description": "Testing tool chain execution", "priority": "medium"}}
+}

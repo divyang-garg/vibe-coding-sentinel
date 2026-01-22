@@ -5,6 +5,7 @@ package extraction
 import (
 	"context"
 	"fmt"
+	"strings"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -195,5 +196,143 @@ func TestKnowledgeExtractor_Extract(t *testing.T) {
 		assert.NotNil(t, result)
 		assert.True(t, result.Metadata.CacheHit)
 		mockCache.AssertExpectations(t)
+	})
+
+	t.Run("extract_with_entity_schema", func(t *testing.T) {
+		mockLLM := new(MockLLMClient)
+		mockCache := new(MockCache)
+		mockLogger := new(MockLogger)
+
+		extractor := NewKnowledgeExtractor(
+			mockLLM,
+			NewPromptBuilder(),
+			NewResponseParser(),
+			NewConfidenceScorer(),
+			NewFallbackExtractor(),
+			mockCache,
+			mockLogger,
+		)
+
+		llmResponse := `{"entities":[{"name":"User","attributes":["id","email"]}]}`
+		mockLLM.On("Call", mock.Anything, mock.Anything, "knowledge_extraction").
+			Return(llmResponse, 100, nil)
+		mockCache.On("Get", mock.Anything).Return("", false)
+		mockCache.On("Set", mock.Anything, mock.Anything, 100).Return()
+		mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
+
+		req := ExtractRequest{
+			Text:       "User entity with id and email",
+			SchemaType: "entity",
+			Options:    ExtractOptions{UseLLM: true},
+		}
+
+		result, err := extractor.Extract(context.Background(), req)
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, 0.7, result.Confidence) // Default for non-business-rule
+	})
+
+	t.Run("extract_with_api_contract_schema", func(t *testing.T) {
+		mockLLM := new(MockLLMClient)
+		mockCache := new(MockCache)
+		mockLogger := new(MockLogger)
+
+		extractor := NewKnowledgeExtractor(
+			mockLLM,
+			NewPromptBuilder(),
+			NewResponseParser(),
+			NewConfidenceScorer(),
+			NewFallbackExtractor(),
+			mockCache,
+			mockLogger,
+		)
+
+		llmResponse := `{"api_contracts":[{"endpoint":"/api/users","method":"GET"}]}`
+		mockLLM.On("Call", mock.Anything, mock.Anything, "knowledge_extraction").
+			Return(llmResponse, 100, nil)
+		mockCache.On("Get", mock.Anything).Return("", false)
+		mockCache.On("Set", mock.Anything, mock.Anything, 100).Return()
+		mockLogger.On("Debug", mock.Anything, mock.Anything).Return()
+
+		req := ExtractRequest{
+			Text:       "GET /api/users endpoint",
+			SchemaType: "api_contract",
+			Options:    ExtractOptions{UseLLM: true},
+		}
+
+		result, err := extractor.Extract(context.Background(), req)
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+	})
+
+	t.Run("extract_with_unsupported_schema", func(t *testing.T) {
+		mockLLM := new(MockLLMClient)
+		mockCache := new(MockCache)
+		mockLogger := new(MockLogger)
+
+		extractor := NewKnowledgeExtractor(
+			mockLLM,
+			NewPromptBuilder(),
+			NewResponseParser(),
+			NewConfidenceScorer(),
+			NewFallbackExtractor(),
+			mockCache,
+			mockLogger,
+		)
+
+		mockCache.On("Get", mock.Anything).Return("", false)
+		mockLogger.On("Warn", mock.Anything, mock.Anything).Return().Maybe()
+
+		req := ExtractRequest{
+			Text:       "Test text",
+			SchemaType: "unsupported_type",
+			Options:    ExtractOptions{UseLLM: true, UseFallback: false},
+		}
+
+		_, err := extractor.Extract(context.Background(), req)
+		// The error may be from extractWithLLM or from fallback, both are acceptable
+		assert.Error(t, err)
+		// Check if error contains expected messages
+		errMsg := err.Error()
+		if !strings.Contains(errMsg, "unsupported schema type") && 
+		   !strings.Contains(errMsg, "all extraction methods failed") &&
+		   !strings.Contains(errMsg, "extraction disabled") {
+			t.Errorf("Expected error about unsupported schema or extraction failure, got: %v", err)
+		}
+	})
+
+	t.Run("extract_with_parse_error", func(t *testing.T) {
+		mockLLM := new(MockLLMClient)
+		mockCache := new(MockCache)
+		mockLogger := new(MockLogger)
+
+		extractor := NewKnowledgeExtractor(
+			mockLLM,
+			NewPromptBuilder(),
+			NewResponseParser(),
+			NewConfidenceScorer(),
+			NewFallbackExtractor(),
+			mockCache,
+			mockLogger,
+		)
+
+		mockLLM.On("Call", mock.Anything, mock.Anything, "knowledge_extraction").
+			Return("invalid json", 100, nil)
+		mockCache.On("Get", mock.Anything).Return("", false)
+		mockCache.On("Set", mock.Anything, mock.Anything, 100).Return()
+		mockLogger.On("Warn", mock.Anything, mock.Anything).Return()
+		mockLogger.On("Debug", mock.Anything, mock.Anything).Return().Maybe()
+
+		req := ExtractRequest{
+			Text:       "The system must validate all user inputs before processing.",
+			SchemaType: "business_rule",
+			Options:    ExtractOptions{UseLLM: true, UseFallback: true},
+		}
+
+		// Should fallback to regex
+		result, err := extractor.Extract(context.Background(), req)
+		assert.NoError(t, err)
+		assert.NotNil(t, result)
+		assert.Equal(t, "regex", result.Source)
 	})
 }

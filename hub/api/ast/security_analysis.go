@@ -11,7 +11,7 @@ import (
 // AnalyzeSecurity performs security-focused AST analysis
 func AnalyzeSecurity(ctx context.Context, code, language, severity string) ([]SecurityVulnerability, []ASTFinding, AnalysisStats, error) {
 	// Get parser for language
-	parser, err := getParser(language)
+	parser, err := GetParser(language)
 	if err != nil {
 		return nil, nil, AnalysisStats{}, fmt.Errorf("parser error: %w", err)
 	}

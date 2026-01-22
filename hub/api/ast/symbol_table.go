@@ -189,7 +189,7 @@ func ExtractSymbolsFromFile(rootNode *sitter.Node, code, filePath, language stri
 		return true
 	}
 
-	traverseAST(rootNode, visitor)
+	TraverseAST(rootNode, visitor)
 	return symbols, nil
 }
 

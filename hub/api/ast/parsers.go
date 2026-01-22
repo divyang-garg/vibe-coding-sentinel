@@ -47,8 +47,9 @@ func initParsers() {
 	parsers["py"] = pyParser
 }
 
-// getParser gets a parser for the specified language
-func getParser(language string) (*sitter.Parser, error) {
+// GetParser gets a parser for the specified language
+// Exported for use by other packages that need direct parser access
+func GetParser(language string) (*sitter.Parser, error) {
 	// Normalize language name
 	lang := normalizeLanguage(language)
 
@@ -83,4 +84,31 @@ func normalizeLanguage(lang string) string {
 	default:
 		return lang
 	}
+}
+
+// createParserForLanguage creates a new parser instance for the specified language
+// This is thread-safe and should be used when parsing in concurrent goroutines
+// since tree-sitter parsers are not thread-safe
+func createParserForLanguage(language string) (*sitter.Parser, error) {
+	lang := normalizeLanguage(language)
+
+	var parser *sitter.Parser
+	switch lang {
+	case "go", "golang":
+		parser = sitter.NewParser()
+		parser.SetLanguage(golang.GetLanguage())
+	case "javascript", "js", "jsx":
+		parser = sitter.NewParser()
+		parser.SetLanguage(javascript.GetLanguage())
+	case "typescript", "ts", "tsx":
+		parser = sitter.NewParser()
+		parser.SetLanguage(typescript.GetLanguage())
+	case "python", "py":
+		parser = sitter.NewParser()
+		parser.SetLanguage(python.GetLanguage())
+	default:
+		return nil, fmt.Errorf("unsupported language: %s (supported: go, javascript, typescript, python)", language)
+	}
+
+	return parser, nil
 }

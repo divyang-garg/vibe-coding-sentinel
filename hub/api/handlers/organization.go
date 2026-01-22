@@ -6,6 +6,7 @@ import (
 	"encoding/json"
 	"net/http"
 
+	"github.com/go-chi/chi/v5"
 	"sentinel-hub-api/models"
 	"sentinel-hub-api/services"
 )
@@ -139,5 +140,110 @@ func (h *OrganizationHandler) ListProjects(w http.ResponseWriter, r *http.Reques
 	h.WriteJSONResponse(w, http.StatusOK, map[string]interface{}{
 		"projects": projects,
 		"total":    len(projects),
+	})
+}
+
+// GenerateAPIKey handles POST /api/v1/projects/{id}/api-key
+// Generates a new API key for a project
+func (h *OrganizationHandler) GenerateAPIKey(w http.ResponseWriter, r *http.Request) {
+	projectID := chi.URLParam(r, "id")
+	if projectID == "" {
+		h.WriteErrorResponse(w, &models.ValidationError{
+			Field:   "id",
+			Message: "Project ID is required",
+		}, http.StatusBadRequest)
+		return
+	}
+
+	apiKey, err := h.OrganizationService.GenerateAPIKey(r.Context(), projectID)
+	if err != nil {
+		// Check if it's a not found error
+		if err.Error() == "project not found" || err.Error() == "failed to find project: project not found" {
+			h.WriteErrorResponse(w, &models.NotFoundError{
+				Resource: "project",
+				Message:  "Project not found",
+			}, http.StatusNotFound)
+			return
+		}
+		h.WriteErrorResponse(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	// Extract prefix for response
+	prefix := ""
+	if len(apiKey) >= 8 {
+		prefix = apiKey[:8]
+	}
+
+	h.WriteJSONResponse(w, http.StatusOK, map[string]interface{}{
+		"api_key":        apiKey,
+		"api_key_prefix": prefix,
+		"message":        "API key generated successfully. Save this key - it will not be shown again.",
+		"warning":        "This is the only time you will see this key. Store it securely.",
+	})
+}
+
+// RevokeAPIKey handles DELETE /api/v1/projects/{id}/api-key
+// Revokes a project's API key
+func (h *OrganizationHandler) RevokeAPIKey(w http.ResponseWriter, r *http.Request) {
+	projectID := chi.URLParam(r, "id")
+	if projectID == "" {
+		h.WriteErrorResponse(w, &models.ValidationError{
+			Field:   "id",
+			Message: "Project ID is required",
+		}, http.StatusBadRequest)
+		return
+	}
+
+	err := h.OrganizationService.RevokeAPIKey(r.Context(), projectID)
+	if err != nil {
+		// Check if it's a not found error
+		if err.Error() == "project not found" {
+			h.WriteErrorResponse(w, &models.NotFoundError{
+				Resource: "project",
+				Message:  "Project not found",
+			}, http.StatusNotFound)
+			return
+		}
+		h.WriteErrorResponse(w, err, http.StatusInternalServerError)
+		return
+	}
+
+	h.WriteJSONResponse(w, http.StatusOK, map[string]interface{}{
+		"message": "API key revoked successfully",
+	})
+}
+
+// GetAPIKeyInfo handles GET /api/v1/projects/{id}/api-key
+// Returns API key information (prefix only, for security)
+func (h *OrganizationHandler) GetAPIKeyInfo(w http.ResponseWriter, r *http.Request) {
+	projectID := chi.URLParam(r, "id")
+	if projectID == "" {
+		h.WriteErrorResponse(w, &models.ValidationError{
+			Field:   "id",
+			Message: "Project ID is required",
+		}, http.StatusBadRequest)
+		return
+	}
+
+	project, err := h.OrganizationService.GetProject(r.Context(), projectID)
+	if err != nil {
+		h.WriteErrorResponse(w, err, http.StatusInternalServerError)
+		return
+	}
+	if project == nil {
+		h.WriteErrorResponse(w, &models.NotFoundError{
+			Resource: "project",
+			Message:  "Project not found",
+		}, http.StatusNotFound)
+		return
+	}
+
+	hasKey := project.APIKeyHash != "" || project.APIKeyPrefix != ""
+
+	h.WriteJSONResponse(w, http.StatusOK, map[string]interface{}{
+		"has_api_key":    hasKey,
+		"api_key_prefix": project.APIKeyPrefix,
+		"message":        "Full API key is never returned for security reasons. Use POST to generate a new key.",
 	})
 }

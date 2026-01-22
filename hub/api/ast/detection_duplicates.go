@@ -14,7 +14,7 @@ func detectDuplicateFunctions(root *sitter.Node, code string, language string) [
 	functionMap := make(map[string][]*sitter.Node)
 
 	// Traverse AST to find all function definitions
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		var funcName string
 		var isFunction bool
 

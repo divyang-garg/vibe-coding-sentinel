@@ -14,13 +14,13 @@ import (
 func TestCodeAnalysisServiceImpl_AnalyzeCode(t *testing.T) {
 	tests := []struct {
 		name    string
-		req     models.ASTAnalysisRequest
+		req     models.CodeAnalysisRequest
 		wantErr bool
 		errMsg  string
 	}{
 		{
 			name: "valid Go code analysis",
-			req: models.ASTAnalysisRequest{
+			req: models.CodeAnalysisRequest{
 				Code: `
 package main
 
@@ -40,7 +40,7 @@ func calculateSum(a, b int) int {
 		},
 		{
 			name: "empty code",
-			req: models.ASTAnalysisRequest{
+			req: models.CodeAnalysisRequest{
 				Code:     "",
 				Language: "go",
 			},
@@ -49,7 +49,7 @@ func calculateSum(a, b int) int {
 		},
 		{
 			name: "missing language",
-			req: models.ASTAnalysisRequest{
+			req: models.CodeAnalysisRequest{
 				Code:     "some code",
 				Language: "",
 			},
@@ -404,7 +404,7 @@ func simpleFunction() int {
 }
 `
 
-	req := models.ASTAnalysisRequest{
+	req := models.CodeAnalysisRequest{
 		Code:     code,
 		Language: "go",
 	}
@@ -456,7 +456,7 @@ func main() {
 }
 `
 
-	req := models.ASTAnalysisRequest{
+	req := models.CodeAnalysisRequest{
 		Code:     goodCode,
 		Language: "go",
 	}

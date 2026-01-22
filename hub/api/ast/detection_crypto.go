@@ -29,7 +29,7 @@ func detectInsecureCrypto(root *sitter.Node, code string, language string) []Sec
 func detectInsecureCryptoGo(root *sitter.Node, code string) []SecurityVulnerability {
 	vulnerabilities := []SecurityVulnerability{}
 
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		codeSnippet := safeSlice(code, node.StartByte(), node.EndByte())
 
 		// Check for weak hash algorithms
@@ -76,7 +76,7 @@ func detectInsecureCryptoGo(root *sitter.Node, code string) []SecurityVulnerabil
 func detectInsecureCryptoJS(root *sitter.Node, code string) []SecurityVulnerability {
 	vulnerabilities := []SecurityVulnerability{}
 
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		codeSnippet := safeSlice(code, node.StartByte(), node.EndByte())
 
 		// Check for weak hash algorithms
@@ -123,7 +123,7 @@ func detectInsecureCryptoJS(root *sitter.Node, code string) []SecurityVulnerabil
 func detectInsecureCryptoPython(root *sitter.Node, code string) []SecurityVulnerability {
 	vulnerabilities := []SecurityVulnerability{}
 
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		codeSnippet := safeSlice(code, node.StartByte(), node.EndByte())
 
 		// Check for weak hash algorithms

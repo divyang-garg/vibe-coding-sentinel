@@ -27,7 +27,7 @@ func detectOrphanedCode(root *sitter.Node, code string, language string) []ASTFi
 func collectInterfaceMethods(root *sitter.Node, code string) map[string]bool {
 	interfaceMethods := make(map[string]bool)
 
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		// Method declarations are likely interface implementations
 		if node.Type() == "method_declaration" {
 			for i := 0; i < int(node.ChildCount()); i++ {
@@ -53,7 +53,7 @@ func detectOrphanedCodeGo(root *sitter.Node, code string) []ASTFinding {
 	interfaceMethods := collectInterfaceMethods(root, code)
 
 	// First pass: collect all function definitions
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		if node.Type() == "function_declaration" || node.Type() == "method_declaration" {
 			// Get function name
 			for i := 0; i < int(node.ChildCount()); i++ {
@@ -69,7 +69,7 @@ func detectOrphanedCodeGo(root *sitter.Node, code string) []ASTFinding {
 	})
 
 	// Second pass: collect all function calls and method calls
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		if node.Type() == "call_expression" {
 			// Get function name being called
 			for i := 0; i < int(node.ChildCount()); i++ {

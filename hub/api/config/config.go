@@ -205,9 +205,17 @@ func setDefaults(config *Config) {
 		config.Database.MaxLifetime = 5 * time.Minute
 	}
 
-	// Security defaults
+	// Security defaults - CRITICAL: Never use hardcoded secrets in production
+	// These defaults should only be used in development/test environments
 	if len(config.Security.APIKeys) == 0 {
-		config.Security.APIKeys = []string{"dev-api-key-123", "test-api-key-456"}
+		// In production, API keys should be loaded from environment or secrets management
+		// Only use defaults in development mode
+		if os.Getenv("ENV") == "development" || os.Getenv("ENV") == "dev" {
+			config.Security.APIKeys = []string{"dev-api-key-123", "test-api-key-456"}
+		} else {
+			// Production: require explicit configuration
+			config.Security.APIKeys = []string{} // Empty, must be set via env
+		}
 	}
 	if config.Security.RateLimitMax == 0 {
 		config.Security.RateLimitMax = 100
@@ -216,7 +224,12 @@ func setDefaults(config *Config) {
 		config.Security.RateLimitRefill = 10
 	}
 	if config.Security.JWTSecret == "" {
-		config.Security.JWTSecret = "dev-jwt-secret-change-in-production"
+		// CRITICAL: In production, JWT secret must be set via environment variable
+		// Default only for development - production will fail if not set
+		if os.Getenv("ENV") == "development" || os.Getenv("ENV") == "dev" {
+			config.Security.JWTSecret = "dev-jwt-secret-change-in-production"
+		}
+		// In production, this will remain empty and should cause startup failure
 	}
 	if len(config.Security.CORSAllowedOrigins) == 0 {
 		config.Security.CORSAllowedOrigins = []string{"*"}

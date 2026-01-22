@@ -30,7 +30,7 @@ func detectCommandInjection(root *sitter.Node, code string, language string) []S
 func detectCommandInjectionGo(root *sitter.Node, code string) []SecurityVulnerability {
 	vulnerabilities := []SecurityVulnerability{}
 
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		// Look for exec.Command, exec.CommandContext
 		if node.Type() == "call_expression" {
 			funcName := getFunctionName(node, code)
@@ -63,7 +63,7 @@ func detectCommandInjectionGo(root *sitter.Node, code string) []SecurityVulnerab
 func detectCommandInjectionJS(root *sitter.Node, code string) []SecurityVulnerability {
 	vulnerabilities := []SecurityVulnerability{}
 
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		// Look for child_process.exec, child_process.spawn, execSync
 		if node.Type() == "call_expression" {
 			funcName := getFunctionName(node, code)
@@ -171,7 +171,7 @@ func detectCommandInjectionPython(root *sitter.Node, code string) []SecurityVuln
 	}
 
 	// AST-based detection for complex patterns
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		// Look for os.system, subprocess.call, subprocess.Popen
 		if node.Type() == "call_expression" {
 			funcName := getFunctionName(node, code)

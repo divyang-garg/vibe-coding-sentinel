@@ -184,3 +184,132 @@ func TestFormatText_WithFindings(t *testing.T) {
 		t.Error("Text should show finding message")
 	}
 }
+
+func TestFormatJSON_EdgeCases(t *testing.T) {
+	t.Run("handles empty result", func(t *testing.T) {
+		result := &Result{
+			Success:   true,
+			Findings:  []Finding{},
+			Summary:   make(map[string]int),
+			Timestamp: "2024-01-01T00:00:00Z",
+		}
+
+		json := FormatJSON(result)
+		// json.MarshalIndent adds spaces, so check for both formats
+		if !strings.Contains(json, `"success"`) || (!strings.Contains(json, `"success": true`) && !strings.Contains(json, `"success":true`)) {
+			t.Error("JSON should contain success field")
+		}
+		if !strings.Contains(json, `"findings"`) || (!strings.Contains(json, `"findings": []`) && !strings.Contains(json, `"findings":[]`)) {
+			t.Error("JSON should contain empty findings array")
+		}
+	})
+
+	t.Run("handles result with all fields", func(t *testing.T) {
+		result := &Result{
+			Success: false,
+			Findings: []Finding{
+				{
+					Type:     "secrets",
+					Severity: SeverityCritical,
+					File:     "test.js",
+					Line:     10,
+					Column:   5,
+					Message:  "Test message",
+					Pattern:  "test pattern",
+					Code:     "test code",
+				},
+			},
+			Summary: map[string]int{
+				"secrets": 1,
+			},
+			Timestamp: "2024-01-01T00:00:00Z",
+		}
+
+		json := FormatJSON(result)
+		if !strings.Contains(json, `"test.js"`) {
+			t.Error("JSON should contain filename")
+		}
+		// json.MarshalIndent adds spaces, so check for both formats
+		if !strings.Contains(json, `"column"`) || (!strings.Contains(json, `"column": 5`) && !strings.Contains(json, `"column":5`)) {
+			t.Error("JSON should contain column when present")
+		}
+		if !strings.Contains(json, `"code"`) || (!strings.Contains(json, `"code": "test code"`) && !strings.Contains(json, `"code":"test code"`)) {
+			t.Error("JSON should contain code when present")
+		}
+	})
+}
+
+func TestFormatHTML_EdgeCases(t *testing.T) {
+	t.Run("handles HTML escaping", func(t *testing.T) {
+		result := &Result{
+			Success: false,
+			Findings: []Finding{
+				{
+					Type:     "xss",
+					Severity: SeverityHigh,
+					File:     "test.html",
+					Line:     1,
+					Message:  "XSS vulnerability: <script>alert('xss')</script>",
+					Pattern:  "<script>alert('xss')</script>",
+				},
+			},
+			Summary: map[string]int{
+				"xss": 1,
+			},
+			Timestamp: "2024-01-01T00:00:00Z",
+		}
+
+		html := FormatHTML(result)
+		// Should escape HTML in message and pattern
+		if strings.Contains(html, "<script>") {
+			t.Error("HTML should escape script tags in content")
+		}
+		if !strings.Contains(html, "&lt;script&gt;") {
+			t.Error("HTML should escape script tags")
+		}
+	})
+
+	t.Run("handles empty summary", func(t *testing.T) {
+		result := &Result{
+			Success:   true,
+			Findings:  []Finding{},
+			Summary:   nil,
+			Timestamp: "2024-01-01T00:00:00Z",
+		}
+
+		html := FormatHTML(result)
+		if !strings.Contains(html, "<html>") {
+			t.Error("HTML should be generated even with empty summary")
+		}
+	})
+}
+
+func TestFormatMarkdown_EdgeCases(t *testing.T) {
+	t.Run("handles markdown special characters", func(t *testing.T) {
+		result := &Result{
+			Success: false,
+			Findings: []Finding{
+				{
+					Type:     "secrets",
+					Severity: SeverityCritical,
+					File:     "test.md",
+					Line:     1,
+					Message:  "Pattern with *asterisks* and _underscores_",
+					Pattern:  "**bold** and `code`",
+				},
+			},
+			Summary: map[string]int{
+				"secrets": 1,
+			},
+			Timestamp: "2024-01-01T00:00:00Z",
+		}
+
+		md := FormatMarkdown(result)
+		if !strings.Contains(md, "*asterisks*") {
+			t.Error("Markdown should preserve special characters")
+		}
+		if !strings.Contains(md, "```") {
+			t.Error("Markdown should format pattern in code block")
+		}
+	})
+}

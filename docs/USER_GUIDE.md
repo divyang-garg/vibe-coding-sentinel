@@ -210,16 +210,67 @@ For comprehensive analysis:
    docker run -p 8080:8080 sentinel/hub:latest
    ```
 
-2. **Configure team access**
+2. **Create a Project and Get API Key**
+   
+   When you create a project in the Hub, an API key is automatically generated:
    ```bash
-   export SENTINEL_HUB_URL="https://hub.yourcompany.com"
-   export SENTINEL_API_KEY="team-api-key"
+   # Create project via Hub API
+   curl -X POST https://hub.yourcompany.com/api/v1/projects \
+     -H "Content-Type: application/json" \
+     -H "X-API-Key: admin-key" \
+     -d '{"name": "My Project"}'
+   
+   # Response includes api_key - SAVE THIS!
+   # {
+   #   "id": "proj_123",
+   #   "api_key": "xK9mP2qR7vT4wY8zA1bC3dE5fG6hI0j",  # ⚠️ Save immediately!
+   #   "api_key_prefix": "xK9mP2qR",
+   #   ...
+   # }
    ```
 
-3. **Share patterns across repositories**
+3. **Configure team access**
+   ```bash
+   export SENTINEL_HUB_URL="https://hub.yourcompany.com"
+   export SENTINEL_API_KEY="your-project-api-key"  # From step 2
+   ```
+
+4. **Share patterns across repositories**
    ```bash
    ./sentinel learn  # Patterns automatically sync to Hub
    ```
+
+### API Key Management
+
+If you need to manage your API keys:
+
+**Generate a new API key:**
+```bash
+curl -X POST https://hub.yourcompany.com/api/v1/projects/proj_123/api-key \
+  -H "X-API-Key: admin-key"
+# Response includes new api_key - save it!
+```
+
+**Check API key status:**
+```bash
+curl -X GET https://hub.yourcompany.com/api/v1/projects/proj_123/api-key \
+  -H "X-API-Key: admin-key"
+# Returns prefix only (for security)
+```
+
+**Revoke an API key:**
+```bash
+curl -X DELETE https://hub.yourcompany.com/api/v1/projects/proj_123/api-key \
+  -H "X-API-Key: admin-key"
+```
+
+**Important Security Notes:**
+- API keys are only shown once when generated
+- Store keys securely (environment variables, secret management)
+- Never commit keys to version control
+- Rotate keys regularly for security
+
+For detailed API key management, see [API Key Management Guide](../API_KEY_MANAGEMENT_GUIDE.md).
 
 ### Cross-Repository Analysis
 
@@ -279,9 +330,17 @@ Network or authentication issue.
 **Solution:**
 ```bash
 # Test connectivity
-curl -H "Authorization: Bearer $SENTINEL_API_KEY" $SENTINEL_HUB_URL/api/health
+curl -H "X-API-Key: $SENTINEL_API_KEY" $SENTINEL_HUB_URL/api/health
 
-# Use offline mode
+# Verify API key is valid
+curl -X GET $SENTINEL_HUB_URL/api/v1/projects/your-project-id/api-key \
+  -H "X-API-Key: $SENTINEL_API_KEY"
+
+# If key is invalid, generate a new one
+curl -X POST $SENTINEL_HUB_URL/api/v1/projects/your-project-id/api-key \
+  -H "X-API-Key: admin-key"
+
+# Use offline mode if Hub is unavailable
 ./sentinel audit --offline
 
 # Check configuration

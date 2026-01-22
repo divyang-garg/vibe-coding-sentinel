@@ -3,9 +3,13 @@
 package router
 
 import (
+	"os"
+	"strings"
 	"sentinel-hub-api/handlers"
 	"sentinel-hub-api/middleware"
 	"sentinel-hub-api/pkg/metrics"
+	"sentinel-hub-api/pkg/security"
+	"sentinel-hub-api/validation"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -23,9 +27,24 @@ func NewRouter(deps *handlers.Dependencies, m *metrics.Metrics) *chi.Mux {
 	r.Use(middleware.RecoveryMiddleware())
 	r.Use(middleware.RequestLoggingMiddleware())
 	r.Use(middleware.SecurityHeadersMiddleware())
-	r.Use(middleware.CORSMiddleware())
+	
+	// CORS configuration - environment-aware
+	corsAllowedOrigins := getCORSAllowedOrigins()
+	r.Use(middleware.CORSMiddleware(middleware.CORSMiddlewareConfig{
+		AllowedOrigins: corsAllowedOrigins,
+	}))
+	
 	r.Use(middleware.RateLimitMiddleware(100, 10)) // 100 requests, 10 per second
-	r.Use(middleware.AuthMiddleware())
+	
+	// Authentication middleware with service integration
+	logger := getLogger()
+	auditLogger := security.NewAuditLogger(logger)
+	r.Use(middleware.AuthMiddleware(middleware.AuthMiddlewareConfig{
+		OrganizationService: deps.OrganizationService,
+		SkipPaths:           []string{"/health", "/metrics"},
+		Logger:              logger,
+		AuditLogger:         auditLogger,
+	}))
 
 	// Health endpoints (skip auth)
 	r.Group(func(r chi.Router) {
@@ -94,10 +113,31 @@ func setupAPIV1Routes(r chi.Router, deps *handlers.Dependencies) {
 func setupTaskRoutes(r chi.Router, deps *handlers.Dependencies) {
 	taskHandler := handlers.NewTaskHandler(deps.TaskService)
 	r.Route("/api/v1/tasks", func(r chi.Router) {
-		r.Post("/", taskHandler.CreateTask)
+		// Validation middleware for POST/PUT requests
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.ValidationMiddleware(middleware.ValidationMiddlewareConfig{
+				Validator: &validation.CompositeValidator{
+					Validators: []validation.Validator{
+						&validation.FuncValidator{ValidateFunc: validation.ValidateCreateTaskRequest},
+					},
+				},
+				MaxSize: 10 * 1024 * 1024, // 10MB
+			}))
+			r.Post("/", taskHandler.CreateTask)
+		})
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.ValidationMiddleware(middleware.ValidationMiddlewareConfig{
+				Validator: &validation.CompositeValidator{
+					Validators: []validation.Validator{
+						&validation.FuncValidator{ValidateFunc: validation.ValidateUpdateTaskRequest},
+					},
+				},
+				MaxSize: 10 * 1024 * 1024, // 10MB
+			}))
+			r.Put("/{id}", taskHandler.UpdateTask)
+		})
 		r.Get("/", taskHandler.ListTasks)
 		r.Get("/{id}", taskHandler.GetTask)
-		r.Put("/{id}", taskHandler.UpdateTask)
 		r.Delete("/{id}", taskHandler.DeleteTask)
 		r.Post("/{id}/verify", taskHandler.VerifyTask)
 		r.Get("/{id}/dependencies", taskHandler.GetTaskDependencies)
@@ -120,13 +160,37 @@ func setupDocumentRoutes(r chi.Router, deps *handlers.Dependencies) {
 func setupOrganizationRoutes(r chi.Router, deps *handlers.Dependencies) {
 	orgHandler := handlers.NewOrganizationHandler(deps.OrganizationService)
 	r.Route("/api/v1/organizations", func(r chi.Router) {
-		r.Post("/", orgHandler.CreateOrganization)
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.ValidationMiddleware(middleware.ValidationMiddlewareConfig{
+				Validator: &validation.CompositeValidator{
+					Validators: []validation.Validator{
+						&validation.FuncValidator{ValidateFunc: validation.ValidateCreateOrganizationRequest},
+					},
+				},
+				MaxSize: 5 * 1024 * 1024, // 5MB
+			}))
+			r.Post("/", orgHandler.CreateOrganization)
+		})
 		r.Get("/{id}", orgHandler.GetOrganization)
 	})
 	r.Route("/api/v1/projects", func(r chi.Router) {
-		r.Post("/", orgHandler.CreateProject)
+		r.Group(func(r chi.Router) {
+			r.Use(middleware.ValidationMiddleware(middleware.ValidationMiddlewareConfig{
+				Validator: &validation.CompositeValidator{
+					Validators: []validation.Validator{
+						&validation.FuncValidator{ValidateFunc: validation.ValidateCreateProjectRequest},
+					},
+				},
+				MaxSize: 5 * 1024 * 1024, // 5MB
+			}))
+			r.Post("/", orgHandler.CreateProject)
+		})
 		r.Get("/", orgHandler.ListProjects)
 		r.Get("/{id}", orgHandler.GetProject)
+		// API Key Management endpoints
+		r.Post("/{id}/api-key", orgHandler.GenerateAPIKey)
+		r.Get("/{id}/api-key", orgHandler.GetAPIKeyInfo)
+		r.Delete("/{id}/api-key", orgHandler.RevokeAPIKey)
 	})
 }
 
@@ -281,4 +345,36 @@ func setupTestRoutes(r chi.Router, deps *handlers.Dependencies) {
 			r.Get("/{execution_id}", testHandler.GetTestExecutionStatus)
 		})
 	})
+}
+
+// getCORSAllowedOrigins returns CORS allowed origins based on environment
+func getCORSAllowedOrigins() []string {
+	env := os.Getenv("ENV")
+	if env == "development" || env == "dev" {
+		// Development: allow common local origins
+		return []string{"*", "http://localhost:3000", "http://localhost:8080"}
+	}
+	
+	// Production: get from environment variable
+	originsStr := os.Getenv("CORS_ALLOWED_ORIGINS")
+	if originsStr == "" {
+		return []string{} // Strict: no origins allowed if not configured
+	}
+	
+	// Parse comma-separated origins
+	origins := []string{}
+	for _, origin := range strings.Split(originsStr, ",") {
+		origin = strings.TrimSpace(origin)
+		if origin != "" {
+			origins = append(origins, origin)
+		}
+	}
+	return origins
+}
+
+// getLogger returns a logger instance for middleware
+func getLogger() middleware.Logger {
+	// Use pkg.JSONLogger if available, otherwise return nil
+	// This allows middleware to work even without a logger
+	return nil // Can be enhanced to return actual logger
 }

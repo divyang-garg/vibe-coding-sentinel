@@ -48,7 +48,7 @@ func extractFunctionCodeAST(fullCode string, functionName string, startLine int,
 
 	// Traverse AST to find the specific function
 	var targetNode *sitter.Node
-	traverseAST(rootNode, func(node *sitter.Node) bool {
+	TraverseAST(rootNode, func(node *sitter.Node) bool {
 		var foundName string
 		var isFunction bool
 

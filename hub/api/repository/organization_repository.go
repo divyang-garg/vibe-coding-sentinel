@@ -90,25 +90,27 @@ func NewProjectRepository(db Database) *ProjectRepositoryImpl {
 // Save saves a project to the database
 func (r *ProjectRepositoryImpl) Save(ctx context.Context, project *models.Project) error {
 	query := `
-		INSERT INTO projects (id, org_id, name, api_key, created_at)
-		VALUES ($1, $2, $3, $4, $5)
+		INSERT INTO projects (id, org_id, name, api_key, api_key_hash, api_key_prefix, created_at)
+		VALUES ($1, $2, $3, $4, $5, $6, $7)
 		ON CONFLICT (id) DO UPDATE SET
 			name = EXCLUDED.name,
-			api_key = EXCLUDED.api_key
+			api_key = EXCLUDED.api_key,
+			api_key_hash = EXCLUDED.api_key_hash,
+			api_key_prefix = EXCLUDED.api_key_prefix
 		WHERE projects.id = EXCLUDED.id`
 
-	_, err := r.db.Exec(ctx, query, project.ID, project.OrgID, project.Name, project.APIKey, project.CreatedAt)
+	_, err := r.db.Exec(ctx, query, project.ID, project.OrgID, project.Name, project.APIKey, project.APIKeyHash, project.APIKeyPrefix, project.CreatedAt)
 	return err
 }
 
 // FindByID retrieves a project by ID
 func (r *ProjectRepositoryImpl) FindByID(ctx context.Context, id string) (*models.Project, error) {
-	query := "SELECT id, org_id, name, api_key, created_at FROM projects WHERE id = $1"
+	query := "SELECT id, org_id, name, api_key, api_key_hash, api_key_prefix, created_at FROM projects WHERE id = $1"
 
 	var project models.Project
-	var apiKey *string
+	var apiKey, apiKeyHash, apiKeyPrefix *string
 
-	err := r.db.QueryRow(ctx, query, id).Scan(&project.ID, &project.OrgID, &project.Name, &apiKey, &project.CreatedAt)
+	err := r.db.QueryRow(ctx, query, id).Scan(&project.ID, &project.OrgID, &project.Name, &apiKey, &apiKeyHash, &apiKeyPrefix, &project.CreatedAt)
 	if err != nil {
 		return nil, err
 	}
@@ -116,13 +118,19 @@ func (r *ProjectRepositoryImpl) FindByID(ctx context.Context, id string) (*model
 	if apiKey != nil {
 		project.APIKey = *apiKey
 	}
+	if apiKeyHash != nil {
+		project.APIKeyHash = *apiKeyHash
+	}
+	if apiKeyPrefix != nil {
+		project.APIKeyPrefix = *apiKeyPrefix
+	}
 
 	return &project, nil
 }
 
 // FindByOrganizationID retrieves projects by organization ID
 func (r *ProjectRepositoryImpl) FindByOrganizationID(ctx context.Context, orgID string) ([]models.Project, error) {
-	query := "SELECT id, org_id, name, api_key, created_at FROM projects WHERE org_id = $1 ORDER BY created_at DESC"
+	query := "SELECT id, org_id, name, api_key, api_key_hash, api_key_prefix, created_at FROM projects WHERE org_id = $1 ORDER BY created_at DESC"
 
 	rows, err := r.db.Query(ctx, query, orgID)
 	if err != nil {
@@ -133,15 +141,21 @@ func (r *ProjectRepositoryImpl) FindByOrganizationID(ctx context.Context, orgID 
 	var projects []models.Project
 	for rows.Next() {
 		var project models.Project
-		var apiKey *string
+		var apiKey, apiKeyHash, apiKeyPrefix *string
 
-		err := rows.Scan(&project.ID, &project.OrgID, &project.Name, &apiKey, &project.CreatedAt)
+		err := rows.Scan(&project.ID, &project.OrgID, &project.Name, &apiKey, &apiKeyHash, &apiKeyPrefix, &project.CreatedAt)
 		if err != nil {
 			return nil, err
 		}
 
 		if apiKey != nil {
 			project.APIKey = *apiKey
+		}
+		if apiKeyHash != nil {
+			project.APIKeyHash = *apiKeyHash
+		}
+		if apiKeyPrefix != nil {
+			project.APIKeyPrefix = *apiKeyPrefix
 		}
 
 		projects = append(projects, project)
@@ -150,14 +164,43 @@ func (r *ProjectRepositoryImpl) FindByOrganizationID(ctx context.Context, orgID 
 	return projects, nil
 }
 
-// FindByAPIKey retrieves a project by API key
+// FindByAPIKey retrieves a project by API key (legacy method for migration support)
 func (r *ProjectRepositoryImpl) FindByAPIKey(ctx context.Context, apiKey string) (*models.Project, error) {
-	query := "SELECT id, org_id, name, api_key, created_at FROM projects WHERE api_key = $1"
+	query := "SELECT id, org_id, name, api_key, api_key_hash, api_key_prefix, created_at FROM projects WHERE api_key = $1"
 
 	var project models.Project
-	err := r.db.QueryRow(ctx, query, apiKey).Scan(&project.ID, &project.OrgID, &project.Name, &project.APIKey, &project.CreatedAt)
+	var apiKeyHash, apiKeyPrefix *string
+	err := r.db.QueryRow(ctx, query, apiKey).Scan(&project.ID, &project.OrgID, &project.Name, &project.APIKey, &apiKeyHash, &apiKeyPrefix, &project.CreatedAt)
 	if err != nil {
 		return nil, err
+	}
+
+	if apiKeyHash != nil {
+		project.APIKeyHash = *apiKeyHash
+	}
+	if apiKeyPrefix != nil {
+		project.APIKeyPrefix = *apiKeyPrefix
+	}
+
+	return &project, nil
+}
+
+// FindByAPIKeyHash retrieves a project by API key hash (secure method)
+func (r *ProjectRepositoryImpl) FindByAPIKeyHash(ctx context.Context, apiKeyHash string) (*models.Project, error) {
+	query := "SELECT id, org_id, name, api_key, api_key_hash, api_key_prefix, created_at FROM projects WHERE api_key_hash = $1"
+
+	var project models.Project
+	var apiKey, apiKeyPrefix *string
+	err := r.db.QueryRow(ctx, query, apiKeyHash).Scan(&project.ID, &project.OrgID, &project.Name, &apiKey, &project.APIKeyHash, &apiKeyPrefix, &project.CreatedAt)
+	if err != nil {
+		return nil, err
+	}
+
+	if apiKey != nil {
+		project.APIKey = *apiKey
+	}
+	if apiKeyPrefix != nil {
+		project.APIKeyPrefix = *apiKeyPrefix
 	}
 
 	return &project, nil

@@ -1,0 +1,6 @@
+{
+  "jsonrpc": "2.0",
+  "id": 203,
+  "method": "tools/call",
+  "params": {"name": "sentinel_list_tasks", "arguments": {}}
+}

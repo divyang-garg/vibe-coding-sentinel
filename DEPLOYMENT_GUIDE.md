@@ -235,6 +235,65 @@ git init
 3. Validate syntax: `./sentinel validate-rules`
 4. Restart Cursor IDE
 
+## Hub Integration (Optional)
+
+If you're deploying with Hub integration:
+
+### Hub Setup
+
+1. **Deploy Hub Server** (see `docs/external/HUB_DEPLOYMENT_GUIDE.md`)
+
+2. **Create Project and Get API Key**
+   ```bash
+   # Create project via Hub API
+   curl -X POST http://localhost:8080/api/v1/projects \
+     -H "Content-Type: application/json" \
+     -H "X-API-Key: admin-key" \
+     -d '{"name": "My Project"}'
+   
+   # Response includes api_key - SAVE THIS!
+   # {
+   #   "id": "proj_123",
+   #   "api_key": "xK9mP2qR7vT4wY8zA1bC3dE5fG6hI0j",  # ⚠️ Save immediately!
+   #   ...
+   # }
+   ```
+
+3. **Configure Sentinel to use Hub**
+   ```bash
+   export SENTINEL_HUB_URL="http://localhost:8080"
+   export SENTINEL_API_KEY="your-project-api-key"  # From step 2
+   ```
+
+4. **Verify Hub Connection**
+   ```bash
+   ./sentinel status  # Should show Hub connection status
+   ```
+
+### API Key Management
+
+If you need to manage API keys:
+
+**Generate new key:**
+```bash
+curl -X POST http://localhost:8080/api/v1/projects/proj_123/api-key \
+  -H "X-API-Key: admin-key"
+```
+
+**Check key status:**
+```bash
+curl -X GET http://localhost:8080/api/v1/projects/proj_123/api-key \
+  -H "X-API-Key: admin-key"
+```
+
+**Revoke key:**
+```bash
+curl -X DELETE http://localhost:8080/api/v1/projects/proj_123/api-key \
+  -H "X-API-Key: admin-key"
+```
+
+For detailed API key management, see `docs/API_KEY_MANAGEMENT_GUIDE.md`.
+
 ## Post-Deployment Checklist
 
 - [ ] Go compiler installed and verified
@@ -246,6 +305,8 @@ git init
 - [ ] Git hooks installed (if using git)
 - [ ] CI workflow file created
 - [ ] Documentation updated
+- [ ] Hub integration configured (if using Hub)
+- [ ] API keys generated and stored securely (if using Hub)
 
 ## Next Steps After Deployment
 

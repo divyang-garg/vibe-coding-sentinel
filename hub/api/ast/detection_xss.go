@@ -30,7 +30,7 @@ func detectXSS(root *sitter.Node, code string, language string) []SecurityVulner
 func detectXSSGo(root *sitter.Node, code string) []SecurityVulnerability {
 	vulnerabilities := []SecurityVulnerability{}
 
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		// Look for HTML template rendering
 		if node.Type() == "call_expression" {
 			funcName := getFunctionName(node, code)
@@ -90,7 +90,7 @@ func detectXSSJS(root *sitter.Node, code string) []SecurityVulnerability {
 	}
 
 	// AST-based detection
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		// Look for innerHTML, outerHTML, document.write
 		if node.Type() == "assignment_expression" || node.Type() == "call_expression" {
 			codeSnippet := safeSlice(code, node.StartByte(), node.EndByte())
@@ -123,7 +123,7 @@ func detectXSSJS(root *sitter.Node, code string) []SecurityVulnerability {
 func detectXSSPython(root *sitter.Node, code string) []SecurityVulnerability {
 	vulnerabilities := []SecurityVulnerability{}
 
-	traverseAST(root, func(node *sitter.Node) bool {
+	TraverseAST(root, func(node *sitter.Node) bool {
 		// Look for template rendering (Flask, Django)
 		if node.Type() == "call_expression" {
 			funcName := getFunctionName(node, code)

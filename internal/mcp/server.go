@@ -8,7 +8,6 @@ import (
 	"fmt"
 	"os"
 	"sync/atomic"
-	"syscall"
 	"time"
 )
 
@@ -45,8 +44,8 @@ func (s *Server) Start() error {
 	const maxMessageSize = 10 * 1024 * 1024
 	scanner.Buffer(make([]byte, 1024), maxMessageSize)
 
-	// Disable output buffering for stdio
-	os.Stdout = os.NewFile(uintptr(syscall.Stdout), "/dev/stdout")
+	// Note: Do not reassign os.Stdout as it can cause file descriptor issues
+	// in test environments. The encoder already uses os.Stdout directly.
 
 	for scanner.Scan() {
 		messageBytes := scanner.Bytes()
