@@ -85,3 +85,23 @@ func LogWarn(ctx context.Context, msg string, args ...interface{}) {
 func LogError(ctx context.Context, msg string, args ...interface{}) {
 	logMessage(ctx, LogLevelError, msg, args...)
 }
+
+// LogErrorWithErr logs an error with an error object for structured logging
+func LogErrorWithErr(ctx context.Context, err error, msg string, fields ...interface{}) {
+	if !shouldLog(LogLevelError) {
+		return
+	}
+	requestID := getRequestID(ctx)
+	timestamp := time.Now().Format("2006-01-02 15:04:05")
+	
+	// Build structured log message
+	logMsg := fmt.Sprintf("[%s] [%s] [%s] %s", timestamp, LogLevelError, requestID, msg)
+	if err != nil {
+		logMsg += fmt.Sprintf(" error=%v", err)
+	}
+	if len(fields) > 0 {
+		logMsg += fmt.Sprintf(" %v", fields)
+	}
+	// Use constant format string to prevent format string injection
+	log.Printf("%s", logMsg)
+}

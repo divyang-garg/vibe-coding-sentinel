@@ -34,18 +34,18 @@ func runExtract(args []string) error {
 	// Parse document using document parser
 	parser, err := extraction.NewDocumentParser(opts.inputFile)
 	if err != nil {
-		return fmt.Errorf("document parsing failed: %w", err)
+		return fmt.Errorf("unable to read the document file: %w", err)
 	}
 
 	content, err := parser.Parse(opts.inputFile)
 	if err != nil {
-		return fmt.Errorf("failed to extract text from document: %w", err)
+		return fmt.Errorf("unable to extract text from the document: %w", err)
 	}
 
 	// Create extractor with dependencies
 	extractor, err := createExtractor(opts)
 	if err != nil {
-		return fmt.Errorf("failed to create extractor: %w", err)
+		return fmt.Errorf("unable to initialize extraction tool: %w", err)
 	}
 
 	// Perform extraction
@@ -77,7 +77,7 @@ func runExtract(args []string) error {
 		})
 	}
 	if err != nil {
-		return fmt.Errorf("extraction failed: %w", err)
+		return fmt.Errorf("extraction process encountered an error: %w", err)
 	}
 
 	// Output results
@@ -179,7 +179,7 @@ func createExtractor(opts extractOptions) (extraction.Extractor, error) {
 	llmClientAdapter, err := newLLMClientAdapter()
 	if err != nil {
 		if opts.useLLM {
-			return nil, fmt.Errorf("LLM client initialization failed: %w. Use --no-llm for regex-only extraction", err)
+			return nil, fmt.Errorf("unable to connect to AI service: %w. Use --no-llm for regex-only extraction", err)
 		}
 		// If --no-llm, create a no-op LLM client
 		llmClient = &noOpLLMClient{}
@@ -206,7 +206,7 @@ func outputResults(result *extraction.ExtractResult, opts extractOptions) error 
 		data, _ := json.MarshalIndent(result, "", "  ")
 		if opts.outputFile != "" {
 			if err := os.WriteFile(opts.outputFile, data, 0644); err != nil {
-				return fmt.Errorf("failed to write output file: %w", err)
+				return fmt.Errorf("unable to save results to file: %w", err)
 			}
 			fmt.Printf("Results written to %s\n", opts.outputFile)
 		} else {
@@ -247,7 +247,7 @@ func filterByConfidence(rules []extraction.BusinessRule, min float64) []extracti
 func saveToKnowledgeBase(rules []extraction.BusinessRule) error {
 	kb, err := loadKnowledge()
 	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to load knowledge base: %w", err)
+		return fmt.Errorf("unable to load knowledge base: %w", err)
 	}
 
 	for _, rule := range rules {
@@ -266,7 +266,7 @@ func saveToKnowledgeBase(rules []extraction.BusinessRule) error {
 	}
 
 	if err := saveKnowledge(kb); err != nil {
-		return fmt.Errorf("failed to save to knowledge base: %w", err)
+		return fmt.Errorf("unable to save to knowledge base: %w", err)
 	}
 
 	fmt.Printf("Saved %d rules to knowledge base\n", len(rules))

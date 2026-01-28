@@ -43,7 +43,7 @@ func CalculateConfidenceWithEdgeCases(finding *ASTFinding, validationResult Vali
 }
 
 // calculateOrphanedConfidence calculates confidence for orphaned code findings
-func calculateOrphanedConfidence(finding *ASTFinding, result ValidationResult) float64 {
+func calculateOrphanedConfidence(_ *ASTFinding, result ValidationResult) float64 {
 	// If references found in codebase, confidence is 0 (not orphaned)
 	if result.FoundInCodebase {
 		return 0.0
@@ -59,7 +59,7 @@ func calculateOrphanedConfidence(finding *ASTFinding, result ValidationResult) f
 }
 
 // calculateUnusedVariableConfidence calculates confidence for unused variable findings
-func calculateUnusedVariableConfidence(finding *ASTFinding, result ValidationResult) float64 {
+func calculateUnusedVariableConfidence(_ *ASTFinding, result ValidationResult) float64 {
 	// If exported, never auto-fix
 	if result.IsExported {
 		return 0.0
@@ -75,7 +75,7 @@ func calculateUnusedVariableConfidence(finding *ASTFinding, result ValidationRes
 }
 
 // calculateEmptyCatchConfidence calculates confidence for empty catch block findings
-func calculateEmptyCatchConfidence(finding *ASTFinding, result ValidationResult) float64 {
+func calculateEmptyCatchConfidence(_ *ASTFinding, result ValidationResult) float64 {
 	// If intent comment found, don't auto-fix
 	if result.HasIntent {
 		return 0.0

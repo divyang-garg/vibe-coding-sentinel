@@ -10,6 +10,7 @@ import (
 	"path/filepath"
 	"strings"
 
+	"sentinel-hub-api/llm"
 	"sentinel-hub-api/models"
 )
 
@@ -162,11 +163,41 @@ func trackUsage(ctx context.Context, usage *LLMUsage) error {
 
 // getLLMConfig retrieves LLM configuration for a project
 func getLLMConfig(ctx context.Context, projectID string) (*LLMConfig, error) {
-	// Return a default config for now - in production query database
-	return &LLMConfig{
-		Provider: "openai",
-		Model:    "gpt-3.5-turbo",
-	}, nil
+	// Query database for project-specific LLM configuration
+	llmConfigs, err := llm.ListLLMConfigs(ctx, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to list LLM configs: %w", err)
+	}
+
+	if len(llmConfigs) == 0 {
+		// Fallback to default config if no configuration found
+		return &LLMConfig{
+			Provider: "openai",
+			Model:    "gpt-3.5-turbo",
+		}, nil
+	}
+
+	// Convert llm.LLMConfig to models.LLMConfig (return first/most recent)
+	llmCfg := llmConfigs[0]
+	config := &LLMConfig{
+		ID:       llmCfg.ID,
+		Provider: llmCfg.Provider,
+		APIKey:   llmCfg.APIKey,
+		Model:    llmCfg.Model,
+		KeyType:  llmCfg.KeyType,
+	}
+
+	// Convert cost optimization config if present
+	if llmCfg.CostOptimization != nil {
+		config.CostOptimization = models.CostOptimizationConfig{
+			UseCache:          llmCfg.CostOptimization.UseCache,
+			CacheTTLHours:     llmCfg.CostOptimization.CacheTTLHours,
+			ProgressiveDepth:  llmCfg.CostOptimization.ProgressiveDepth,
+			MaxCostPerRequest: llmCfg.CostOptimization.MaxCostPerRequest,
+		}
+	}
+
+	return config, nil
 }
 
 // NOTE: selectModelWithDepth and callLLMWithDepth have been moved to llm_cache_analysis.go

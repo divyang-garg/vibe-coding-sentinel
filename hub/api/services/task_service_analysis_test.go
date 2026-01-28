@@ -326,7 +326,7 @@ func TestTaskService_GetTaskExecutionPlan(t *testing.T) {
 		// Then
 		assert.Error(t, err)
 		assert.Nil(t, plan)
-		assert.Contains(t, err.Error(), "no task IDs provided")
+		assert.Contains(t, err.Error(), "at least one task ID is required")
 		mockRepo.AssertNotCalled(t, "FindByID")
 	})
 

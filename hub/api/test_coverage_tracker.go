@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -452,7 +453,7 @@ func getCoverageHandler(w http.ResponseWriter, r *http.Request) {
 		&testFilesStr, &cov.LastUpdated, &cov.CreatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		http.Error(w, "Coverage not found", http.StatusNotFound)
 		return
 	}

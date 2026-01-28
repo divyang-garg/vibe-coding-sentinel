@@ -9,11 +9,13 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-// detectCommandInjection finds command injection vulnerabilities
+// detectCommandInjection finds command injection vulnerabilities.
+// Uses registry when a detector is registered; otherwise falls back to switch.
 func detectCommandInjection(root *sitter.Node, code string, language string) []SecurityVulnerability {
+	if d := GetLanguageDetector(language); d != nil {
+		return d.DetectCommandInjection(root, code)
+	}
 	vulnerabilities := []SecurityVulnerability{}
-
-	// Language-specific detection
 	switch language {
 	case "go":
 		vulnerabilities = append(vulnerabilities, detectCommandInjectionGo(root, code)...)
@@ -22,7 +24,6 @@ func detectCommandInjection(root *sitter.Node, code string, language string) []S
 	case "python":
 		vulnerabilities = append(vulnerabilities, detectCommandInjectionPython(root, code)...)
 	}
-
 	return vulnerabilities
 }
 

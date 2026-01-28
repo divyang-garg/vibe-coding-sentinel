@@ -7,9 +7,11 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
+	"strings"
 	"time"
 
 	"sentinel-hub-api/pkg/database"
+	"sentinel-hub-api/utils"
 
 	"github.com/google/uuid"
 )
@@ -48,7 +50,8 @@ func (s *TestServiceImpl) GenerateTestRequirements(ctx context.Context, req Gene
 	// Generate test requirements for each rule
 	var allRequirements []TestRequirement
 	for _, rule := range rules {
-		codeFunction := "" // Would use AST analysis in production
+		// Use AST analysis to map business rules to code functions
+		codeFunction := mapBusinessRuleToCodeFunction(ctx, rule, req.ProjectID)
 		requirements := generateTestRequirements(rule, codeFunction)
 		allRequirements = append(allRequirements, requirements...)
 	}
@@ -163,11 +166,8 @@ func (s *TestServiceImpl) GetTestCoverage(ctx context.Context, knowledgeItemID s
 		&coverage.CoveragePercentage, &testFilesJSON, &coverage.LastUpdated, &coverage.CreatedAt,
 	)
 
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("test coverage not found for knowledge item: %s", knowledgeItemID)
-	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to get test coverage: %w", err)
+		return nil, utils.HandleNotFoundError(err, "test coverage", knowledgeItemID)
 	}
 
 	if testFilesJSON.Valid {
@@ -265,11 +265,8 @@ func (s *TestServiceImpl) GetValidationResults(ctx context.Context, testRequirem
 		&validation.ValidatedAt, &validation.CreatedAt,
 	)
 
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("validation not found for test requirement: %s", testRequirementID)
-	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to get validation results: %w", err)
+		return nil, utils.HandleNotFoundError(err, "validation", testRequirementID)
 	}
 
 	if issuesJSON.Valid {
@@ -376,11 +373,8 @@ func (s *TestServiceImpl) GetTestExecutionStatus(ctx context.Context, executionI
 		&resultJSON, &execution.ExecutionTimeMs, &execution.CreatedAt, &completedAt,
 	)
 
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("test execution not found: %s", executionID)
-	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to get execution status: %w", err)
+		return nil, utils.HandleNotFoundError(err, "test execution", executionID)
 	}
 
 	if resultJSON.Valid {
@@ -418,4 +412,111 @@ func validateTestForRequirement(requirementID, testCode, language string) TestVa
 		ValidatedAt:       time.Now().UTC(),
 		CreatedAt:         time.Now().UTC(),
 	}
+}
+
+// mapBusinessRuleToCodeFunction maps a business rule to code functions using AST analysis
+// This implements the AST-based function mapping as specified in STUB_FUNCTIONALITY_ANALYSIS.md
+func mapBusinessRuleToCodeFunction(ctx context.Context, rule KnowledgeItem, projectID string) string {
+	// Extract keywords from rule title and content for matching
+	keywords := extractKeywords(rule.Title)
+	if rule.Content != "" {
+		contentKeywords := extractKeywords(rule.Content)
+		keywords = append(keywords, contentKeywords...)
+	}
+
+	if len(keywords) == 0 {
+		return ""
+	}
+
+	// Try to get codebasePath from project configuration
+	codebasePath := getProjectCodebasePath(ctx, projectID)
+
+	// If codebasePath is available, use detectBusinessRuleImplementation for accurate mapping
+	if codebasePath != "" {
+		evidence := detectBusinessRuleImplementation(rule, codebasePath)
+		if len(evidence.Functions) > 0 {
+			// Return the first matching function (highest confidence)
+			return evidence.Functions[0]
+		}
+	}
+
+	// Fallback: Use keyword-based function name suggestion
+	// This generates a suggested function name based on rule keywords
+	// The actual implementation can be mapped later when code is available
+	return suggestFunctionNameFromKeywords(keywords)
+}
+
+// getProjectCodebasePath retrieves the codebase path from project configuration
+// Returns empty string if not available (allows graceful fallback)
+func getProjectCodebasePath(ctx context.Context, projectID string) string {
+	if projectID == "" || db == nil {
+		return ""
+	}
+
+	// Try to get codebase_path from projects table
+	query := `SELECT codebase_path FROM projects WHERE id = $1`
+	var codebasePath sql.NullString
+
+	ctx, cancel := context.WithTimeout(ctx, 5*time.Second)
+	defer cancel()
+
+	err := database.QueryRowWithTimeout(ctx, db, query, projectID).Scan(&codebasePath)
+	if err != nil {
+		// Project not found or codebase_path not set - return empty string for fallback
+		return ""
+	}
+
+	if codebasePath.Valid {
+		return codebasePath.String
+	}
+
+	return ""
+}
+
+// suggestFunctionNameFromKeywords generates a suggested function name from keywords
+// This provides a reasonable function name suggestion when AST analysis isn't available
+func suggestFunctionNameFromKeywords(keywords []string) string {
+	if len(keywords) == 0 {
+		return ""
+	}
+
+	// Use the most significant keywords (longer words are typically more meaningful)
+	// Filter out common words and build a camelCase function name
+	var significantKeywords []string
+	for _, kw := range keywords {
+		if len(kw) > 3 { // Only use longer keywords
+			significantKeywords = append(significantKeywords, kw)
+		}
+	}
+
+	if len(significantKeywords) == 0 {
+		// Fallback to first keyword if all are short
+		if len(keywords) > 0 {
+			return capitalizeFirst(keywords[0])
+		}
+		return ""
+	}
+
+	// Build camelCase function name from keywords
+	// Use first 2-3 significant keywords to keep name reasonable
+	maxKeywords := 3
+	if len(significantKeywords) < maxKeywords {
+		maxKeywords = len(significantKeywords)
+	}
+
+	parts := significantKeywords[:maxKeywords]
+	functionName := parts[0]
+	for i := 1; i < len(parts); i++ {
+		functionName += capitalizeFirst(parts[i])
+	}
+
+	return capitalizeFirst(functionName)
+}
+
+// capitalizeFirst capitalizes the first letter of a string
+func capitalizeFirst(s string) string {
+	if len(s) == 0 {
+		return s
+	}
+	return strings.ToUpper(s[:1]) + s[1:]
 }

@@ -18,23 +18,23 @@ const (
 	EventTypeAuthSuccess      EventType = "auth_success"
 	EventTypeAuthFailure      EventType = "auth_failure"
 	EventTypeAuthTokenExpired EventType = "auth_token_expired"
-	
+
 	// API Key events
 	EventTypeAPIKeyGenerated EventType = "api_key_generated"
 	EventTypeAPIKeyRevoked   EventType = "api_key_revoked"
 	EventTypeAPIKeyValidated EventType = "api_key_validated"
-	
+
 	// Authorization events
-	EventTypeAccessGranted  EventType = "access_granted"
-	EventTypeAccessDenied   EventType = "access_denied"
+	EventTypeAccessGranted    EventType = "access_granted"
+	EventTypeAccessDenied     EventType = "access_denied"
 	EventTypePermissionDenied EventType = "permission_denied"
-	
+
 	// Security violations
 	EventTypeSQLInjectionAttempt EventType = "sql_injection_attempt"
 	EventTypeXSSAttempt          EventType = "xss_attempt"
 	EventTypePathTraversal       EventType = "path_traversal"
 	EventTypeRateLimitExceeded   EventType = "rate_limit_exceeded"
-	
+
 	// System events
 	EventTypeConfigChange EventType = "config_change"
 	EventTypeUserAction   EventType = "user_action"
@@ -52,20 +52,20 @@ const (
 
 // AuditEvent represents a security audit event
 type AuditEvent struct {
-	ID          string                 `json:"id"`
-	Type        EventType              `json:"type"`
-	Severity    Severity               `json:"severity"`
-	Timestamp   time.Time              `json:"timestamp"`
-	UserID      string                 `json:"user_id,omitempty"`
-	ProjectID   string                 `json:"project_id,omitempty"`
-	OrgID       string                 `json:"org_id,omitempty"`
-	IPAddress   string                 `json:"ip_address,omitempty"`
-	UserAgent   string                 `json:"user_agent,omitempty"`
-	Path        string                 `json:"path,omitempty"`
-	Method      string                 `json:"method,omitempty"`
-	Message     string                 `json:"message"`
-	Metadata    map[string]interface{} `json:"metadata,omitempty"`
-	Success     bool                   `json:"success"`
+	ID        string                 `json:"id"`
+	Type      EventType              `json:"type"`
+	Severity  Severity               `json:"severity"`
+	Timestamp time.Time              `json:"timestamp"`
+	UserID    string                 `json:"user_id,omitempty"`
+	ProjectID string                 `json:"project_id,omitempty"`
+	OrgID     string                 `json:"org_id,omitempty"`
+	IPAddress string                 `json:"ip_address,omitempty"`
+	UserAgent string                 `json:"user_agent,omitempty"`
+	Path      string                 `json:"path,omitempty"`
+	Method    string                 `json:"method,omitempty"`
+	Message   string                 `json:"message"`
+	Metadata  map[string]interface{} `json:"metadata,omitempty"`
+	Success   bool                   `json:"success"`
 }
 
 // AuditLogger interface for security event logging
@@ -208,7 +208,7 @@ func (l *DefaultAuditLogger) LogSecurityViolation(ctx context.Context, eventType
 		Type:     eventType,
 		Severity: SeverityError,
 		Message:  fmt.Sprintf("Security violation detected: %s", eventType),
-		Metadata:  details,
+		Metadata: details,
 		Success:  false,
 	}
 	return l.LogEvent(ctx, event)

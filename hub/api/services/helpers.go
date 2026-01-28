@@ -8,12 +8,14 @@ import (
 	"database/sql"
 	"encoding/json"
 	"fmt"
-	"net/http"
 	"path/filepath"
 	"strings"
+	"sync"
 	"time"
 
 	"sentinel-hub-api/ast"
+	"sentinel-hub-api/pkg"
+	"sentinel-hub-api/pkg/database"
 	"sentinel-hub-api/utils"
 )
 
@@ -53,24 +55,44 @@ func SetDB(database *sql.DB) {
 	db = database
 }
 
-// LogWarn logs a warning message (stub - in production would use proper logger)
+// CachedGapAnalysis represents a cached gap analysis result with expiration
+type CachedGapAnalysis struct {
+	Report    *GapAnalysisReport
+	ExpiresAt time.Time
+}
+
+var (
+	// gapAnalysisCache stores cached gap analysis reports
+	// Key format: "projectID:codebasePath"
+	gapAnalysisCache sync.Map // map[string]*CachedGapAnalysis
+)
+
+// Default gap analysis cache TTL
+const defaultGapAnalysisCacheTTL = 5 * time.Minute
+
+// LogWarn logs a warning message using structured logging
 func LogWarn(ctx context.Context, msg string, args ...interface{}) {
-	fmt.Printf("WARN: "+msg+"\n", args...)
+	pkg.LogWarn(ctx, msg, args...)
 }
 
-// LogError logs an error message (stub - in production would use proper logger)
+// LogError logs an error message using structured logging
 func LogError(ctx context.Context, msg string, args ...interface{}) {
-	fmt.Printf("ERROR: "+msg+"\n", args...)
+	pkg.LogError(ctx, msg, args...)
 }
 
-// LogInfo logs an info message (stub - in production would use proper logger)
+// LogInfo logs an info message using structured logging
 func LogInfo(ctx context.Context, msg string, args ...interface{}) {
-	fmt.Printf("INFO: "+msg+"\n", args...)
+	pkg.LogInfo(ctx, msg, args...)
 }
 
-// getQueryTimeout returns the default query timeout (stub)
+// LogDebug logs a debug message using structured logging
+func LogDebug(ctx context.Context, msg string, args ...interface{}) {
+	pkg.LogDebug(ctx, msg, args...)
+}
+
+// getQueryTimeout returns the configured query timeout from database package
 func getQueryTimeout() time.Duration {
-	return 30 * time.Second
+	return database.DefaultTimeoutConfig.QueryTimeout
 }
 
 // extractFeatureKeywords extracts keywords from feature name
@@ -146,11 +168,8 @@ func GetTask(ctx context.Context, taskID string) (*Task, error) {
 		&task.EstimatedEffort, &task.ActualEffort, &task.VerificationConfidence,
 		&task.CreatedAt, &task.UpdatedAt, &completedAt, &verifiedAt, &archivedAt, &task.Version,
 	)
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("task not found")
-	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to get task: %w", err)
+		return nil, utils.HandleNotFoundError(err, "task", taskID)
 	}
 
 	task.CompletedAt = completedAt
@@ -160,9 +179,22 @@ func GetTask(ctx context.Context, taskID string) (*Task, error) {
 	return &task, nil
 }
 
-// invalidateGapAnalysisCache invalidates the gap analysis cache for a project (stub)
+// invalidateGapAnalysisCache invalidates the gap analysis cache for a project
+// Removes all cached gap analyses for the specified project ID
 func invalidateGapAnalysisCache(projectID string) {
-	// Stub - cache invalidation would be implemented here
+	if projectID == "" {
+		return
+	}
+
+	// Range through all cache entries and delete those matching the project ID
+	gapAnalysisCache.Range(func(key, value interface{}) bool {
+		cacheKey := key.(string)
+		// Cache key format is "projectID:codebasePath"
+		if strings.HasPrefix(cacheKey, projectID+":") {
+			gapAnalysisCache.Delete(cacheKey)
+		}
+		return true
+	})
 }
 
 // ListTasks lists tasks for a project using direct database query
@@ -300,18 +332,201 @@ func ValidateDirectory(path string) error {
 	return utils.ValidateDirectory(path)
 }
 
-// getCachedGapAnalysis retrieves cached gap analysis (stub)
+// getCachedGapAnalysis retrieves cached gap analysis if available and not expired
+// Returns the cached report and true if found and valid, nil and false otherwise
 func getCachedGapAnalysis(projectID, codebasePath string) (*GapAnalysisReport, bool) {
+	if projectID == "" || codebasePath == "" {
+		return nil, false
+	}
+
+	cacheKey := projectID + ":" + codebasePath
+
+	// Load from cache
+	if cached, ok := gapAnalysisCache.Load(cacheKey); ok {
+		cachedAnalysis := cached.(*CachedGapAnalysis)
+		now := time.Now()
+
+		// Check if cache entry is still valid
+		if now.Before(cachedAnalysis.ExpiresAt) {
+			return cachedAnalysis.Report, true
+		}
+
+		// Entry expired, remove from cache
+		gapAnalysisCache.Delete(cacheKey)
+	}
+
 	return nil, false
 }
 
-// setCachedGapAnalysis stores gap analysis in cache (stub)
+// setCachedGapAnalysis stores gap analysis in cache with TTL expiration
+// Uses configurable TTL from ServiceConfig or default if not configured
 func setCachedGapAnalysis(projectID, codebasePath string, report *GapAnalysisReport) {
-	// Stub - cache would be implemented here
+	if projectID == "" || codebasePath == "" || report == nil {
+		return
+	}
+
+	// Get TTL from config or use default
+	config := GetConfig()
+	ttl := defaultGapAnalysisCacheTTL
+	if config != nil && config.Cache.GapAnalysisTTL > 0 {
+		ttl = config.Cache.GapAnalysisTTL
+	}
+
+	cacheKey := projectID + ":" + codebasePath
+	cached := &CachedGapAnalysis{
+		Report:    report,
+		ExpiresAt: time.Now().Add(ttl),
+	}
+
+	gapAnalysisCache.Store(cacheKey, cached)
 }
 
-// extractFunctionSignature extracts function signature from code (stub)
+// extractFunctionSignature extracts function signature from AST node or code
 func extractFunctionSignature(node interface{}, code string, language string) string {
+	if node == nil && code == "" {
+		return ""
+	}
+
+	// Try to use AST package's extraction if node is available
+	if node != nil {
+		// Use AST package's ExtractFunctions to get function info
+		// This is a simplified approach - in production, would parse node directly
+		functions, err := ast.ExtractFunctions(code, language, "")
+		if err == nil && len(functions) > 0 {
+			// Return first function's signature
+			funcInfo := functions[0]
+			paramStr := "()"
+			if len(funcInfo.Parameters) > 0 {
+				var params []string
+				for _, param := range funcInfo.Parameters {
+					if param.Name != "" {
+						if param.Type != "" {
+							params = append(params, param.Name+" "+param.Type)
+						} else {
+							params = append(params, param.Name)
+						}
+					}
+				}
+				if len(params) > 0 {
+					paramStr = "(" + strings.Join(params, ", ") + ")"
+				}
+			}
+			return funcInfo.Name + paramStr
+		}
+	}
+
+	// Fallback: extract from code string using simple pattern matching
+	return extractSignatureFromCode(code, language)
+}
+
+// extractSignatureFromCode extracts signature from code string as fallback
+func extractSignatureFromCode(code string, language string) string {
+	if code == "" {
+		return ""
+	}
+
+	// Use language parameter to optimize pattern matching
+	// Only check patterns relevant to the specified language
+	lines := strings.Split(code, "\n")
+	for _, line := range lines {
+		line = strings.TrimSpace(line)
+		if line == "" {
+			continue
+		}
+
+		// Language-specific pattern matching
+		switch language {
+		case "go":
+			// Go: func FunctionName(params) returnType
+			if strings.HasPrefix(line, "func ") {
+				// Extract function declaration up to opening brace
+				idx := strings.Index(line, "{")
+				if idx > 0 {
+					return strings.TrimSpace(line[:idx])
+				}
+				// If no brace, return the whole line
+				return line
+			}
+		case "python":
+			// Python: def function_name(params):
+			if strings.HasPrefix(line, "def ") {
+				// Extract up to colon
+				idx := strings.Index(line, ":")
+				if idx > 0 {
+					return strings.TrimSpace(line[:idx])
+				}
+				return line
+			}
+		case "javascript", "typescript":
+			// JavaScript/TypeScript: function name(params) or const name = (params) =>
+			if strings.Contains(line, "function ") {
+				idx := strings.Index(line, "{")
+				if idx > 0 {
+					return strings.TrimSpace(line[:idx])
+				}
+				return line
+			}
+			// Arrow function: const name = (params) =>
+			if strings.Contains(line, "=>") {
+				idx := strings.Index(line, "=>")
+				if idx > 0 {
+					beforeArrow := strings.TrimSpace(line[:idx])
+					// Try to extract function name and params
+					if strings.Contains(beforeArrow, "=") {
+						parts := strings.Split(beforeArrow, "=")
+						if len(parts) == 2 {
+							name := strings.TrimSpace(parts[0])
+							params := strings.TrimSpace(parts[1])
+							return name + " = " + params
+						}
+					}
+					return beforeArrow
+				}
+			}
+		default:
+			// Unknown language or empty - check all patterns as fallback
+			// Go pattern
+			if strings.HasPrefix(line, "func ") {
+				idx := strings.Index(line, "{")
+				if idx > 0 {
+					return strings.TrimSpace(line[:idx])
+				}
+				return line
+			}
+			// Python pattern
+			if strings.HasPrefix(line, "def ") {
+				idx := strings.Index(line, ":")
+				if idx > 0 {
+					return strings.TrimSpace(line[:idx])
+				}
+				return line
+			}
+			// JavaScript/TypeScript patterns
+			if strings.Contains(line, "function ") {
+				idx := strings.Index(line, "{")
+				if idx > 0 {
+					return strings.TrimSpace(line[:idx])
+				}
+				return line
+			}
+			if strings.Contains(line, "=>") {
+				idx := strings.Index(line, "=>")
+				if idx > 0 {
+					beforeArrow := strings.TrimSpace(line[:idx])
+					if strings.Contains(beforeArrow, "=") {
+						parts := strings.Split(beforeArrow, "=")
+						if len(parts) == 2 {
+							name := strings.TrimSpace(parts[0])
+							params := strings.TrimSpace(parts[1])
+							return name + " = " + params
+						}
+					}
+					return beforeArrow
+				}
+			}
+		}
+	}
+
 	return ""
 }
 
@@ -320,20 +535,37 @@ type CacheConfig struct {
 	TaskCacheTTL    time.Duration
 	VerificationTTL time.Duration
 	DependencyTTL   time.Duration
+	GapAnalysisTTL  time.Duration
 }
 
 // ServiceConfig represents service configuration
 type ServiceConfig struct {
-	Cache CacheConfig
+	Cache       CacheConfig
+	Architecture ArchitectureConfig
 }
 
-// GetConfig returns service configuration (stub)
+// ArchitectureConfig holds thresholds for architecture analysis
+type ArchitectureConfig struct {
+	WarningLines  int
+	CriticalLines int
+	MaxLines      int
+	MaxFanOut     int
+}
+
+// GetConfig returns service configuration
 func GetConfig() *ServiceConfig {
 	return &ServiceConfig{
 		Cache: CacheConfig{
 			TaskCacheTTL:    5 * time.Minute,
 			VerificationTTL: 10 * time.Minute,
 			DependencyTTL:   15 * time.Minute,
+			GapAnalysisTTL:  5 * time.Minute,
+		},
+		Architecture: ArchitectureConfig{
+			WarningLines:  300,
+			CriticalLines: 500,
+			MaxLines:      1000,
+			MaxFanOut:     15,
 		},
 	}
 }
@@ -344,28 +576,9 @@ type contextKey string
 // projectKey is the context key for project
 const projectKey contextKey = "project"
 
-// Handler stubs - required by test_handlers.go
-func validateCodeHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-	w.Write([]byte(`{"error":"validateCodeHandler stub"}`))
-}
-
-func applyFixHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-	w.Write([]byte(`{"error":"applyFixHandler stub"}`))
-}
-
-func validateLLMConfigHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-	w.Write([]byte(`{"error":"validateLLMConfigHandler stub"}`))
-}
-
-func getCacheMetricsHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-	w.Write([]byte(`{"error":"getCacheMetricsHandler stub"}`))
-}
-
-func getCostMetricsHandler(w http.ResponseWriter, r *http.Request) {
-	w.WriteHeader(http.StatusNotImplemented)
-	w.Write([]byte(`{"error":"getCostMetricsHandler stub"}`))
-}
+// Handler stubs removed - these are now implemented in handlers package:
+// - validateCodeHandler -> handlers.CodeAnalysisHandler.ValidateCode
+// - applyFixHandler -> handlers.FixHandler.ApplyFix
+// - validateLLMConfigHandler -> handlers.LLMHandler.ValidateLLMConfig
+// - getCacheMetricsHandler -> handlers.MetricsHandler.GetCacheMetrics
+// - getCostMetricsHandler -> handlers.MetricsHandler.GetCostMetrics

@@ -8,11 +8,13 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-// detectInsecureCrypto finds insecure cryptographic usage
+// detectInsecureCrypto finds insecure cryptographic usage.
+// Uses registry when a detector is registered; otherwise falls back to switch.
 func detectInsecureCrypto(root *sitter.Node, code string, language string) []SecurityVulnerability {
+	if d := GetLanguageDetector(language); d != nil {
+		return d.DetectCrypto(root, code)
+	}
 	vulnerabilities := []SecurityVulnerability{}
-
-	// Language-specific detection
 	switch language {
 	case "go":
 		vulnerabilities = append(vulnerabilities, detectInsecureCryptoGo(root, code)...)
@@ -21,7 +23,6 @@ func detectInsecureCrypto(root *sitter.Node, code string, language string) []Sec
 	case "python":
 		vulnerabilities = append(vulnerabilities, detectInsecureCryptoPython(root, code)...)
 	}
-
 	return vulnerabilities
 }
 

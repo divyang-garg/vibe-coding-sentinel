@@ -10,8 +10,9 @@ import (
 	"testing"
 	"time"
 
-	_ "github.com/lib/pq"
 	"sentinel-hub-api/repository"
+
+	_ "github.com/lib/pq"
 )
 
 // TestDBConfig holds test database configuration
@@ -46,7 +47,7 @@ func (c *TestDBConfig) ConnectionString() string {
 // It will skip the test if database is not available
 func SetupTestDB(t *testing.T) *sql.DB {
 	config := DefaultTestDBConfig()
-	
+
 	db, err := sql.Open("postgres", config.ConnectionString())
 	if err != nil {
 		t.Skipf("Skipping integration test: failed to connect to test database: %v", err)
@@ -95,6 +96,7 @@ func CleanupTestData(t *testing.T, db *sql.DB) {
 		"users",
 		"task_dependencies",
 		"llm_usage",
+		"knowledge_items", // Added for knowledge service tests
 	}
 
 	for _, table := range tables {
@@ -109,7 +111,7 @@ func CleanupTestData(t *testing.T, db *sql.DB) {
 // WaitForDB waits for database to be ready (for Docker startup)
 func WaitForDB(config *TestDBConfig, maxWait time.Duration) error {
 	deadline := time.Now().Add(maxWait)
-	
+
 	for time.Now().Before(deadline) {
 		db, err := sql.Open("postgres", config.ConnectionString())
 		if err == nil {
@@ -117,14 +119,14 @@ func WaitForDB(config *TestDBConfig, maxWait time.Duration) error {
 			err = db.PingContext(ctx)
 			cancel()
 			db.Close()
-			
+
 			if err == nil {
 				return nil
 			}
 		}
 		time.Sleep(500 * time.Millisecond)
 	}
-	
+
 	return fmt.Errorf("database not ready after %v", maxWait)
 }
 

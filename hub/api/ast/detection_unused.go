@@ -8,10 +8,13 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-// detectUnusedVariables finds unused variable declarations
+// detectUnusedVariables finds unused variable declarations.
+// Uses registry when a detector is registered for the language; otherwise falls back to switch.
 func detectUnusedVariables(root *sitter.Node, code string, language string) []ASTFinding {
+	if d := GetLanguageDetector(language); d != nil {
+		return d.DetectUnused(root, code)
+	}
 	findings := []ASTFinding{}
-
 	switch language {
 	case "go":
 		findings = detectUnusedVariablesGo(root, code)
@@ -20,7 +23,6 @@ func detectUnusedVariables(root *sitter.Node, code string, language string) []AS
 	case "python":
 		findings = detectUnusedVariablesPython(root, code)
 	}
-
 	return findings
 }
 

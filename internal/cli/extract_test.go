@@ -86,7 +86,6 @@ func TestParseExtractOptions(t *testing.T) {
 	})
 }
 
-
 func TestExtractHelpers(t *testing.T) {
 	t.Run("newSimpleCache", func(t *testing.T) {
 		cache := newSimpleCache()
@@ -97,10 +96,10 @@ func TestExtractHelpers(t *testing.T) {
 
 	t.Run("simpleCache Get/Set", func(t *testing.T) {
 		cache := newSimpleCache()
-		
+
 		// Test Set
 		cache.Set("key1", "value1", 100)
-		
+
 		// Test Get
 		val, ok := cache.Get("key1")
 		if !ok {
@@ -109,7 +108,7 @@ func TestExtractHelpers(t *testing.T) {
 		if val != "value1" {
 			t.Errorf("Expected value 'value1', got '%s'", val)
 		}
-		
+
 		// Test Get non-existent key
 		_, ok = cache.Get("nonexistent")
 		if ok {
@@ -122,7 +121,7 @@ func TestExtractHelpers(t *testing.T) {
 		if logger == nil {
 			t.Error("Expected non-nil logger")
 		}
-		
+
 		// Test that logger methods don't panic
 		logger.Debug("debug message")
 		logger.Info("info message")
@@ -164,7 +163,7 @@ func TestRunExtract(t *testing.T) {
 		// Create a simple text file
 		testFile := filepath.Join(tmpDir, "test.txt")
 		os.WriteFile(testFile, []byte("Business rule: Users must authenticate."), 0644)
-		
+
 		// This will fail without LLM setup, but tests parsing and initial setup
 		err := runExtract([]string{testFile, "--no-llm"})
 		// May fail on extraction, but should parse options correctly

@@ -42,6 +42,15 @@ func NewRateLimiter(requests int, window time.Duration) *RateLimiter {
 	return rl
 }
 
+// SetCleanupInterval sets the cleanup interval (for testing)
+// This should be called before the cleanup worker starts, or the worker
+// should be restarted. For production use, set cleanup in NewRateLimiter.
+func (rl *RateLimiter) SetCleanupInterval(interval time.Duration) {
+	rl.mu.Lock()
+	defer rl.mu.Unlock()
+	rl.cleanup = interval
+}
+
 // Allow checks if request is allowed
 func (rl *RateLimiter) Allow(identifier string) bool {
 	rl.mu.Lock()

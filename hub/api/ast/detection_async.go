@@ -96,75 +96,63 @@ func detectEmptyCatchBlocks(root *sitter.Node, code string, language string) []A
 	return findings
 }
 
-// detectMissingAwait finds missing await keywords in async functions
+// detectMissingAwait finds missing await keywords in async functions.
+// Uses registry when a detector is registered; otherwise falls back to language check.
 func detectMissingAwait(root *sitter.Node, code string, language string) []ASTFinding {
+	if d := GetLanguageDetector(language); d != nil {
+		return d.DetectAsync(root, code)
+	}
 	findings := []ASTFinding{}
-
-	// Only relevant for JavaScript/TypeScript
+	// Only relevant for JavaScript/TypeScript when no detector registered
 	if language != "javascript" && language != "typescript" {
 		return findings
 	}
+	return detectMissingAwaitJS(root, code)
+}
 
-	// Track async functions and their bodies
-	asyncFunctions := make(map[*sitter.Node]*sitter.Node) // function node -> body node
+// detectMissingAwaitJS finds missing await keywords in JS/TS async functions
+func detectMissingAwaitJS(root *sitter.Node, code string) []ASTFinding {
+	findings := []ASTFinding{}
+	asyncFunctions := make(map[*sitter.Node]*sitter.Node)
 
-	// First pass: find all async functions
 	TraverseAST(root, func(node *sitter.Node) bool {
 		isAsyncFunc := false
 		var bodyNode *sitter.Node
 
 		if node.Type() == "function_declaration" || node.Type() == "arrow_function" || node.Type() == "function_expression" {
-			// Check if function is async
 			for i := 0; i < int(node.ChildCount()); i++ {
 				child := node.Child(i)
 				if child != nil {
 					if child.Type() == "async" {
 						isAsyncFunc = true
 					}
-					// Find function body
 					if child.Type() == "statement_block" || child.Type() == "expression_statement" {
 						bodyNode = child
 					}
 				}
 			}
-
 			if isAsyncFunc && bodyNode != nil {
 				asyncFunctions[node] = bodyNode
 			}
 		}
-
 		return true
 	})
 
-	// Second pass: check for async calls without await in async function bodies
 	for _, bodyNode := range asyncFunctions {
 		TraverseAST(bodyNode, func(node *sitter.Node) bool {
-			// Look for call expressions that might need await
 			if node.Type() == "call_expression" {
-				// Check if this call is awaited
 				parent := node.Parent()
-				isAwaited := false
-
-				if parent != nil && parent.Type() == "await_expression" {
-					isAwaited = true
-				}
-
-				// If not awaited, check if it's likely an async call
+				isAwaited := parent != nil && parent.Type() == "await_expression"
 				if !isAwaited {
-					// Simple heuristic: if the call expression contains common async patterns
 					callCode := safeSlice(code, node.StartByte(), node.EndByte())
 					callCodeLower := strings.ToLower(callCode)
-
-					// Common async patterns (fetch, promise methods, async function calls)
 					likelyAsync := strings.Contains(callCodeLower, "fetch") ||
 						strings.Contains(callCodeLower, ".then") ||
 						strings.Contains(callCodeLower, ".catch") ||
 						strings.Contains(callCodeLower, "promise")
-
 					if likelyAsync {
 						startLine, startCol := getLineColumn(code, int(node.StartByte()))
 						endLine, endCol := getLineColumn(code, int(node.EndByte()))
-
 						findings = append(findings, ASTFinding{
 							Type:       "missing_await",
 							Severity:   "error",
@@ -179,10 +167,8 @@ func detectMissingAwait(root *sitter.Node, code string, language string) []ASTFi
 					}
 				}
 			}
-
 			return true
 		})
 	}
-
 	return findings
 }

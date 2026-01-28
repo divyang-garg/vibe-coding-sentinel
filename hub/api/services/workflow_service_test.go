@@ -281,21 +281,24 @@ func TestWorkflowServiceImpl_GetWorkflow_NotFound(t *testing.T) {
 func TestWorkflowServiceImpl_ListWorkflows(t *testing.T) {
 	service := NewWorkflowService(newInMemoryWorkflowRepository())
 
-	// Create multiple workflows
+	// Create multiple workflows with distinct IDs to avoid timestamp collision
 	workflows := []models.WorkflowDefinition{
 		{
+			ID:   "wf-list-1",
 			Name: "Workflow 1",
 			Steps: []models.WorkflowStep{
 				{ID: "step-1", Name: "Step 1", ToolName: "tool1"},
 			},
 		},
 		{
+			ID:   "wf-list-2",
 			Name: "Workflow 2",
 			Steps: []models.WorkflowStep{
 				{ID: "step-1", Name: "Step 1", ToolName: "tool1"},
 			},
 		},
 		{
+			ID:   "wf-list-3",
 			Name: "Workflow 3",
 			Steps: []models.WorkflowStep{
 				{ID: "step-1", Name: "Step 1", ToolName: "tool1"},

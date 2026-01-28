@@ -60,7 +60,7 @@ func runAudit(args []string) error {
 	fmt.Println("🔍 Running security audit...")
 	result, err := scanner.Scan(opts)
 	if err != nil {
-		return fmt.Errorf("scan failed: %w", err)
+		return fmt.Errorf("security scan encountered an error: %w", err)
 	}
 
 	// If --deep flag is set and not offline, try Hub integration
@@ -95,7 +95,7 @@ func runAudit(args []string) error {
 	// Save to file if requested
 	if outputFile != "" {
 		if saveErr := saveResults(result, outputFile, outputFormat); saveErr != nil {
-			return fmt.Errorf("failed to save results: %w", saveErr)
+			return fmt.Errorf("unable to save audit results: %w", saveErr)
 		}
 		fmt.Printf("📄 Results saved to: %s\n", outputFile)
 	}
@@ -117,14 +117,14 @@ func runAudit(args []string) error {
 			if exe, err := os.Executable(); err == nil {
 				if strings.Contains(exe, ".test") || strings.Contains(exe, "/_test/") || strings.Contains(exe, "go-build") {
 					// We're in test mode, return error instead of exiting
-					return fmt.Errorf("audit failed: %d findings", len(result.Findings))
+					return fmt.Errorf("audit completed with %d issue(s) found", len(result.Findings))
 				}
 			}
 			// Not in test mode, exit normally
 			os.Exit(1)
 		}
 		// In test mode (env var set), return error instead of exiting
-		return fmt.Errorf("audit failed: %d findings", len(result.Findings))
+		return fmt.Errorf("audit completed with %d issue(s) found", len(result.Findings))
 	}
 
 	if !opts.CIMode {

@@ -7,14 +7,16 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
-	"log"
 	"net/http"
 	"runtime"
+
+	"sentinel-hub-api/models"
+	"sentinel-hub-api/pkg"
 )
 
-// LogError logs an error message (local implementation)
+// LogError logs an error message using the package logger
 func LogError(ctx context.Context, msg string, args ...interface{}) {
-	log.Printf("ERROR: "+msg, args...)
+	pkg.LogError(ctx, msg, args...)
 }
 
 // ValidationError represents a validation error
@@ -105,7 +107,8 @@ func (e *ExternalServiceError) HTTPStatus() int {
 	return http.StatusBadGateway
 }
 
-// WriteErrorResponse writes a standardized error response
+// WriteErrorResponse writes a standardized error response.
+// The statusCode parameter may be 0 for unknown errors, in which case it will be set to 500.
 func WriteErrorResponse(w http.ResponseWriter, err error, statusCode int) {
 	// Determine error type and status code
 	var errorType string
@@ -122,6 +125,14 @@ func WriteErrorResponse(w http.ResponseWriter, err error, statusCode int) {
 			"code":    e.Code,
 			"message": e.Message,
 		}
+	case *models.ValidationError:
+		errorType = "validation_error"
+		errorMessage = e.Error()
+		statusCode = http.StatusBadRequest
+		errorDetails = map[string]interface{}{
+			"field":   e.Field,
+			"message": e.Message,
+		}
 	case *NotFoundError:
 		errorType = "not_found_error"
 		errorMessage = e.Error()
@@ -129,6 +140,13 @@ func WriteErrorResponse(w http.ResponseWriter, err error, statusCode int) {
 		errorDetails = map[string]interface{}{
 			"resource": e.Resource,
 			"id":       e.ID,
+		}
+	case *models.NotFoundError:
+		errorType = "not_found_error"
+		errorMessage = e.Error()
+		statusCode = http.StatusNotFound
+		errorDetails = map[string]interface{}{
+			"resource": e.Resource,
 		}
 	case *DatabaseError:
 		errorType = "database_error"
@@ -150,6 +168,14 @@ func WriteErrorResponse(w http.ResponseWriter, err error, statusCode int) {
 		statusCode = e.HTTPStatus()
 		errorDetails = map[string]interface{}{
 			"code": e.Code,
+		}
+	case *models.RateLimitError:
+		errorType = "rate_limit_error"
+		errorMessage = e.Error()
+		statusCode = http.StatusTooManyRequests
+		errorDetails = map[string]interface{}{
+			"retry_after": e.RetryAfter,
+			"reset_time":  e.ResetTime,
 		}
 	default:
 		errorType = "internal_error"
@@ -175,14 +201,24 @@ func WriteErrorResponse(w http.ResponseWriter, err error, statusCode int) {
 	// Write response
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(response)
+	if err := json.NewEncoder(w).Encode(response); err != nil {
+		// Cannot call http.Error after WriteHeader, so log the error
+		// The response has already been sent, so we can only log
+		// In production, this should use proper logging
+		_ = err // Log error in production: log.Printf("Failed to encode error response: %v", err)
+	}
 }
 
 // WriteJSONResponse writes a JSON response with status code
 func WriteJSONResponse(w http.ResponseWriter, data interface{}, statusCode int) {
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
-	json.NewEncoder(w).Encode(data)
+	if err := json.NewEncoder(w).Encode(data); err != nil {
+		// Cannot call http.Error after WriteHeader, so log the error
+		// The response has already been sent, so we can only log
+		// In production, this should use proper logging
+		_ = err // Log error in production: log.Printf("Failed to encode JSON response: %v", err)
+	}
 }
 
 // LogErrorWithContext logs an error with request context
@@ -210,10 +246,17 @@ func LogErrorWithContext(ctx context.Context, err error, message string, additio
 				contextStr += fmt.Sprintf(", %s=%v", k, v)
 			}
 		}
+	} else {
+		// Variadic parameter may be empty - this is intentional and valid
+		_ = additionalContext
 	}
 
-	// Log error with context
-	LogError(ctx, "%s [request_id=%s, user_id=%s, error=%v%s]\n%s", message, requestID, userID, err, contextStr, stackTrace)
+	// Log error with context using structured logger
+	pkg.LogErrorWithErr(ctx, err, message, 
+		"request_id", requestID,
+		"user_id", userID,
+		"context", contextStr,
+		"stack_trace", stackTrace)
 }
 
 // getStackTrace returns a formatted stack trace

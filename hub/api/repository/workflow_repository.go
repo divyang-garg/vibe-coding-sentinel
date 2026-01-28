@@ -67,7 +67,10 @@ func (r *WorkflowRepositoryImpl) Save(ctx context.Context, workflow *models.Work
 		workflow.CreatedAt, workflow.UpdatedAt,
 	)
 
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to save workflow %s: %w", workflow.ID, err)
+	}
+	return nil
 }
 
 // FindByID retrieves a workflow by ID
@@ -130,7 +133,7 @@ func (r *WorkflowRepositoryImpl) List(ctx context.Context, limit, offset int) ([
 
 	rows, err := r.db.Query(ctx, query, limit, offset)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("failed to query workflows: %w", err)
 	}
 	defer rows.Close()
 
@@ -146,7 +149,7 @@ func (r *WorkflowRepositoryImpl) List(ctx context.Context, limit, offset int) ([
 			&workflow.CreatedAt, &workflow.UpdatedAt,
 		)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, fmt.Errorf("failed to scan workflow row: %w", err)
 		}
 
 		// Unmarshal steps
@@ -220,7 +223,10 @@ func (r *WorkflowRepositoryImpl) SaveExecution(ctx context.Context, execution *m
 		string(stepResultsJSON),
 	)
 
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to save workflow execution %s: %w", execution.ID, err)
+	}
+	return nil
 }
 
 // FindExecutionByID retrieves a workflow execution by ID

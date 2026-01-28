@@ -25,8 +25,8 @@ type IntegrationTestSuite struct {
 	docRepo            DocumentRepository
 	orgRepo            OrganizationRepository
 	projectRepo        ProjectRepository
-	depAnalyzer        *repository.DependencyAnalyzerImpl
-	impactAnalyzer     *repository.ImpactAnalyzerImpl
+	depAnalyzer        DependencyAnalyzer
+	impactAnalyzer     ImpactAnalyzer
 	knowledgeExtractor *repository.KnowledgeExtractorImpl
 	docValidator       *repository.DocumentValidatorImpl
 	searchEngine       *repository.SearchEngineImpl
@@ -124,9 +124,6 @@ func (suite *IntegrationTestSuite) TestTaskServiceIntegration() {
 
 // TestDocumentServiceIntegration tests document service integration
 func (suite *IntegrationTestSuite) TestDocumentServiceIntegration() {
-	ctx := context.Background()
-	_ = ctx
-
 	// Test document upload request validation
 	req := models.DocumentUploadRequest{
 		ProjectID:    "project-123",
@@ -153,17 +150,21 @@ func (suite *IntegrationTestSuite) TestDocumentServiceIntegration() {
 		CreatedAt:    now,
 	}
 
+	// Verify all document fields are properly set
+	assert.Equal(suite.T(), "test-doc-123", doc.ID)
 	assert.Equal(suite.T(), req.ProjectID, doc.ProjectID)
 	assert.Equal(suite.T(), req.Name, doc.Name)
+	assert.Equal(suite.T(), req.OriginalName, doc.OriginalName)
+	assert.Equal(suite.T(), "application/pdf", doc.MimeType)
 	assert.Equal(suite.T(), models.DocumentStatusUploaded, doc.Status)
+	assert.Equal(suite.T(), int64(0), doc.Progress)
+	assert.Equal(suite.T(), "/tmp/test.pdf", doc.FilePath)
 	assert.Equal(suite.T(), int64(1024), doc.Size)
+	assert.Equal(suite.T(), now, doc.CreatedAt)
 }
 
 // TestOrganizationServiceIntegration tests organization service integration
 func (suite *IntegrationTestSuite) TestOrganizationServiceIntegration() {
-	ctx := context.Background()
-	_ = ctx
-
 	// Test organization creation request validation
 	req := models.CreateOrganizationRequest{
 		Name: "Test Organization",
@@ -186,8 +187,7 @@ func (suite *IntegrationTestSuite) TestOrganizationServiceIntegration() {
 
 // TestKnowledgeExtractionIntegration tests knowledge extraction workflow
 func (suite *IntegrationTestSuite) TestKnowledgeExtractionIntegration() {
-	ctx := context.Background()
-	_ = ctx
+	ctx := context.TODO()
 
 	// Test text with business rules
 	testText := `
@@ -236,8 +236,7 @@ func (suite *IntegrationTestSuite) TestKnowledgeExtractionIntegration() {
 
 // TestDependencyAnalysisIntegration tests dependency analysis workflow
 func (suite *IntegrationTestSuite) TestDependencyAnalysisIntegration() {
-	ctx := context.Background()
-	_ = ctx
+	ctx := context.TODO()
 
 	// Create test tasks
 	tasks := []models.Task{
@@ -280,8 +279,7 @@ func (suite *IntegrationTestSuite) TestDependencyAnalysisIntegration() {
 
 // TestImpactAnalysisIntegration tests impact analysis workflow
 func (suite *IntegrationTestSuite) TestImpactAnalysisIntegration() {
-	ctx := context.Background()
-	_ = ctx
+	ctx := context.TODO()
 
 	taskID := "task-123"
 	changeType := "priority_change"
@@ -338,8 +336,7 @@ func (suite *IntegrationTestSuite) TestImpactAnalysisIntegration() {
 
 // TestDocumentValidationIntegration tests document validation workflow
 func (suite *IntegrationTestSuite) TestDocumentValidationIntegration() {
-	ctx := context.Background()
-	_ = ctx
+	ctx := context.TODO()
 
 	// Test valid file types
 	validTypes := []string{
@@ -378,8 +375,7 @@ func (suite *IntegrationTestSuite) TestDocumentValidationIntegration() {
 
 // TestSearchEngineIntegration tests search functionality
 func (suite *IntegrationTestSuite) TestSearchEngineIntegration() {
-	ctx := context.Background()
-	_ = ctx
+	ctx := context.TODO()
 	docID := "test-doc-123"
 	content := "This document contains authentication and security requirements for the system."
 	knowledgeItems := []models.KnowledgeItem{

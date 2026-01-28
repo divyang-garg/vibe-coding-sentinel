@@ -242,17 +242,30 @@ func extractFunctionCodeAST(fullCode string, functionName string, startLine int,
 	// Use AST analyzer to find the function
 	// NOTE: AST parsing disabled - tree-sitter integration required
 	// Use simple pattern matching fallback
-	return extractFunctionCodeSimple(fullCode, functionName, language)
+	// Use startLine to optimize search by starting from that line
+	return extractFunctionCodeSimpleWithStart(fullCode, functionName, language, startLine)
 }
 
 // extractFunctionCodeSimple extracts function code using simple pattern matching
 func extractFunctionCodeSimple(fullCode, funcName, language string) string {
+	return extractFunctionCodeSimpleWithStart(fullCode, funcName, language, 0)
+}
+
+// extractFunctionCodeSimpleWithStart extracts function code starting from a specific line
+func extractFunctionCodeSimpleWithStart(fullCode, funcName, language string, startLine int) string {
 	lines := strings.Split(fullCode, "\n")
 	var funcStart, funcEnd int
 	var inFunction bool
 	var braceCount int
 
-	for i, line := range lines {
+	// Start search from startLine if provided (optimization)
+	searchStart := 0
+	if startLine > 0 && startLine <= len(lines) {
+		searchStart = startLine - 1
+	}
+
+	for i := searchStart; i < len(lines); i++ {
+		line := lines[i]
 		trimmed := strings.TrimSpace(line)
 
 		if !inFunction {
@@ -333,6 +346,22 @@ func extractFunctionCode(fullCode string, functionName string, startLine int) st
 		startIdx = startLine - 1
 	}
 
+	// Validate that the function at startLine matches functionName
+	if startLine > 0 && startLine <= len(lines) && functionName != "" {
+		startLineContent := strings.TrimSpace(lines[startIdx])
+		// Check if the line contains the function name (basic validation)
+		if !strings.Contains(startLineContent, functionName) {
+			// Function name doesn't match - search for the correct function
+			for i := 0; i < len(lines); i++ {
+				line := strings.TrimSpace(lines[i])
+				if strings.Contains(line, "func ") && strings.Contains(line, functionName) {
+					startIdx = i
+					break
+				}
+			}
+		}
+	}
+
 	// Extract function (look for closing brace or next function)
 	endIdx := len(lines)
 	for i := startIdx; i < len(lines); i++ {
@@ -364,6 +393,11 @@ func extractFunctionCode(fullCode string, functionName string, startLine int) st
 func parseSemanticAnalysisResponse(ctx context.Context, response string, function BusinessLogicFunctionInfo) []LogicLayerFinding {
 	findings := []LogicLayerFinding{}
 
+	// Check for context cancellation
+	if ctx.Err() != nil {
+		return findings
+	}
+
 	// Try to parse JSON response
 	// This is simplified - would use proper JSON parsing in production
 	if strings.Contains(response, "\"issues\"") {
@@ -371,6 +405,10 @@ func parseSemanticAnalysisResponse(ctx context.Context, response string, functio
 		// In production, would use proper JSON unmarshaling
 		issueMatches := extractJSONIssues(response)
 		for _, issue := range issueMatches {
+			// Check for context cancellation in loop
+			if ctx.Err() != nil {
+				return findings
+			}
 			findings = append(findings, LogicLayerFinding{
 				Type:     issue["type"],
 				Location: fmt.Sprintf("%s:%s", function.File, issue["line"]),

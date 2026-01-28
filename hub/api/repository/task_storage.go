@@ -13,6 +13,7 @@ import (
 
 	"sentinel-hub-api/models"
 	"sentinel-hub-api/pkg/database"
+	"sentinel-hub-api/utils"
 
 	"github.com/google/uuid"
 	"github.com/lib/pq"
@@ -50,10 +51,7 @@ func GetTask(ctx context.Context, db *sql.DB, taskID string) (*models.Task, erro
 	)
 
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("task not found: %s", taskID)
-		}
-		return nil, fmt.Errorf("failed to get task: %w", err)
+		return nil, utils.HandleNotFoundError(err, "task", taskID)
 	}
 
 	if description.Valid {
@@ -131,6 +129,7 @@ func UpdateTask(ctx context.Context, taskID string, req models.UpdateTaskRequest
 	// Get current task to check version
 	currentTask, err := GetTask(ctx, db, taskID)
 	if err != nil {
+		// Error already wrapped with context from GetTask
 		return nil, err
 	}
 

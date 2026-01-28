@@ -19,41 +19,71 @@ func extractFunctionNameFromParent(node *sitter.Node, code string, language stri
 		return ""
 	}
 
-	// Check if parent is a variable_declarator
-	if parent.Type() == "variable_declarator" {
-		// Find the identifier (variable name) in the variable_declarator
-		for i := 0; i < int(parent.ChildCount()); i++ {
-			child := parent.Child(i)
-			if child != nil && child.Type() == "identifier" {
-				return safeSlice(code, child.StartByte(), child.EndByte())
-			}
-		}
+	// Language-specific node type names
+	var variableDeclaratorTypes []string
+	var assignmentTypes []string
+	var propertyTypes []string
+
+	switch language {
+	case "javascript", "typescript":
+		variableDeclaratorTypes = []string{"variable_declarator", "lexical_declaration"}
+		assignmentTypes = []string{"assignment_expression"}
+		propertyTypes = []string{"property_definition", "pair", "method_definition"}
+	case "python":
+		variableDeclaratorTypes = []string{"assignment"}
+		assignmentTypes = []string{"assignment"}
+		propertyTypes = []string{"pair"}
+	default:
+		// Default to JavaScript/TypeScript patterns
+		variableDeclaratorTypes = []string{"variable_declarator", "lexical_declaration"}
+		assignmentTypes = []string{"assignment_expression"}
+		propertyTypes = []string{"property_definition", "pair"}
 	}
 
-	// Check if parent is an assignment_expression
-	if parent.Type() == "assignment_expression" {
-		// Find the left side (variable name)
-		for i := 0; i < int(parent.ChildCount()); i++ {
-			child := parent.Child(i)
-			if child != nil && child.Type() == "identifier" {
-				return safeSlice(code, child.StartByte(), child.EndByte())
-			}
-		}
-	}
-
-	// Check if parent is a property_definition (for object methods)
-	if parent.Type() == "property_definition" || parent.Type() == "pair" {
-		// Find the property name (key)
-		for i := 0; i < int(parent.ChildCount()); i++ {
-			child := parent.Child(i)
-			if child != nil && (child.Type() == "property_identifier" || child.Type() == "string" || child.Type() == "identifier") {
-				name := safeSlice(code, child.StartByte(), child.EndByte())
-				// Remove quotes if it's a string
-				if len(name) >= 2 && name[0] == '"' && name[len(name)-1] == '"' {
-					name = name[1 : len(name)-1]
+	// Check if parent is a variable_declarator (language-specific)
+	for _, declType := range variableDeclaratorTypes {
+		if parent.Type() == declType {
+			// Find the identifier (variable name) in the variable_declarator
+			for i := 0; i < int(parent.ChildCount()); i++ {
+				child := parent.Child(i)
+				if child != nil && child.Type() == "identifier" {
+					return safeSlice(code, child.StartByte(), child.EndByte())
 				}
-				return name
 			}
+			break
+		}
+	}
+
+	// Check if parent is an assignment_expression (language-specific)
+	for _, assignType := range assignmentTypes {
+		if parent.Type() == assignType {
+			// Find the left side (variable name)
+			for i := 0; i < int(parent.ChildCount()); i++ {
+				child := parent.Child(i)
+				if child != nil && child.Type() == "identifier" {
+					return safeSlice(code, child.StartByte(), child.EndByte())
+				}
+			}
+			break
+		}
+	}
+
+	// Check if parent is a property_definition (for object methods, language-specific)
+	for _, propType := range propertyTypes {
+		if parent.Type() == propType {
+			// Find the property name (key)
+			for i := 0; i < int(parent.ChildCount()); i++ {
+				child := parent.Child(i)
+				if child != nil && (child.Type() == "property_identifier" || child.Type() == "string" || child.Type() == "identifier") {
+					name := safeSlice(code, child.StartByte(), child.EndByte())
+					// Remove quotes if it's a string
+					if len(name) >= 2 && name[0] == '"' && name[len(name)-1] == '"' {
+						name = name[1 : len(name)-1]
+					}
+					return name
+				}
+			}
+			break
 		}
 	}
 
@@ -211,10 +241,12 @@ func extractJavaScriptParameter(paramNode *sitter.Node, code string, language st
 		if child.Type() == "identifier" && param.Name == "" {
 			param.Name = safeSlice(code, child.StartByte(), child.EndByte())
 		} else if child.Type() == "type_annotation" {
-			// Extract type from type annotation (TypeScript)
-			typeNode := child.Child(0)
-			if typeNode != nil {
-				param.Type = safeSlice(code, typeNode.StartByte(), typeNode.EndByte())
+			// Extract type from type annotation (TypeScript only)
+			if language == "typescript" {
+				typeNode := child.Child(0)
+				if typeNode != nil {
+					param.Type = safeSlice(code, typeNode.StartByte(), typeNode.EndByte())
+				}
 			}
 		}
 	}

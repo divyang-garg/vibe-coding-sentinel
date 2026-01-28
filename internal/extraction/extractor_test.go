@@ -294,9 +294,9 @@ func TestKnowledgeExtractor_Extract(t *testing.T) {
 		assert.Error(t, err)
 		// Check if error contains expected messages
 		errMsg := err.Error()
-		if !strings.Contains(errMsg, "unsupported schema type") && 
-		   !strings.Contains(errMsg, "all extraction methods failed") &&
-		   !strings.Contains(errMsg, "extraction disabled") {
+		if !strings.Contains(errMsg, "unsupported schema type") &&
+			!strings.Contains(errMsg, "all extraction methods failed") &&
+			!strings.Contains(errMsg, "extraction disabled") {
 			t.Errorf("Expected error about unsupported schema or extraction failure, got: %v", err)
 		}
 	})

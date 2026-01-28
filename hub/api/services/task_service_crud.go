@@ -57,7 +57,10 @@ func (s *TaskServiceImpl) GetTaskByID(ctx context.Context, id string) (*models.T
 		return nil, fmt.Errorf("failed to find task: %w", err)
 	}
 	if task == nil {
-		return nil, fmt.Errorf("task not found")
+		return nil, &models.NotFoundError{
+			Resource: "task",
+			Message:  "task not found",
+		}
 	}
 
 	return task, nil
@@ -74,7 +77,10 @@ func (s *TaskServiceImpl) UpdateTask(ctx context.Context, id string, req models.
 		return nil, fmt.Errorf("failed to find task: %w", err)
 	}
 	if task == nil {
-		return nil, fmt.Errorf("task not found")
+		return nil, &models.NotFoundError{
+			Resource: "task",
+			Message:  "task not found",
+		}
 	}
 
 	// Apply updates

@@ -4,6 +4,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"sentinel-hub-api/models"
 )
 
@@ -14,7 +15,10 @@ func (r *TaskRepositoryImpl) SaveDependency(ctx context.Context, dep *models.Tas
 		VALUES ($1, $2, $3, $4, $5, $6)`
 
 	_, err := r.db.Exec(ctx, query, dep.ID, dep.TaskID, dep.DependsOnTaskID, dep.DependencyType, dep.Confidence, dep.CreatedAt)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to save dependency %s for task %s: %w", dep.ID, dep.TaskID, err)
+	}
+	return nil
 }
 
 // FindDependencies retrieves dependencies for a task
@@ -22,7 +26,7 @@ func (r *TaskRepositoryImpl) FindDependencies(ctx context.Context, taskID string
 	query := "SELECT id, task_id, depends_on_task_id, dependency_type, confidence, created_at FROM task_dependencies WHERE task_id = $1"
 	rows, err := r.db.Query(ctx, query, taskID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query dependencies for task %s: %w", taskID, err)
 	}
 	defer rows.Close()
 
@@ -31,7 +35,7 @@ func (r *TaskRepositoryImpl) FindDependencies(ctx context.Context, taskID string
 		var dep models.TaskDependency
 		err := rows.Scan(&dep.ID, &dep.TaskID, &dep.DependsOnTaskID, &dep.DependencyType, &dep.Confidence, &dep.CreatedAt)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan dependency row: %w", err)
 		}
 		deps = append(deps, dep)
 	}
@@ -43,7 +47,10 @@ func (r *TaskRepositoryImpl) FindDependencies(ctx context.Context, taskID string
 func (r *TaskRepositoryImpl) DeleteDependency(ctx context.Context, id string) error {
 	query := "DELETE FROM task_dependencies WHERE id = $1"
 	_, err := r.db.Exec(ctx, query, id)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to delete dependency %s: %w", id, err)
+	}
+	return nil
 }
 
 // FindDependents finds tasks that depend on the given task (where taskID is the depends_on_task_id)
@@ -55,7 +62,7 @@ func (r *TaskRepositoryImpl) FindDependents(ctx context.Context, taskID string) 
 
 	rows, err := r.db.Query(ctx, query, taskID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query dependents for task %s: %w", taskID, err)
 	}
 	defer rows.Close()
 
@@ -70,7 +77,7 @@ func (r *TaskRepositoryImpl) FindDependents(ctx context.Context, taskID string) 
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to iterate dependents for task %s: %w", taskID, err)
 	}
 
 	return deps, nil

@@ -11,10 +11,10 @@ import (
 
 func TestTask_CanTransitionTo_EdgeCases(t *testing.T) {
 	tests := []struct {
-		name       string
-		current    TaskStatus
-		newStatus  TaskStatus
-		expected   bool
+		name      string
+		current   TaskStatus
+		newStatus TaskStatus
+		expected  bool
 	}{
 		{
 			name:      "pending to in_progress",
@@ -132,7 +132,7 @@ func TestTask_Structure(t *testing.T) {
 			CompletedAt:            &now,
 			VerifiedAt:             &now,
 			ArchivedAt:             nil,
-			Version:               1,
+			Version:                1,
 		}
 
 		assert.Equal(t, 1, task.ID)

@@ -366,7 +366,6 @@ func TestGetEnvAsDuration_Indirect(t *testing.T) {
 	})
 }
 
-
 func TestWriteFile(t *testing.T) {
 	tmpDir := t.TempDir()
 
@@ -468,7 +467,7 @@ func TestLoadExtractionConfig(t *testing.T) {
 		// Set provider to ollama to avoid API key requirement
 		os.Setenv("LLM_PROVIDER", "ollama")
 		defer os.Unsetenv("LLM_PROVIDER")
-		
+
 		cfg, err := LoadExtractionConfig()
 		if err != nil {
 			t.Errorf("LoadExtractionConfig() error = %v", err)

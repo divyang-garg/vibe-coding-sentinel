@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 )
 
@@ -81,7 +82,7 @@ func getImplementationStatus(ctx context.Context, changeRequestID string) (*Impl
 
 	err := queryRowWithTimeout(ctx, query, changeRequestID).Scan(&status.Status, &notes)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("change request not found: %s", changeRequestID)
 		}
 		return nil, fmt.Errorf("failed to get implementation status: %w", err)

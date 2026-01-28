@@ -70,7 +70,10 @@ func (r *ErrorReportRepositoryImpl) Save(ctx context.Context, report *models.Err
 		report.Timestamp,
 	)
 
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to save error report %s: %w", report.ID, err)
+	}
+	return nil
 }
 
 // FindByID retrieves an error report by ID
@@ -171,7 +174,7 @@ func (r *ErrorReportRepositoryImpl) List(ctx context.Context, category string, s
 
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("failed to query error reports: %w", err)
 	}
 	defer rows.Close()
 
@@ -188,7 +191,7 @@ func (r *ErrorReportRepositoryImpl) List(ctx context.Context, category string, s
 			&report.Timestamp,
 		)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, fmt.Errorf("failed to scan error report row: %w", err)
 		}
 
 		// Convert severity
@@ -233,5 +236,8 @@ func (r *ErrorReportRepositoryImpl) UpdateResolved(ctx context.Context, id strin
 	`
 
 	_, err := r.db.Exec(ctx, query, resolved, resolvedAt, id)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to update error report %s resolved status: %w", id, err)
+	}
+	return nil
 }

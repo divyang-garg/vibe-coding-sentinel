@@ -1,3 +1,5 @@
+// Package ast provides JavaScript unreachable code detection
+// Complies with CODING_STANDARDS.md: Detection modules max 250 lines
 package ast
 
 import (
@@ -46,20 +48,19 @@ func detectUnreachableCodeJS(root *sitter.Node, code string) []ASTFinding {
 							break
 						}
 
-						if stmtType == "return_statement" || stmtType == "throw_statement" ||
-							stmtType == "break_statement" || stmtType == "continue_statement" {
+						switch stmtType {
+						case "return_statement", "throw_statement", "break_statement", "continue_statement":
 							foundTerminator = true
-						} else if stmtType == "if_statement" {
+						case "if_statement":
 							for j := 0; j < int(stmt.ChildCount()); j++ {
 								child := stmt.Child(j)
-								// JavaScript uses parenthesized_expression for if conditions
 								if child != nil && (child.Type() == "condition" || child.Type() == "parenthesized_expression") {
 									condCode := safeSlice(code, child.StartByte(), child.EndByte())
 									if strings.Contains(strings.ToLower(condCode), "true") {
 										for k := 0; k < int(stmt.ChildCount()); k++ {
 											bodyChild := stmt.Child(k)
 											if bodyChild != nil && bodyChild.Type() == "statement_block" {
-												if hasTerminatingStatement(bodyChild, code) {
+												if hasTerminatingStatement(bodyChild) {
 													foundTerminator = true
 												}
 											}
@@ -79,7 +80,7 @@ func detectUnreachableCodeJS(root *sitter.Node, code string) []ASTFinding {
 	return findings
 }
 
-func hasTerminatingStatement(node *sitter.Node, code string) bool {
+func hasTerminatingStatement(node *sitter.Node) bool {
 	for i := 0; i < int(node.ChildCount()); i++ {
 		child := node.Child(i)
 		if child != nil {

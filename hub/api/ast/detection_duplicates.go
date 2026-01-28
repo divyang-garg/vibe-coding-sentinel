@@ -8,8 +8,12 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-// detectDuplicateFunctions finds duplicate function definitions
+// detectDuplicateFunctions finds duplicate function definitions.
+// Uses registry when a detector is registered; otherwise falls back to switch.
 func detectDuplicateFunctions(root *sitter.Node, code string, language string) []ASTFinding {
+	if d := GetLanguageDetector(language); d != nil {
+		return d.DetectDuplicates(root, code)
+	}
 	findings := []ASTFinding{}
 	functionMap := make(map[string][]*sitter.Node)
 
@@ -72,6 +76,66 @@ func detectDuplicateFunctions(root *sitter.Node, code string, language string) [
 			functionMap[funcName] = append(functionMap[funcName], node)
 		}
 
+		return true // Continue traversal
+	})
+
+	// Check for duplicates
+	for funcName, nodes := range functionMap {
+		if len(nodes) > 1 {
+			// Found duplicate - report all occurrences
+			for _, node := range nodes {
+				startLine, startCol := getLineColumn(code, int(node.StartByte()))
+				endLine, endCol := getLineColumn(code, int(node.EndByte()))
+
+				findings = append(findings, ASTFinding{
+					Type:       "duplicate_function",
+					Severity:   "error",
+					Line:       startLine,
+					Column:     startCol,
+					EndLine:    endLine,
+					EndColumn:  endCol,
+					Message:    fmt.Sprintf("Duplicate function definition: '%s' is defined %d times", funcName, len(nodes)),
+					Code:       safeSlice(code, node.StartByte(), node.EndByte()),
+					Suggestion: fmt.Sprintf("Remove duplicate definition of '%s' or rename one of them", funcName),
+				})
+			}
+		}
+	}
+
+	return findings
+}
+
+// detectDuplicateFunctionsGo detects duplicate functions in Go code
+func detectDuplicateFunctionsGo(root *sitter.Node, code string) []ASTFinding {
+	findings := []ASTFinding{}
+	functionMap := make(map[string][]*sitter.Node)
+
+	// Traverse AST to find all function definitions
+	TraverseAST(root, func(node *sitter.Node) bool {
+		if node.Type() == "function_declaration" || node.Type() == "method_declaration" {
+			var funcName string
+			// For method_declaration, format is: receiver method_name
+			// For function_declaration, format is: func_name
+			for i := 0; i < int(node.ChildCount()); i++ {
+				child := node.Child(i)
+				if child != nil {
+					if child.Type() == "identifier" {
+						funcName = safeSlice(code, child.StartByte(), child.EndByte())
+						break
+					} else if child.Type() == "parameter_list" {
+						// This is a method receiver - get the method name after it
+						continue
+					} else if child.Type() == "field_identifier" {
+						// Method name in method_declaration
+						funcName = safeSlice(code, child.StartByte(), child.EndByte())
+						break
+					}
+				}
+			}
+			if funcName != "" {
+				functionMap[funcName] = append(functionMap[funcName], node)
+			}
+		}
 		return true // Continue traversal
 	})
 

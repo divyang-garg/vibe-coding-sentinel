@@ -73,7 +73,7 @@ func main() {
 	t.Run("with empty findings", func(t *testing.T) {
 		// Create empty directory or directory with files that generate no findings
 		emptyDir := t.TempDir()
-		
+
 		issues := checkMissingDocumentation(emptyDir)
 		// Should handle empty findings gracefully
 		if issues == nil {
@@ -85,7 +85,7 @@ func main() {
 		// The threshold is > 10, so files with exactly 10 should not trigger
 		// We test the code path by creating code and verifying behavior
 		os.WriteFile("threshold.go", []byte("package main\nfunc main() {}"), 0644)
-		
+
 		issues := checkMissingDocumentation(".")
 		// Tests the count > 10 check
 		_ = issues

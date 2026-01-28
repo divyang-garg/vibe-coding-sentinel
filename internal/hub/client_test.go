@@ -559,7 +559,7 @@ func TestAnalyzeVibe_MoreScenarios(t *testing.T) {
 			if r.URL.Path == "/api/v1/vibe/analyze" {
 				w.WriteHeader(http.StatusOK)
 				json.NewEncoder(w).Encode(map[string]interface{}{
-					"score": 0.8,
+					"score":  0.8,
 					"issues": []interface{}{},
 				})
 				return

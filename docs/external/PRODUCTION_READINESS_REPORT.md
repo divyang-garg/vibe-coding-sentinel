@@ -1,8 +1,11 @@
 # Sentinel Production Readiness Report
 
+> **⚠️ NOTE:** This document has been superseded by **[PRODUCTION_READINESS_TRACKER.md](../../PRODUCTION_READINESS_TRACKER.md)** which is the single source of truth for production readiness tracking. Please refer to that document for the latest status and pending items.
+
 **Assessment Date:** January 8, 2026
 **Version:** 1.0.0
 **Assessment Team:** Phase 18 Implementation Team
+**Status:** Archived - See PRODUCTION_READINESS_TRACKER.md for current status
 
 ## Executive Summary
 

@@ -8,6 +8,9 @@ import (
 	"context"
 	"fmt"
 	"time"
+
+	"sentinel-hub-api/models"
+	"sentinel-hub-api/services"
 )
 
 // VerificationFactors represents the weights for different verification factors
@@ -48,30 +51,30 @@ func VerifyTask(ctx context.Context, taskID string, codebasePath string, force b
 	verifications := []TaskVerification{}
 
 	// 1. Code Existence Verification
-	codeExistenceVerification, err := verifyCodeExistence(ctx, task, codebasePath)
+	codeExistenceVerification, err := services.VerifyCodeExistence(ctx, convertTaskToModelsTask(task), codebasePath)
 	if err != nil {
 		LogError(ctx, "Code existence verification failed: %v", err)
-		codeExistenceVerification = TaskVerification{
+		codeExistenceVerification = models.TaskVerification{
 			TaskID:           taskID,
 			VerificationType: "code_existence",
-			Status:           "failed",
+			Status:           models.VerificationStatusFailed,
 			Confidence:       0.0,
 		}
 	}
-	verifications = append(verifications, codeExistenceVerification)
+	verifications = append(verifications, convertModelsTaskVerificationToTaskVerification(codeExistenceVerification))
 
 	// 2. Code Usage Verification
-	codeUsageVerification, err := verifyCodeUsage(ctx, task, codebasePath)
+	codeUsageVerification, err := services.VerifyCodeUsage(ctx, convertTaskToModelsTask(task), codebasePath)
 	if err != nil {
 		LogError(ctx, "Code usage verification failed: %v", err)
-		codeUsageVerification = TaskVerification{
+		codeUsageVerification = models.TaskVerification{
 			TaskID:           taskID,
 			VerificationType: "code_usage",
-			Status:           "failed",
+			Status:           models.VerificationStatusFailed,
 			Confidence:       0.0,
 		}
 	}
-	verifications = append(verifications, codeUsageVerification)
+	verifications = append(verifications, convertModelsTaskVerificationToTaskVerification(codeUsageVerification))
 
 	// 3. Test Coverage Verification
 	testCoverageVerification, err := verifyTestCoverage(ctx, task, codebasePath)
@@ -139,4 +142,48 @@ func VerifyTask(ctx context.Context, taskID string, codebasePath string, force b
 	SetCachedVerification(taskID, response)
 
 	return response, nil
+}
+
+// convertTaskToModelsTask converts a Task from main package to models.Task
+func convertTaskToModelsTask(task *Task) *models.Task {
+	if task == nil {
+		return nil
+	}
+	return &models.Task{
+		ID:                     task.ID,
+		ProjectID:              task.ProjectID,
+		Source:                 task.Source,
+		Title:                  task.Title,
+		Description:            task.Description,
+		FilePath:               task.FilePath,
+		LineNumber:             task.LineNumber,
+		Status:                 models.TaskStatus(task.Status),
+		Priority:               models.TaskPriority(task.Priority),
+		AssignedTo:             task.AssignedTo,
+		EstimatedEffort:        task.EstimatedEffort,
+		ActualEffort:           task.ActualEffort,
+		Tags:                   task.Tags,
+		VerificationConfidence: task.VerificationConfidence,
+		CreatedAt:              task.CreatedAt,
+		UpdatedAt:              task.UpdatedAt,
+		CompletedAt:            task.CompletedAt,
+		VerifiedAt:             task.VerifiedAt,
+		ArchivedAt:             task.ArchivedAt,
+		Version:                task.Version,
+	}
+}
+
+// convertModelsTaskVerificationToTaskVerification converts models.TaskVerification to TaskVerification
+func convertModelsTaskVerificationToTaskVerification(v models.TaskVerification) TaskVerification {
+	return TaskVerification{
+		ID:               v.ID,
+		TaskID:           v.TaskID,
+		VerificationType: v.VerificationType,
+		Status:           string(v.Status),
+		Confidence:       v.Confidence,
+		Evidence:         v.Evidence,
+		RetryCount:       v.RetryCount,
+		VerifiedAt:       v.VerifiedAt,
+		CreatedAt:        v.CreatedAt,
+	}
 }

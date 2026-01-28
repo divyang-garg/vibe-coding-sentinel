@@ -10,6 +10,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -329,7 +330,7 @@ func getMutationResultHandler(w http.ResponseWriter, r *http.Request) {
 		&result.ExecutionTimeMs, &result.CreatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		http.Error(w, "Mutation result not found", http.StatusNotFound)
 		return
 	}

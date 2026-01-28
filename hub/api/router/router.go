@@ -4,12 +4,12 @@ package router
 
 import (
 	"os"
-	"strings"
 	"sentinel-hub-api/handlers"
 	"sentinel-hub-api/middleware"
 	"sentinel-hub-api/pkg/metrics"
 	"sentinel-hub-api/pkg/security"
 	"sentinel-hub-api/validation"
+	"strings"
 
 	"github.com/go-chi/chi/v5"
 	"github.com/prometheus/client_golang/prometheus/promhttp"
@@ -27,15 +27,15 @@ func NewRouter(deps *handlers.Dependencies, m *metrics.Metrics) *chi.Mux {
 	r.Use(middleware.RecoveryMiddleware())
 	r.Use(middleware.RequestLoggingMiddleware())
 	r.Use(middleware.SecurityHeadersMiddleware())
-	
+
 	// CORS configuration - environment-aware
 	corsAllowedOrigins := getCORSAllowedOrigins()
 	r.Use(middleware.CORSMiddleware(middleware.CORSMiddlewareConfig{
 		AllowedOrigins: corsAllowedOrigins,
 	}))
-	
+
 	r.Use(middleware.RateLimitMiddleware(100, 10)) // 100 requests, 10 per second
-	
+
 	// Authentication middleware with service integration
 	logger := getLogger()
 	auditLogger := security.NewAuditLogger(logger)
@@ -223,6 +223,7 @@ func setupAPIVersionRoutes(r chi.Router, deps *handlers.Dependencies) {
 // setupCodeAnalysisRoutes configures code analysis routes
 func setupCodeAnalysisRoutes(r chi.Router, deps *handlers.Dependencies) {
 	codeAnalysisHandler := handlers.NewCodeAnalysisHandler(deps.CodeAnalysisService)
+	architectureHandler := handlers.NewArchitectureHandler()
 	r.Route("/api/v1/analyze", func(r chi.Router) {
 		r.Post("/code", codeAnalysisHandler.AnalyzeCode)
 		r.Post("/security", codeAnalysisHandler.AnalyzeSecurity)
@@ -231,6 +232,7 @@ func setupCodeAnalysisRoutes(r chi.Router, deps *handlers.Dependencies) {
 		r.Post("/intent", codeAnalysisHandler.AnalyzeIntent)
 		r.Post("/doc-sync", codeAnalysisHandler.AnalyzeDocSync)
 		r.Post("/business-rules", codeAnalysisHandler.AnalyzeBusinessRules)
+		r.Post("/architecture", architectureHandler.AnalyzeArchitecture)
 	})
 	r.Route("/api/v1/lint", func(r chi.Router) {
 		r.Post("/code", codeAnalysisHandler.LintCode)
@@ -244,6 +246,15 @@ func setupCodeAnalysisRoutes(r chi.Router, deps *handlers.Dependencies) {
 	r.Route("/api/v1/validate", func(r chi.Router) {
 		r.Post("/code", codeAnalysisHandler.ValidateCode)
 	})
+
+	// Fix application endpoints
+	setupFixRoutes(r, deps)
+
+	// LLM configuration endpoints
+	setupLLMRoutes(r, deps)
+
+	// Metrics endpoints
+	setupMetricsRoutes(r, deps)
 }
 
 // setupRepositoryRoutes configures repository management routes
@@ -354,13 +365,13 @@ func getCORSAllowedOrigins() []string {
 		// Development: allow common local origins
 		return []string{"*", "http://localhost:3000", "http://localhost:8080"}
 	}
-	
+
 	// Production: get from environment variable
 	originsStr := os.Getenv("CORS_ALLOWED_ORIGINS")
 	if originsStr == "" {
 		return []string{} // Strict: no origins allowed if not configured
 	}
-	
+
 	// Parse comma-separated origins
 	origins := []string{}
 	for _, origin := range strings.Split(originsStr, ",") {
@@ -370,6 +381,31 @@ func getCORSAllowedOrigins() []string {
 		}
 	}
 	return origins
+}
+
+// setupFixRoutes configures fix application routes
+func setupFixRoutes(r chi.Router, deps *handlers.Dependencies) {
+	fixHandler := handlers.NewFixHandler(deps.FixService)
+	r.Route("/api/v1/fix", func(r chi.Router) {
+		r.Post("/apply", fixHandler.ApplyFix)
+	})
+}
+
+// setupLLMRoutes configures LLM configuration routes
+func setupLLMRoutes(r chi.Router, deps *handlers.Dependencies) {
+	llmHandler := handlers.NewLLMHandler(deps.LLMService)
+	r.Route("/api/v1/llm", func(r chi.Router) {
+		r.Post("/validate-config", llmHandler.ValidateLLMConfig)
+	})
+}
+
+// setupMetricsRoutes configures metrics routes
+func setupMetricsRoutes(r chi.Router, deps *handlers.Dependencies) {
+	metricsHandler := handlers.NewMetricsHandler(deps.MetricsService)
+	r.Route("/api/v1/metrics", func(r chi.Router) {
+		r.Get("/cache", metricsHandler.GetCacheMetrics)
+		r.Get("/cost", metricsHandler.GetCostMetrics)
+	})
 }
 
 // getLogger returns a logger instance for middleware

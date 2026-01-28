@@ -7,6 +7,7 @@ import (
 	"fmt"
 	"regexp"
 	"strings"
+	"time"
 
 	"sentinel-hub-api/models"
 )
@@ -43,7 +44,7 @@ func (s *CodeAnalysisServiceImpl) AnalyzeCode(ctx context.Context, req models.Co
 		"quality_score": s.calculateQualityScore(req.Code, req.Language),
 		"issues":        s.identifyIssues(req.Code, req.Language),
 		"suggestions":   s.generateSuggestions(req.Code, req.Language),
-		"analyzed_at":   "2024-01-01T00:00:00Z", // Would be time.Now() in production
+		"analyzed_at":   time.Now().Format(time.RFC3339),
 	}
 
 	return analysis, nil
@@ -65,7 +66,7 @@ func (s *CodeAnalysisServiceImpl) LintCode(ctx context.Context, req models.CodeL
 		"issues":             issues,
 		"issue_count":        len(issues),
 		"severity_breakdown": s.calculateSeverityBreakdown(issues),
-		"linted_at":          "2024-01-01T00:00:00Z",
+		"linted_at":          time.Now().Format(time.RFC3339),
 	}, nil
 }
 
@@ -83,7 +84,7 @@ func (s *CodeAnalysisServiceImpl) RefactorCode(ctx context.Context, req models.C
 		"suggestions":       suggestions,
 		"confidence_score":  0.85,
 		"estimated_savings": s.estimateRefactoringSavings(suggestions),
-		"generated_at":      "2024-01-01T00:00:00Z",
+		"generated_at":      time.Now().Format(time.RFC3339),
 	}, nil
 }
 
@@ -101,7 +102,7 @@ func (s *CodeAnalysisServiceImpl) GenerateDocumentation(ctx context.Context, req
 		"documentation": docs,
 		"coverage":      s.calculateDocumentationCoverage(docs, req.Code),
 		"quality_score": s.assessDocumentationQuality(docs),
-		"generated_at":  "2024-01-01T00:00:00Z",
+		"generated_at":  time.Now().Format(time.RFC3339),
 	}, nil
 }
 
@@ -117,7 +118,7 @@ func (s *CodeAnalysisServiceImpl) ValidateCode(ctx context.Context, req models.C
 		"errors":       s.findSyntaxErrors(req.Code, req.Language),
 		"warnings":     s.findPotentialIssues(req.Code, req.Language),
 		"compliance":   s.checkStandardsCompliance(req.Code, req.Language),
-		"validated_at": "2024-01-01T00:00:00Z",
+		"validated_at": time.Now().Format(time.RFC3339),
 	}
 
 	return validation, nil
@@ -146,20 +147,61 @@ func (s *CodeAnalysisServiceImpl) initializePatterns() {
 // analyzeComplexity calculates code complexity metrics
 func (s *CodeAnalysisServiceImpl) analyzeComplexity(code, language string) map[string]interface{} {
 	lines := strings.Split(code, "\n")
-	functionCount := len(s.patterns["function"].FindAllString(code, -1))
+
+	// Use language-specific patterns for function detection
+	var functionPattern *regexp.Regexp
+	switch language {
+	case "go":
+		functionPattern = regexp.MustCompile(`func\s+\w+\s*\(`)
+	case "javascript", "typescript":
+		functionPattern = regexp.MustCompile(`(function\s+\w+|const\s+\w+\s*=\s*(async\s+)?\(|function\s*\(`)
+	case "python":
+		functionPattern = regexp.MustCompile(`def\s+\w+\s*\(`)
+	default:
+		// Fallback to Go pattern
+		functionPattern = s.patterns["function"]
+	}
+
+	functionCount := len(functionPattern.FindAllString(code, -1))
 
 	cyclomatic := 1 // Base complexity
-	// Add complexity for control structures
+	// Add complexity for control structures (language-agnostic patterns)
 	cyclomatic += strings.Count(code, "if ")
 	cyclomatic += strings.Count(code, "for ")
 	cyclomatic += strings.Count(code, "switch ")
 	cyclomatic += strings.Count(code, "case ")
 
+	// Language-specific complexity additions
+	switch language {
+	case "python":
+		cyclomatic += strings.Count(code, "elif ")
+		cyclomatic += strings.Count(code, "while ")
+		cyclomatic += strings.Count(code, "except ")
+	case "javascript", "typescript":
+		cyclomatic += strings.Count(code, "else if")
+		cyclomatic += strings.Count(code, "catch ")
+		cyclomatic += strings.Count(code, "while ")
+	}
+
+	// Calculate language-specific thresholds
+	maxRecommendedComplexity := 10
+	switch language {
+	case "go":
+		maxRecommendedComplexity = 10
+	case "python":
+		maxRecommendedComplexity = 8 // Python functions tend to be simpler
+	case "javascript", "typescript":
+		maxRecommendedComplexity = 12 // JS/TS can handle slightly more complexity
+	}
+
 	return map[string]interface{}{
-		"cyclomatic":          cyclomatic,
-		"functions":           functionCount,
-		"lines":               len(lines),
-		"avg_function_length": len(lines) / max(functionCount, 1),
+		"cyclomatic":               cyclomatic,
+		"functions":                functionCount,
+		"lines":                    len(lines),
+		"avg_function_length":      len(lines) / max(functionCount, 1),
+		"language":                 language,
+		"max_recommended":          maxRecommendedComplexity,
+		"complexity_exceeds_limit": cyclomatic > maxRecommendedComplexity,
 	}
 }
 
@@ -241,142 +283,90 @@ func (s *CodeAnalysisServiceImpl) generateSuggestions(code, language string) []s
 	return suggestions
 }
 
-// Helper functions
-func (s *CodeAnalysisServiceImpl) filterIssuesByRules(issues []map[string]interface{}, rules []string) []map[string]interface{} {
-	if len(rules) == 0 {
-		return issues
-	}
-
-	var filtered []map[string]interface{}
-	for _, issue := range issues {
-		if issueType, ok := issue["type"].(string); ok {
-			for _, rule := range rules {
-				if strings.Contains(rule, issueType) || rule == "all" {
-					filtered = append(filtered, issue)
-					break
-				}
-			}
-		}
-	}
-	return filtered
-}
-
-func (s *CodeAnalysisServiceImpl) calculateSeverityBreakdown(issues []map[string]interface{}) map[string]int {
-	breakdown := map[string]int{
-		"critical": 0,
-		"major":    0,
-		"minor":    0,
-	}
-
-	for _, issue := range issues {
-		if severity, ok := issue["severity"].(string); ok {
-			breakdown[severity]++
-		}
-	}
-
-	return breakdown
-}
-
-func (s *CodeAnalysisServiceImpl) generateRefactoringSuggestions(code, language, action string) []map[string]interface{} {
-	var suggestions []map[string]interface{}
-
-	switch action {
-	case "extract_method":
-		suggestions = append(suggestions, map[string]interface{}{
-			"type":        "extract_method",
-			"description": "Extract complex logic into separate methods",
-			"priority":    "high",
-			"effort":      "medium",
-		})
-	case "rename_variables":
-		suggestions = append(suggestions, map[string]interface{}{
-			"type":        "rename_variables",
-			"description": "Use more descriptive variable names",
-			"priority":    "medium",
-			"effort":      "low",
-		})
-	default:
-		suggestions = append(suggestions, map[string]interface{}{
-			"type":        "general_improvement",
-			"description": "General code structure improvements",
-			"priority":    "medium",
-			"effort":      "medium",
-		})
-	}
-
-	return suggestions
-}
-
-func (s *CodeAnalysisServiceImpl) estimateRefactoringSavings(suggestions []map[string]interface{}) map[string]interface{} {
-	totalSavings := len(suggestions) * 30 // Assume 30 minutes saved per suggestion
-	return map[string]interface{}{
-		"time_saved_minutes": totalSavings,
-		"productivity_gain":  fmt.Sprintf("%.1f%%", float64(totalSavings)/480.0*100), // Based on 8-hour day
-	}
-}
-
-func (s *CodeAnalysisServiceImpl) extractDocumentation(code, language string) map[string]interface{} {
-	// Simple documentation extraction - in production this would be more sophisticated
-	return map[string]interface{}{
-		"functions": []string{"example_function"},
-		"classes":   []string{},
-		"modules":   []string{"main"},
-	}
-}
-
-func (s *CodeAnalysisServiceImpl) calculateDocumentationCoverage(docs, code interface{}) float64 {
-	// Simplified coverage calculation
-	return 75.0
-}
-
-func (s *CodeAnalysisServiceImpl) assessDocumentationQuality(docs interface{}) float64 {
-	return 82.5
-}
-
-func (s *CodeAnalysisServiceImpl) validateSyntax(code, language string) bool {
-	// Basic syntax validation - in production this would use actual parsers
-	return !strings.Contains(code, "syntax error")
-}
-
-func (s *CodeAnalysisServiceImpl) findSyntaxErrors(code, language string) []string {
-	// Simplified error detection
-	return []string{}
-}
-
-func (s *CodeAnalysisServiceImpl) findPotentialIssues(code, language string) []string {
-	return []string{"Consider adding error handling"}
-}
-
-func (s *CodeAnalysisServiceImpl) checkStandardsCompliance(code, language string) map[string]interface{} {
-	return map[string]interface{}{
-		"compliant": true,
-		"standards": []string{"basic_formatting", "naming_conventions"},
-	}
-}
-
-func max(a, b int) int {
-	if a > b {
-		return a
-	}
-	return b
-}
-
 // AnalyzeSecurity performs security-focused analysis
 func (s *CodeAnalysisServiceImpl) AnalyzeSecurity(ctx context.Context, req models.SecurityASTRequest) (interface{}, error) {
 	// Use AST service for security analysis
 	astService := NewASTService()
-	return astService.AnalyzeSecurity(ctx, req)
+	result, err := astService.AnalyzeSecurity(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to analyze security: %w", err)
+	}
+	// Convert *models.SecurityASTResponse to interface{} for interface compliance
+	return result, nil
 }
 
-// AnalyzeVibe performs vibe coding detection analysis
+// AnalyzeVibe performs comprehensive vibe coding detection analysis with quality metrics.
+//
+// This method analyzes code for "vibe" issues - code quality problems that affect
+// maintainability, readability, and technical debt. It provides a comprehensive
+// analysis including:
+//   - Vibe issues: Code quality problems detected via AST analysis
+//   - Duplicate functions: Similar or duplicate code patterns
+//   - Orphaned code: Unused functions, variables, and dead code
+//   - Quality metrics: Comprehensive quality scores across multiple dimensions
+//   - Maintainability index: Halstead-based maintainability metric (0-100)
+//   - Technical debt: Estimated effort and cost to resolve issues
+//   - Refactoring priorities: Ranked list of refactoring recommendations
+//
+// The analysis uses AST-based parsing for accurate code understanding and provides
+// actionable insights for code improvement.
+//
+// Parameters:
+//   - ctx: Context for cancellation and timeout control
+//   - req: CodeAnalysisRequest containing code and language to analyze
+//
+// Returns:
+//   - Map containing all analysis results including quality metrics, technical debt,
+//     maintainability index, and refactoring priorities
+//   - error if code or language is missing, or if analysis fails
+//
+// Example:
+//
+//	req := models.CodeAnalysisRequest{
+//	    Code:     "package main\nfunc main() {}",
+//	    Language: "go",
+//	}
+//	result, err := service.AnalyzeVibe(ctx, req)
+//	if err != nil {
+//	    // Handle error
+//	}
+//	// Access quality metrics: result["quality_metrics"]
+//	// Access technical debt: result["technical_debt"]
 func (s *CodeAnalysisServiceImpl) AnalyzeVibe(ctx context.Context, req models.CodeAnalysisRequest) (interface{}, error) {
-	// Vibe analysis would use AST to detect duplicate functions, orphaned code, etc.
+	if req.Code == "" {
+		return nil, fmt.Errorf("code is required")
+	}
+	if req.Language == "" {
+		return nil, fmt.Errorf("language is required")
+	}
+
+	// Get basic vibe issues
+	vibeIssues := s.identifyVibeIssues(req.Code, req.Language)
+	duplicates := s.findDuplicateFunctions(req.Code, req.Language)
+	orphaned := s.findOrphanedCode(req.Code, req.Language)
+
+	// Calculate quality metrics
+	qualityMetrics := s.calculateQualityMetrics(ctx, req.Code, req.Language, vibeIssues, duplicates, orphaned)
+
+	// Calculate maintainability index
+	maintainabilityIndex := s.calculateMaintainabilityIndex(ctx, req.Code, req.Language)
+
+	// Estimate technical debt
+	technicalDebt := s.estimateTechnicalDebt(ctx, req.Code, req.Language, vibeIssues, duplicates, orphaned)
+
+	// Calculate refactoring priorities
+	refactoringPriorities := s.calculateRefactoringPriority(ctx, req.Code, req.Language, vibeIssues, duplicates, orphaned)
+
 	analysis := map[string]interface{}{
-		"language":            req.Language,
-		"vibe_issues":         s.identifyVibeIssues(req.Code, req.Language),
-		"duplicate_functions": s.findDuplicateFunctions(req.Code, req.Language),
-		"orphaned_code":       s.findOrphanedCode(req.Code, req.Language),
-		"analyzed_at":         "2024-01-01T00:00:00Z",
+		"language":              req.Language,
+		"vibe_issues":           vibeIssues,
+		"duplicate_functions":   duplicates,
+		"orphaned_code":         orphaned,
+		"quality_metrics":       qualityMetrics,
+		"maintainability_index": maintainabilityIndex,
+		"technical_debt":        technicalDebt,
+		"refactoring_priority":  refactoringPriorities,
+		"analyzed_at":           time.Now().Format(time.RFC3339),
 	}
 	return analysis, nil
 }
@@ -387,32 +377,29 @@ func (s *CodeAnalysisServiceImpl) AnalyzeComprehensive(ctx context.Context, req 
 		return nil, fmt.Errorf("project_id is required")
 	}
 
-	// Use comprehensive analysis service (would be implemented in production)
-	// For now, return a simplified response
-	analysis := map[string]interface{}{
-		"project_id":      req.ProjectID,
-		"feature":         req.Feature,
-		"mode":            req.Mode,
-		"depth":           req.Depth,
-		"layers_analyzed": []string{"ui", "api", "database", "logic", "integration", "tests"},
-		"findings":        []interface{}{},
-		"analyzed_at":     "2024-01-01T00:00:00Z",
+	// Initialize comprehensive analysis service with dependencies
+	var knowledgeService KnowledgeService
+	if db != nil {
+		knowledgeService = NewKnowledgeService(db)
 	}
 
-	if req.IncludeBusinessContext {
-		// Get business context
-		knowledgeService := NewKnowledgeService(nil) // Would pass DB in production
-		businessReq := BusinessContextRequest{
-			ProjectID: req.ProjectID,
-			Feature:   req.Feature,
-		}
-		businessCtx, err := knowledgeService.GetBusinessContext(ctx, businessReq)
-		if err == nil {
-			analysis["business_context"] = businessCtx
-		}
+	// Create logger (use a simple logger if not available)
+	// Note: simpleLogger is defined in code_analysis_comprehensive.go
+	logger := &simpleLogger{}
+
+	comprehensiveService := NewComprehensiveAnalysisService(
+		NewASTService(),
+		knowledgeService,
+		logger,
+	)
+
+	// Execute comprehensive analysis
+	result, err := comprehensiveService.ExecuteAnalysis(ctx, req)
+	if err != nil {
+		return nil, fmt.Errorf("failed to execute comprehensive analysis: %w", err)
 	}
 
-	return analysis, nil
+	return result, nil
 }
 
 // AnalyzeIntent performs intent clarification analysis
@@ -423,7 +410,7 @@ func (s *CodeAnalysisServiceImpl) AnalyzeIntent(ctx context.Context, req IntentA
 
 	// Use intent analyzer
 	var contextData *ContextData
-	if req.ContextData != nil {
+	if req.IncludeContext {
 		gitStatusRaw := extractGitStatus(req.CodebasePath)
 		gitStatus := make(map[string]string)
 		for k, v := range gitStatusRaw {
@@ -503,47 +490,6 @@ func (s *CodeAnalysisServiceImpl) AnalyzeBusinessRules(ctx context.Context, req 
 		"rules_checked":   len(rules),
 		"findings":        findings,
 		"compliance_rate": calculateComplianceRate(rules, findings),
-		"analyzed_at":     "2024-01-01T00:00:00Z",
+		"analyzed_at":     time.Now().Format(time.RFC3339),
 	}, nil
-}
-
-// Helper functions for vibe analysis
-func (s *CodeAnalysisServiceImpl) identifyVibeIssues(code, language string) []interface{} {
-	// Simplified - would use AST in production
-	return []interface{}{}
-}
-
-func (s *CodeAnalysisServiceImpl) findDuplicateFunctions(code, language string) []interface{} {
-	// Simplified - would use AST in production
-	return []interface{}{}
-}
-
-func (s *CodeAnalysisServiceImpl) findOrphanedCode(code, language string) []interface{} {
-	// Simplified - would use AST in production
-	return []interface{}{}
-}
-
-// Helper functions for intent analysis
-func extractRecentFiles(codebasePath string) []string {
-	// Stub - would scan filesystem
-	return []string{}
-}
-
-func extractGitStatus(codebasePath string) map[string]interface{} {
-	// Stub - would run git commands
-	return map[string]interface{}{}
-}
-
-func extractProjectStructure(codebasePath string) map[string]interface{} {
-	// Stub - would scan directory structure
-	return map[string]interface{}{}
-}
-
-func calculateComplianceRate(rules []KnowledgeItem, findings []BusinessContextFinding) float64 {
-	if len(rules) == 0 {
-		return 0.0
-	}
-	nonCompliant := len(findings)
-	compliant := len(rules) - nonCompliant
-	return float64(compliant) / float64(len(rules))
 }

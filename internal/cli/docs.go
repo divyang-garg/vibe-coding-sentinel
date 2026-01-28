@@ -33,7 +33,7 @@ func runDocs(args []string) error {
 	// Build file tree
 	tree, err := buildFileTree(".", maxDepth)
 	if err != nil {
-		return fmt.Errorf("failed to build file tree: %w", err)
+		return fmt.Errorf("unable to scan project files: %w", err)
 	}
 
 	// Generate markdown
@@ -42,12 +42,12 @@ func runDocs(args []string) error {
 	// Ensure output directory exists
 	dir := filepath.Dir(outputFile)
 	if err := os.MkdirAll(dir, 0755); err != nil {
-		return fmt.Errorf("failed to create directory: %w", err)
+		return fmt.Errorf("unable to create output directory: %w", err)
 	}
 
 	// Write file
 	if err := os.WriteFile(outputFile, []byte(content), 0644); err != nil {
-		return fmt.Errorf("failed to write file: %w", err)
+		return fmt.Errorf("unable to save documentation file: %w", err)
 	}
 
 	fmt.Printf("✅ Documentation generated: %s\n", outputFile)

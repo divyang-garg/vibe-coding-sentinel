@@ -28,7 +28,7 @@ func TestCalculateShannonEntropy(t *testing.T) {
 		{
 			name:     "high entropy",
 			input:    "abcdefghijklmnopqrstuvwxyz0123456789",
-			expected: 5.17, // Approximate
+			expected: 5.17, // Approximate - actual value may vary slightly
 		},
 	}
 
@@ -41,6 +41,12 @@ func TestCalculateShannonEntropy(t *testing.T) {
 				}
 			} else if result < 0 {
 				t.Errorf("Entropy should be non-negative, got %f", result)
+			} else if tt.name == "high entropy" {
+				// For high entropy test, verify it's in reasonable range (5.0-5.5)
+				// Actual calculation may vary slightly due to floating point precision
+				if result < 5.0 || result > 5.5 {
+					t.Errorf("Expected entropy around 5.17 for high entropy string, got %f (expected range: 5.0-5.5)", result)
+				}
 			}
 		})
 	}
@@ -183,8 +189,8 @@ func TestDetectEntropySecrets(t *testing.T) {
 			expected: 0,
 		},
 		{
-			name:     "multiple secrets",
-			content:  `const apiKey = "aB3dEf9gH2iJ4kL6mN8oP1qR5sT7uV0wX2yZ4bC6dF8gH1";
+			name: "multiple secrets",
+			content: `const apiKey = "aB3dEf9gH2iJ4kL6mN8oP1qR5sT7uV0wX2yZ4bC6dF8gH1";
 const secret = "dGhpc2lzYXZlcnlsb25nc3RyaW5ndGhhdGxvb2tzbGlrZWJhc2U2NA==";`,
 			filePath: "test.js",
 			expected: 2,

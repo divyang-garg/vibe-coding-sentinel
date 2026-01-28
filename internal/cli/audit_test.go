@@ -53,9 +53,9 @@ func TestDisplayResults(t *testing.T) {
 
 	t.Run("interactive mode passed", func(t *testing.T) {
 		result := &scanner.Result{
-			Success:  true,
-			Findings: []scanner.Finding{},
-			Summary:  map[string]int{"test": 2},
+			Success:   true,
+			Findings:  []scanner.Finding{},
+			Summary:   map[string]int{"test": 2},
 			Timestamp: "2026-01-20T00:00:00Z",
 		}
 		displayResults(result, false)
@@ -63,7 +63,7 @@ func TestDisplayResults(t *testing.T) {
 
 	t.Run("interactive mode failed", func(t *testing.T) {
 		result := &scanner.Result{
-			Success:  false,
+			Success: false,
 			Findings: []scanner.Finding{
 				{
 					Type:     "test",
@@ -73,7 +73,7 @@ func TestDisplayResults(t *testing.T) {
 					Message:  "Test finding",
 				},
 			},
-			Summary:  map[string]int{"test": 1},
+			Summary:   map[string]int{"test": 1},
 			Timestamp: "2026-01-20T00:00:00Z",
 		}
 		displayResults(result, false)
@@ -92,4 +92,3 @@ func TestDisplayResults(t *testing.T) {
 		displayResults(result, false)
 	})
 }
-

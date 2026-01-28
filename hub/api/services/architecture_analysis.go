@@ -6,13 +6,20 @@ package services
 import (
 	"context"
 	"fmt"
+	"path/filepath"
 	"strings"
 
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
+// AnalyzeArchitecture performs architecture analysis on the provided request.
+// Exported for use by HTTP handlers. CodebasePath is optional and used for import resolution.
+func AnalyzeArchitecture(req ArchitectureAnalysisRequest) ArchitectureAnalysisResponse {
+	return analyzeArchitecture(req.Files, req.CodebasePath)
+}
+
 // analyzeArchitecture performs architecture analysis on provided files
-func analyzeArchitecture(files []FileContent) ArchitectureAnalysisResponse {
+func analyzeArchitecture(files []FileContent, codebasePath string) ArchitectureAnalysisResponse {
 	var oversizedFiles []FileAnalysisResult
 	var moduleGraph ModuleGraph
 	var dependencyIssues []DependencyIssue
@@ -22,18 +29,14 @@ func analyzeArchitecture(files []FileContent) ArchitectureAnalysisResponse {
 	for _, file := range files {
 		lines := strings.Split(file.Content, "\n")
 		lineCount := len(lines)
+		cleanPath := filepath.Clean(file.Path)
 
-		// Check if file is oversized (using default thresholds for now)
-		// In full implementation, these would come from config
-		warningThreshold := 300
-		criticalThreshold := 500
-		maxThreshold := 1000
-
-		if lineCount >= warningThreshold {
+		ac := GetArchitectureConfig()
+		if lineCount >= ac.WarningLines {
 			status := "warning"
-			if lineCount >= maxThreshold {
+			if lineCount >= ac.MaxLines {
 				status = "oversized"
-			} else if lineCount >= criticalThreshold {
+			} else if lineCount >= ac.CriticalLines {
 				status = "critical"
 			}
 
@@ -42,12 +45,12 @@ func analyzeArchitecture(files []FileContent) ArchitectureAnalysisResponse {
 
 			// Generate split suggestion
 			var splitSuggestion *SplitSuggestion
-			if lineCount >= criticalThreshold {
+			if lineCount >= ac.CriticalLines {
 				splitSuggestion = generateSplitSuggestion(file, sections)
 			}
 
 			oversizedFiles = append(oversizedFiles, FileAnalysisResult{
-				File:            file.Path,
+				File:            cleanPath,
 				Lines:           lineCount,
 				Status:          status,
 				Sections:        sections,
@@ -55,13 +58,16 @@ func analyzeArchitecture(files []FileContent) ArchitectureAnalysisResponse {
 			})
 		}
 
-		// Build module graph
+		// Build module graph (use cleaned paths so Nodes match Edges)
 		moduleGraph.Nodes = append(moduleGraph.Nodes, ModuleNode{
-			Path:  file.Path,
+			Path:  cleanPath,
 			Lines: lineCount,
 			Type:  detectModuleType(file.Path),
 		})
 	}
+
+	// Build module graph edges (extract deps, resolve, add edges)
+	moduleGraph.Edges = buildModuleGraphEdges(files, codebasePath, moduleGraph.Nodes)
 
 	// Detect dependency issues
 	dependencyIssues = detectDependencyIssues(files, moduleGraph)

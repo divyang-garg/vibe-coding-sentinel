@@ -58,7 +58,7 @@ func TestBuildFileTreeRecursive_EdgeCases(t *testing.T) {
 		// Create directory we can't read
 		testDir := filepath.Join(tmpDir, "test")
 		os.MkdirAll(testDir, 0755)
-		
+
 		// Make directory read-only
 		os.Chmod(testDir, 0000)
 		defer os.Chmod(testDir, 0755)
@@ -92,11 +92,11 @@ func TestBuildFileTreeRecursive_EdgeCases(t *testing.T) {
 	t.Run("child node build error", func(t *testing.T) {
 		testDir := filepath.Join(tmpDir, "parent")
 		os.MkdirAll(testDir, 0755)
-		
+
 		// Create a subdirectory that will cause an error when accessed
 		subDir := filepath.Join(testDir, "subdir")
 		os.MkdirAll(subDir, 0755)
-		
+
 		// Make subdirectory inaccessible
 		os.Chmod(subDir, 0000)
 		defer os.Chmod(subDir, 0755)

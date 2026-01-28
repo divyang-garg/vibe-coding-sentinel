@@ -54,7 +54,7 @@ globs: ["*.go"]
 
 	t.Run("with mixed valid and invalid", func(t *testing.T) {
 		os.MkdirAll(".cursor/rules", 0755)
-		
+
 		validRule := `---
 description: Valid
 globs: ["*.go"]
@@ -211,7 +211,7 @@ func TestRunUpdateRules_AllPaths(t *testing.T) {
 
 	t.Run("without force - creates backup", func(t *testing.T) {
 		os.MkdirAll(".cursor/rules", 0755)
-		
+
 		// Create existing rule
 		existingRule := `---
 description: Existing

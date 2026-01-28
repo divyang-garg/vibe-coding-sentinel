@@ -8,6 +8,7 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -244,10 +245,10 @@ func getTestRequirement(ctx context.Context, requirementID string) (*TestRequire
 		&req.CreatedAt, &req.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("test requirement not found")
-	}
 	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return nil, fmt.Errorf("test requirement not found")
+		}
 		return nil, fmt.Errorf("failed to query test requirement: %w", err)
 	}
 
@@ -478,7 +479,7 @@ func getValidationHandler(w http.ResponseWriter, r *http.Request) {
 		&issuesStr, &validation.Score, &validation.ValidatedAt, &validation.CreatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		http.Error(w, "Validation not found", http.StatusNotFound)
 		return
 	}

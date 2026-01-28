@@ -15,7 +15,7 @@ import (
 )
 
 // extractFunctionCodeAST extracts function code using AST analysis
-func extractFunctionCodeAST(fullCode string, functionName string, startLine int, filePath string) string {
+func extractFunctionCodeAST(fullCode string, functionName string, _ int, filePath string) string {
 	// Determine language from file extension
 	ext := strings.ToLower(filepath.Ext(filePath))
 	language := ""
@@ -118,6 +118,60 @@ func extractFunctionCode(fullCode string, functionName string, startLine int) st
 		startIdx = startLine - 1
 	}
 
+	// Verify function name matches at the start line
+	if startIdx < len(lines) && functionName != "" {
+		line := lines[startIdx]
+		// Check for Go function declaration: "func FunctionName" or "func (r Receiver) FunctionName"
+		if strings.Contains(line, "func ") {
+			// Extract function name from line
+			funcIdx := strings.Index(line, "func ")
+			if funcIdx >= 0 {
+				remaining := strings.TrimSpace(line[funcIdx+5:])
+				// Handle method receiver: "func (r Type) MethodName"
+				if strings.HasPrefix(remaining, "(") {
+					// Find closing paren and method name
+					parenEnd := strings.Index(remaining, ")")
+					if parenEnd > 0 && parenEnd < len(remaining)-1 {
+						remaining = strings.TrimSpace(remaining[parenEnd+1:])
+					}
+				}
+				// Extract function name (before opening paren or space)
+				parts := strings.Fields(remaining)
+				if len(parts) > 0 {
+					extractedName := strings.TrimSpace(parts[0])
+					// Remove any trailing characters like opening paren
+					extractedName = strings.TrimRight(extractedName, "(")
+					// Verify it matches expected function name
+					if extractedName != functionName {
+						// Function name doesn't match - return empty to indicate failure
+						return ""
+					}
+				}
+			}
+		} else if strings.Contains(line, "function ") || strings.Contains(line, "function(") {
+			// JavaScript/TypeScript: "function functionName" or "const functionName = function"
+			// Basic check - if function name appears in the line
+			if !strings.Contains(line, functionName) {
+				// Function name not found in line - return empty
+				return ""
+			}
+		} else if strings.Contains(line, "def ") {
+			// Python: "def functionName"
+			funcIdx := strings.Index(line, "def ")
+			if funcIdx >= 0 {
+				remaining := strings.TrimSpace(line[funcIdx+4:])
+				parts := strings.Fields(remaining)
+				if len(parts) > 0 {
+					extractedName := strings.TrimSpace(parts[0])
+					extractedName = strings.TrimRight(extractedName, "(")
+					if extractedName != functionName {
+						return ""
+					}
+				}
+			}
+		}
+	}
+
 	// Extract function (look for closing brace or next function)
 	endIdx := len(lines)
 	for i := startIdx; i < len(lines); i++ {
@@ -146,7 +200,7 @@ func extractFunctionCode(fullCode string, functionName string, startLine int) st
 }
 
 // parseSemanticAnalysisResponse parses LLM response into findings
-func parseSemanticAnalysisResponse(ctx context.Context, response string, function BusinessLogicFunctionInfo) []LogicLayerFinding {
+func parseSemanticAnalysisResponse(_ context.Context, response string, function BusinessLogicFunctionInfo) []LogicLayerFinding {
 	findings := []LogicLayerFinding{}
 
 	// Try to parse JSON response

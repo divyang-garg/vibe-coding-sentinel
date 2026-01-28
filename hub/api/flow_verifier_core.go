@@ -150,48 +150,118 @@ func traceFlow(component ComponentInfo, feature *DiscoveredFeature, callGraph ma
 		File:      component.Path,
 	})
 
-	// Step 2: Find API endpoint
-	if feature.APILayer != nil {
-		for _, endpoint := range feature.APILayer.Endpoints {
-			if matchesComponentToEndpoint(component.Name, endpoint.Path) {
-				flow.Steps = append(flow.Steps, FlowStep{
-					Layer:     "api",
-					Component: fmt.Sprintf("%s %s", endpoint.Method, endpoint.Path),
-					Action:    "API call",
-					File:      endpoint.File,
-				})
+	// Use callGraph if available for efficient traversal, otherwise fall back to direct feature traversal
+	// Note: len() for nil maps is defined as zero, so nil check is unnecessary
+	if len(callGraph) > 0 {
+		// Step 2: Find API endpoint using call graph
+		endpoints, hasEndpoints := callGraph[component.Name]
+		if hasEndpoints && len(endpoints) > 0 {
+			// Use first matching endpoint from call graph
+			endpointKey := endpoints[0]
 
-				// Step 3: Find business logic function
-				if feature.LogicLayer != nil {
-					for _, function := range feature.LogicLayer.Functions {
-						if matchesEndpointToFunction(endpoint.Handler, function.Name) {
-							flow.Steps = append(flow.Steps, FlowStep{
-								Layer:      "logic",
-								Component:  function.Name,
-								Action:     "Business logic execution",
-								File:       function.File,
-								LineNumber: function.LineNumber,
-							})
+			// Find endpoint details from feature
+			if feature.APILayer != nil {
+				for _, endpoint := range feature.APILayer.Endpoints {
+					if fmt.Sprintf("%s:%s", endpoint.Method, endpoint.Path) == endpointKey {
+						flow.Steps = append(flow.Steps, FlowStep{
+							Layer:     "api",
+							Component: fmt.Sprintf("%s %s", endpoint.Method, endpoint.Path),
+							Action:    "API call",
+							File:      endpoint.File,
+						})
 
-							// Step 4: Find database operation
-							if feature.DatabaseLayer != nil {
-								for _, table := range feature.DatabaseLayer.Tables {
-									if matchesFunctionToTable(function.Name, table.Name) {
+						// Step 3: Find business logic function using call graph
+						functions, hasFunctions := callGraph[endpointKey]
+						if hasFunctions && len(functions) > 0 {
+							functionName := functions[0]
+							// Find function details from feature
+							if feature.LogicLayer != nil {
+								for _, function := range feature.LogicLayer.Functions {
+									if function.Name == functionName {
 										flow.Steps = append(flow.Steps, FlowStep{
-											Layer:     "database",
-											Component: table.Name,
-											Action:    "Database operation",
-											File:      table.File,
+											Layer:      "logic",
+											Component:  function.Name,
+											Action:     "Business logic execution",
+											File:       function.File,
+											LineNumber: function.LineNumber,
 										})
+
+										// Step 4: Find database operation using call graph
+										tables, hasTables := callGraph[functionName]
+										if hasTables && len(tables) > 0 {
+											tableName := tables[0]
+											// Find table details from feature
+											if feature.DatabaseLayer != nil {
+												for _, table := range feature.DatabaseLayer.Tables {
+													if table.Name == tableName {
+														flow.Steps = append(flow.Steps, FlowStep{
+															Layer:     "database",
+															Component: table.Name,
+															Action:    "Database operation",
+															File:      table.File,
+														})
+														break
+													}
+												}
+											}
+										}
 										break
 									}
 								}
 							}
-							break
 						}
+						break
 					}
 				}
-				break
+			}
+		}
+	}
+
+	// Fallback: If callGraph is empty or doesn't have the component, use direct feature traversal
+	if len(flow.Steps) == 1 {
+		// Step 2: Find API endpoint
+		if feature.APILayer != nil {
+			for _, endpoint := range feature.APILayer.Endpoints {
+				if matchesComponentToEndpoint(component.Name, endpoint.Path) {
+					flow.Steps = append(flow.Steps, FlowStep{
+						Layer:     "api",
+						Component: fmt.Sprintf("%s %s", endpoint.Method, endpoint.Path),
+						Action:    "API call",
+						File:      endpoint.File,
+					})
+
+					// Step 3: Find business logic function
+					if feature.LogicLayer != nil {
+						for _, function := range feature.LogicLayer.Functions {
+							if matchesEndpointToFunction(endpoint.Handler, function.Name) {
+								flow.Steps = append(flow.Steps, FlowStep{
+									Layer:      "logic",
+									Component:  function.Name,
+									Action:     "Business logic execution",
+									File:       function.File,
+									LineNumber: function.LineNumber,
+								})
+
+								// Step 4: Find database operation
+								if feature.DatabaseLayer != nil {
+									for _, table := range feature.DatabaseLayer.Tables {
+										if matchesFunctionToTable(function.Name, table.Name) {
+											flow.Steps = append(flow.Steps, FlowStep{
+												Layer:     "database",
+												Component: table.Name,
+												Action:    "Database operation",
+												File:      table.File,
+											})
+											break
+										}
+									}
+								}
+								break
+							}
+						}
+					}
+					break
+				}
 			}
 		}
 	}

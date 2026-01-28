@@ -203,9 +203,9 @@ func (v *NumericValidator) Validate(data map[string]interface{}) error {
 func EmailValidator(field string, required bool) Validator {
 	emailPattern := regexp.MustCompile(`^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$`)
 	return &StringValidator{
-		Field:    field,
-		Required: required,
-		Pattern:  emailPattern,
+		Field:     field,
+		Required:  required,
+		Pattern:   emailPattern,
 		MaxLength: 255,
 	}
 }
@@ -224,9 +224,9 @@ func UUIDValidator(field string, required bool) Validator {
 func URLValidator(field string, required bool) Validator {
 	urlPattern := regexp.MustCompile(`^https?://[^\s/$.?#].[^\s]*$`)
 	return &StringValidator{
-		Field:    field,
-		Required: required,
-		Pattern:  urlPattern,
+		Field:     field,
+		Required:  required,
+		Pattern:   urlPattern,
 		MaxLength: 2048,
 	}
 }
@@ -235,10 +235,10 @@ func URLValidator(field string, required bool) Validator {
 func SanitizeString(input string) string {
 	// Remove null bytes
 	input = strings.ReplaceAll(input, "\x00", "")
-	
+
 	// Trim whitespace
 	input = strings.TrimSpace(input)
-	
+
 	// Remove control characters (except newline and tab)
 	var result strings.Builder
 	for _, r := range input {
@@ -246,7 +246,7 @@ func SanitizeString(input string) string {
 			result.WriteRune(r)
 		}
 	}
-	
+
 	return result.String()
 }
 
@@ -262,10 +262,10 @@ func ValidateRequestSize(size int64, maxSize int64) error {
 var (
 	// AlphanumericPattern matches alphanumeric strings
 	AlphanumericPattern = regexp.MustCompile(`^[a-zA-Z0-9]+$`)
-	
+
 	// SafeStringPattern matches strings safe for database storage
 	SafeStringPattern = regexp.MustCompile(`^[a-zA-Z0-9\s\-_.,!?@#$%^&*()+=\[\]{}|\\:;"'<>/]+$`)
-	
+
 	// NoSQLInjectionPattern ensures no SQL injection attempts
 	NoSQLInjectionPattern = regexp.MustCompile(`(?i)(union|select|insert|update|delete|drop|create|alter|exec|execute|script)`)
 )

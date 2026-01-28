@@ -181,10 +181,13 @@ func BenchmarkRateLimiter_RateLimit(b *testing.B) {
 func TestRateLimiter_CleanupWorker(t *testing.T) {
 	// Create rate limiter with short cleanup interval for testing
 	rl := NewRateLimiter(10, time.Minute)
-	
+
 	// Override cleanup interval to be shorter for testing
-	rl.cleanup = 200 * time.Millisecond
-	
+	// Note: This test verifies cleanup logic, but cleanup timing is non-deterministic
+	// We verify that old buckets can be cleaned up and recent buckets remain
+	cleanupInterval := 200 * time.Millisecond
+	rl.SetCleanupInterval(cleanupInterval)
+
 	// Create some buckets
 	rl.mu.Lock()
 	rl.buckets["old-ip"] = &tokenBucket{
@@ -199,9 +202,9 @@ func TestRateLimiter_CleanupWorker(t *testing.T) {
 	initialCount := len(rl.buckets)
 	rl.mu.Unlock()
 
-	// Wait for cleanup to run (but not long enough to remove new bucket)
+	// Wait for cleanup to potentially run
 	// Cleanup removes buckets older than cleanup interval (200ms), so new bucket should remain
-	time.Sleep(150 * time.Millisecond)
+	time.Sleep(cleanupInterval + 50*time.Millisecond)
 
 	// Update new bucket's lastRefill to ensure it's still recent
 	rl.mu.Lock()
@@ -211,7 +214,7 @@ func TestRateLimiter_CleanupWorker(t *testing.T) {
 	rl.mu.Unlock()
 
 	// Wait a bit more for cleanup cycle
-	time.Sleep(100 * time.Millisecond)
+	time.Sleep(cleanupInterval + 50*time.Millisecond)
 
 	// Check that old bucket was cleaned up
 	rl.mu.Lock()
@@ -221,7 +224,8 @@ func TestRateLimiter_CleanupWorker(t *testing.T) {
 	rl.mu.Unlock()
 
 	// Old bucket should be removed (if cleanup ran), new bucket should remain
-	// Note: cleanup is non-deterministic, so we just verify the structure is correct
+	// Note: cleanup timing is non-deterministic due to goroutine scheduling,
+	// so we verify the structure is correct rather than exact timing
 	if !oldExists {
 		assert.True(t, finalCount < initialCount, "Old bucket should be cleaned up")
 	}
@@ -243,7 +247,7 @@ func TestRateLimiter_Allow_TokenRefillOverCapacity(t *testing.T) {
 
 	// Allow should refill tokens (3 seconds * rate) but cap at capacity
 	allowed := rl.Allow("test-ip")
-	
+
 	rl.mu.Lock()
 	finalTokens := rl.buckets["test-ip"].tokens
 	rl.mu.Unlock()

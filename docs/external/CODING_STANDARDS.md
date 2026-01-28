@@ -202,6 +202,81 @@ log.Warn("external service timeout, using cached data", "service", "llm", "timeo
 log.Error("database connection failed", "error", err, "attempt", attempt)
 ```
 
+### 4.4 Context Usage (ENFORCED)
+
+**All functions that accept `context.Context` MUST use it appropriately:**
+
+1. **Logging**: Always pass context to logging functions for request tracing
+   ```go
+   // ✅ GOOD: Context used for logging
+   func processData(ctx context.Context, data string) error {
+       if err := validate(data); err != nil {
+           LogWarn(ctx, "Validation failed: %v", err)
+           return err
+       }
+       LogInfo(ctx, "Processing data successfully")
+       return nil
+   }
+   
+   // ❌ BAD: Context parameter unused
+   func processData(ctx context.Context, data string) error {
+       if err := validate(data); err != nil {
+           log.Printf("Validation failed: %v", err) // Missing context
+           return err
+       }
+       return nil
+   }
+   ```
+
+2. **Cancellation Checks**: Check for context cancellation in long-running operations
+   ```go
+   // ✅ GOOD: Check context cancellation
+   func processLargeDataset(ctx context.Context, data []Item) error {
+       for i, item := range data {
+           if ctx.Err() != nil {
+               return ctx.Err()
+           }
+           processItem(ctx, item)
+       }
+       return nil
+   }
+   ```
+
+3. **Timeouts**: Use context for timeout propagation
+   ```go
+   // ✅ GOOD: Context used for timeout
+   func fetchData(ctx context.Context, url string) ([]byte, error) {
+       req, _ := http.NewRequestWithContext(ctx, "GET", url, nil)
+       return http.DefaultClient.Do(req)
+   }
+   ```
+
+4. **Never Leave Context Unused**: If a function accepts context but doesn't need it, mark it explicitly
+   ```go
+   // ✅ GOOD: Explicitly mark unused context (only if truly not needed)
+   func simpleCalculation(_ context.Context, x, y int) int {
+       return x + y
+   }
+   
+   // ❌ BAD: Context parameter silently unused
+   func simpleCalculation(ctx context.Context, x, y int) int {
+       return x + y // ctx never used
+   }
+   ```
+
+5. **Error Handling**: When errors occur, log them with context
+   ```go
+   // ✅ GOOD: Log errors with context
+   func readFile(ctx context.Context, path string) ([]byte, error) {
+       data, err := os.ReadFile(path)
+       if err != nil {
+           LogWarn(ctx, "Failed to read file %s: %v", path, err)
+           return nil, fmt.Errorf("failed to read file: %w", err)
+       }
+       return data, nil
+   }
+   ```
+
 ---
 
 ## 5. NAMING CONVENTIONS
@@ -561,6 +636,255 @@ All API endpoints must be documented with:
 - Authentication requirements
 - Error responses
 - Usage examples
+
+---
+
+## 13. STUB FUNCTION DETECTION & MANAGEMENT (ENFORCED)
+
+### 13.1 Stub Function Definition
+
+A **stub function** is any function that:
+- Returns `nil` or zero values without performing the intended operation
+- Returns an error indicating "not implemented" or similar
+- Contains only placeholder comments without actual implementation
+- Has an empty function body (except for intentional no-ops)
+- Uses `panic("not implemented")` or similar
+
+**Exceptions (NOT considered stubs):**
+- Test helper functions in `*_test.go` files
+- Interface definitions
+- Error type definitions
+- Functions marked as deprecated (must be removed within 30 days)
+- Intentional no-op functions with clear documentation
+
+### 13.2 Stub Detection Requirements (ENFORCED)
+
+#### Automated Detection
+All code must be scanned for stub functions using the automated detection script:
+
+```bash
+# Run stub detection
+./scripts/detect_stubs.sh
+```
+
+**Detection Patterns:**
+- Functions with `// Stub` comments
+- Functions returning `nil` with stub-related comments
+- Functions returning `fmt.Errorf("not implemented")`
+- Functions with empty bodies and stub indicators
+- Functions named with "Stub" suffix (except test helpers)
+
+#### Manual Review Process
+1. **Pre-Commit Hook:** Stub detection runs automatically
+2. **Code Review:** Reviewers must verify no new stubs are introduced
+3. **CI/CD Pipeline:** Build fails if stubs are detected without proper documentation
+
+### 13.3 Stub Implementation Requirements
+
+#### When a Stub is Found:
+
+1. **Verify Implementation Status:**
+   - Check if functionality already exists elsewhere in codebase
+   - Search for similar implementations that can be reused
+   - Verify if stub is intentional (e.g., waiting for external dependency)
+
+2. **If Implementation Exists:**
+   - **MUST** update stub to use existing implementation
+   - **MUST** remove stub and delegate to proper implementation
+   - **MUST** update all callers to use correct implementation
+
+3. **If Implementation Does NOT Exist:**
+   - **MUST** document in `STUB_TRACKING.md` (see Section 13.4)
+   - **MUST** add TODO comment with issue reference
+   - **MUST** implement within 30 days or provide technical justification
+
+### 13.4 Stub Tracking Documentation (ENFORCED)
+
+All unimplemented stub functionality **MUST** be documented in `STUB_TRACKING.md` located in the repository root.
+
+#### Required Information for Each Stub:
+
+```markdown
+### [Function Name] - [File Path]
+
+**Status:** PENDING | IN_PROGRESS | BLOCKED | DEPRECATED
+
+**Priority:** HIGH | MEDIUM | LOW
+
+**Description:**
+[Clear description of what the function should do]
+
+**Current Implementation:**
+```go
+[Current stub code]
+```
+
+**Required Implementation:**
+[Description of what needs to be implemented]
+
+**Dependencies:**
+[List any blocking dependencies, e.g., "tree-sitter integration"]
+
+**Impact:**
+[What functionality is affected by this stub]
+
+**Estimated Effort:**
+[Time estimate for implementation]
+
+**Assigned To:**
+[Developer or team responsible]
+
+**Target Completion:**
+[Date or milestone]
+
+**Related Issues:**
+[GitHub issues or tickets]
+```
+
+### 13.5 Unused Function/Parameter Detection (ENFORCED)
+
+#### Unused Function Detection
+
+Functions that are never called **MUST** be:
+1. **Removed** if truly unused
+2. **Marked for deprecation** if kept for backward compatibility
+3. **Documented** if intentionally unused (e.g., interface requirements)
+
+#### Unused Parameter Detection
+
+Functions with unused parameters **MUST**:
+1. **Remove parameter** if not needed
+2. **Use parameter** (even if just for logging/validation)
+3. **Prefix with underscore** (`_`) if intentionally unused (e.g., interface compliance)
+
+```go
+// ✅ GOOD: Parameter used
+func processData(ctx context.Context, data string) error {
+    LogInfo(ctx, "Processing data: %s", data)
+    return process(data)
+}
+
+// ✅ GOOD: Parameter intentionally unused (interface compliance)
+func implementInterface(_ context.Context, data string) error {
+    return process(data)
+}
+
+// ❌ BAD: Parameter silently unused
+func processData(ctx context.Context, data string) error {
+    return process(data) // ctx never used
+}
+```
+
+#### Detection Tools
+
+**Required Tools:**
+- `golangci-lint` with `unused` and `deadcode` linters enabled
+- `go vet` for unused parameter detection
+- Custom script: `scripts/detect_unused.sh` (if available)
+
+**CI/CD Enforcement:**
+- Build fails on unused functions (unless documented)
+- Warnings for unused parameters (must be addressed or prefixed with `_`)
+
+### 13.6 Stub Implementation Workflow
+
+#### Step 1: Detection
+```bash
+# Run automated detection
+./scripts/detect_stubs.sh
+
+# Check for unused functions/parameters
+golangci-lint run --enable=unused --enable=deadcode
+```
+
+#### Step 2: Classification
+1. **Real Stub:** Needs implementation → Document in `STUB_TRACKING.md`
+2. **False Positive:** Not a stub → Add to exclusion list in detection script
+3. **Intentional:** Documented stub → Verify documentation is clear
+
+#### Step 3: Implementation or Documentation
+- **If implementing:** Complete implementation and remove from tracking
+- **If documenting:** Add to `STUB_TRACKING.md` with all required fields
+
+#### Step 4: Verification
+- Run tests to ensure stub removal doesn't break functionality
+- Update callers if implementation location changed
+- Remove from `STUB_TRACKING.md` when complete
+
+### 13.7 Stub Lifecycle Management
+
+#### Stub States:
+
+1. **PENDING:** Stub identified, not yet implemented
+2. **IN_PROGRESS:** Implementation started, not yet complete
+3. **BLOCKED:** Waiting on external dependency or prerequisite
+4. **DEPRECATED:** Functionality no longer needed, marked for removal
+5. **COMPLETED:** Implementation finished, stub removed
+
+#### State Transitions:
+
+- **PENDING → IN_PROGRESS:** When work begins
+- **IN_PROGRESS → COMPLETED:** When implementation is done
+- **PENDING → BLOCKED:** When dependency identified
+- **BLOCKED → IN_PROGRESS:** When dependency resolved
+- **Any → DEPRECATED:** When functionality no longer needed
+
+#### Review Schedule:
+
+- **Weekly:** Review HIGH priority stubs
+- **Monthly:** Review all stubs, update status
+- **Quarterly:** Audit all stubs, remove deprecated ones
+
+### 13.8 Examples
+
+#### ✅ GOOD: Proper Stub Documentation
+
+```go
+// extractCallSitesFromAST extracts function call sites from AST.
+// STUB: Waiting for tree-sitter integration (see STUB_TRACKING.md #123)
+// TODO: Implement when tree-sitter integration is complete
+func extractCallSitesFromAST(root interface{}, code string, language string) []string {
+    // AST parsing disabled - tree-sitter integration required
+    // See: https://github.com/org/repo/issues/123
+    return []string{}
+}
+```
+
+**In STUB_TRACKING.md:**
+```markdown
+### extractCallSitesFromAST - hub/api/task_verifier_code.go
+
+**Status:** BLOCKED
+**Priority:** MEDIUM
+**Dependencies:** tree-sitter integration
+**Related Issues:** #123
+```
+
+#### ❌ BAD: Undocumented Stub
+
+```go
+func processData(data string) error {
+    return nil // Not implemented
+}
+```
+
+**Required Action:** Document in `STUB_TRACKING.md` or implement immediately.
+
+#### ✅ GOOD: Stub Replaced with Implementation
+
+```go
+// Before (stub):
+func validateCode(code string) error {
+    return nil // Stub
+}
+
+// After (implementation):
+func validateCode(code string) error {
+    return ast.ValidateSyntax(code, "go")
+}
+```
+
+**Action:** Remove from `STUB_TRACKING.md` when complete.
 
 ---
 

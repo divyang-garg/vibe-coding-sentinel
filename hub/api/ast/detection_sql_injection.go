@@ -9,11 +9,13 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-// detectSQLInjection finds SQL injection vulnerabilities
+// detectSQLInjection finds SQL injection vulnerabilities.
+// Uses registry when a detector is registered; otherwise falls back to switch.
 func detectSQLInjection(root *sitter.Node, code string, language string) []SecurityVulnerability {
+	if d := GetLanguageDetector(language); d != nil {
+		return d.DetectSQLInjection(root, code)
+	}
 	vulnerabilities := []SecurityVulnerability{}
-
-	// Language-specific detection
 	switch language {
 	case "go":
 		vulnerabilities = append(vulnerabilities, detectSQLInjectionGo(root, code)...)
@@ -22,7 +24,6 @@ func detectSQLInjection(root *sitter.Node, code string, language string) []Secur
 	case "python":
 		vulnerabilities = append(vulnerabilities, detectSQLInjectionPython(root, code)...)
 	}
-
 	return vulnerabilities
 }
 

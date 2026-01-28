@@ -74,8 +74,8 @@ func TestOutputResults(t *testing.T) {
 	defer os.Chdir(originalDir)
 
 	result := &extraction.ExtractResult{
-		Source:      "test.txt",
-		Confidence:  0.85,
+		Source:     "test.txt",
+		Confidence: 0.85,
 		BusinessRules: []extraction.BusinessRule{
 			{
 				ID:          "BR1",

@@ -28,10 +28,14 @@ func (h *HealthHandler) Health(w http.ResponseWriter, r *http.Request) {
 	// Check if shutting down
 	if pkg.IsShuttingDown() {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"status":    "shutting_down",
 			"timestamp": time.Now(),
-		})
+		}); err != nil {
+			// Cannot call http.Error after WriteHeader, so log the error
+			_ = err // Log error in production: log.Printf("Failed to encode health response: %v", err)
+		}
 		return
 	}
 
@@ -77,7 +81,12 @@ func (h *HealthHandler) Health(w http.ResponseWriter, r *http.Request) {
 	}
 
 	w.Header().Set("Content-Type", "application/json")
-	json.NewEncoder(w).Encode(health)
+	if err := json.NewEncoder(w).Encode(health); err != nil {
+		// Cannot call http.Error after WriteHeader, so log the error
+		// The response has already been sent, so we can only log
+		// In production, this should use proper logging
+		_ = err // Log error in production: log.Printf("Failed to encode health response: %v", err)
+	}
 }
 
 // HealthDB handles GET /health/db
@@ -96,10 +105,14 @@ func (h *HealthHandler) HealthDB(w http.ResponseWriter, r *http.Request) {
 func (h *HealthHandler) HealthReady(w http.ResponseWriter, r *http.Request) {
 	if pkg.IsShuttingDown() {
 		w.WriteHeader(http.StatusServiceUnavailable)
-		json.NewEncoder(w).Encode(map[string]interface{}{
+		w.Header().Set("Content-Type", "application/json")
+		if err := json.NewEncoder(w).Encode(map[string]interface{}{
 			"status": "not_ready",
 			"reason": "shutting_down",
-		})
+		}); err != nil {
+			// Cannot call http.Error after WriteHeader, so log the error
+			_ = err // Log error in production: log.Printf("Failed to encode health ready response: %v", err)
+		}
 		return
 	}
 

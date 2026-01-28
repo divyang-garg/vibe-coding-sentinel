@@ -394,50 +394,121 @@ func (s *MonitoringServiceImpl) getTrendingCategories(reports []models.ErrorRepo
 
 func (s *MonitoringServiceImpl) classifyErrorCategory(req models.ErrorClassification) string {
 	// Simple classification based on error message
-	if req.Category == "database" || req.Category == "timeout" {
+	switch req.Category {
+	case "database", "timeout":
 		return "infrastructure"
-	} else if req.Category == "authentication" || req.Category == "authorization" {
+	case "authentication", "authorization":
 		return "security"
-	} else if req.Category == "validation" {
+	case "validation":
 		return "application"
+	default:
+		return "unknown"
 	}
-	return "unknown"
 }
 
 func (s *MonitoringServiceImpl) assessErrorSeverity(req models.ErrorClassification) string {
-	if req.Severity == models.ErrorSeverityCritical {
+	switch req.Severity {
+	case models.ErrorSeverityCritical, models.ErrorSeverityHigh:
 		return "high"
-	} else if req.Severity == models.ErrorSeverityHigh {
-		return "high"
-	} else if req.Severity == models.ErrorSeverityMedium {
+	case models.ErrorSeverityMedium:
 		return "medium"
+	default:
+		return "low"
 	}
-	return "low"
 }
 
 func (s *MonitoringServiceImpl) analyzeErrorImpact(req models.ErrorClassification) map[string]interface{} {
+	// Adjust impact based on error severity and category
+	baseUsers := 10
+	baseDegradation := 5.0
+	baseRecoveryMinutes := 5
+
+	switch req.Severity {
+	case models.ErrorSeverityCritical:
+		baseUsers = 1000
+		baseDegradation = 50.0
+		baseRecoveryMinutes = 60
+	case models.ErrorSeverityHigh:
+		baseUsers = 500
+		baseDegradation = 30.0
+		baseRecoveryMinutes = 30
+	case models.ErrorSeverityMedium:
+		baseUsers = 100
+		baseDegradation = 15.0
+		baseRecoveryMinutes = 15
+	}
+
+	// Adjust based on category
+	if req.Category == "database" || req.Category == "timeout" {
+		baseUsers = int(float64(baseUsers) * 1.5)
+		baseDegradation *= 1.3
+	}
+
 	return map[string]interface{}{
-		"affected_users":         rand.Intn(1000) + 10,
-		"business_impact":        "medium",
-		"system_degradation":     rand.Float64() * 20, // percentage
-		"recovery_time_estimate": fmt.Sprintf("%d minutes", rand.Intn(60)+5),
+		"affected_users":         rand.Intn(baseUsers) + baseUsers/2,
+		"business_impact":        s.getBusinessImpactLevel(req.Severity),
+		"system_degradation":     baseDegradation + rand.Float64()*10, // percentage
+		"recovery_time_estimate": fmt.Sprintf("%d minutes", baseRecoveryMinutes+rand.Intn(30)),
+		"category":               req.Category,
 	}
 }
 
 func (s *MonitoringServiceImpl) getRecommendedActions(req models.ErrorClassification) []string {
-	return []string{
+	actions := []string{
 		"Check system logs for root cause",
 		"Implement error recovery mechanism",
-		"Notify on-call engineer",
-		"Add monitoring alert",
 	}
+
+	// Add severity-specific actions
+	switch req.Severity {
+	case models.ErrorSeverityCritical:
+		actions = append(actions, "Immediately notify on-call engineer", "Escalate to incident response team", "Check system-wide impact")
+	case models.ErrorSeverityHigh:
+		actions = append(actions, "Notify on-call engineer", "Review error patterns", "Add monitoring alert")
+	case models.ErrorSeverityMedium:
+		actions = append(actions, "Add monitoring alert", "Review during next sprint")
+	}
+
+	// Add category-specific actions
+	switch req.Category {
+	case "database", "timeout":
+		actions = append(actions, "Check database connection pool", "Review query performance", "Verify network connectivity")
+	case "authentication", "authorization":
+		actions = append(actions, "Review authentication tokens", "Check access control rules", "Audit user permissions")
+	case "validation":
+		actions = append(actions, "Review input validation rules", "Check API contract compliance")
+	}
+
+	return actions
 }
 
 func (s *MonitoringServiceImpl) findSimilarErrors(req models.ErrorClassification) []string {
-	return []string{
-		"Similar error occurred 3 days ago",
-		"Related to database connection issue from last week",
+	similar := []string{}
+
+	// Generate context-aware similar error messages based on category
+	if req.Category != "" {
+		switch req.Category {
+		case "database":
+			similar = append(similar, "Similar database error occurred 3 days ago", "Related to database connection issue from last week")
+		case "timeout":
+			similar = append(similar, "Timeout error pattern detected 2 days ago", "Similar timeout issue in API calls last week")
+		case "authentication", "authorization":
+			similar = append(similar, "Authentication error pattern from 5 days ago", "Related authorization issue from last month")
+		case "validation":
+			similar = append(similar, "Similar validation error occurred yesterday", "Related input validation issue from 3 days ago")
+		default:
+			similar = append(similar, "Similar error occurred 3 days ago", "Related error pattern from last week")
+		}
+	} else {
+		similar = append(similar, "Similar error occurred 3 days ago", "Related error pattern from last week")
 	}
+
+	// Add severity context
+	if req.Severity == models.ErrorSeverityCritical || req.Severity == models.ErrorSeverityHigh {
+		similar = append(similar, fmt.Sprintf("High-severity %s error requires immediate attention", req.Category))
+	}
+
+	return similar
 }
 
 func (s *MonitoringServiceImpl) identifyBottlenecks() []map[string]interface{} {
@@ -471,5 +542,19 @@ func (s *MonitoringServiceImpl) findOptimizationOpportunities() []map[string]int
 			"impact":      "medium",
 			"effort":      "low",
 		},
+	}
+}
+
+// getBusinessImpactLevel determines business impact level based on error severity
+func (s *MonitoringServiceImpl) getBusinessImpactLevel(severity models.ErrorSeverity) string {
+	switch severity {
+	case models.ErrorSeverityCritical:
+		return "critical"
+	case models.ErrorSeverityHigh:
+		return "high"
+	case models.ErrorSeverityMedium:
+		return "medium"
+	default:
+		return "low"
 	}
 }

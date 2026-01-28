@@ -138,7 +138,10 @@ func (s *OrganizationServiceImpl) UpdateOrganization(ctx context.Context, id str
 		return nil, fmt.Errorf("failed to get organization: %w", err)
 	}
 	if org == nil {
-		return nil, fmt.Errorf("organization not found")
+		return nil, &models.NotFoundError{
+			Resource: "organization",
+			Message:  fmt.Sprintf("organization not found: %s", id),
+		}
 	}
 
 	// Validate and apply updates

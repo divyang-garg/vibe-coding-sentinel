@@ -19,7 +19,10 @@ func (s *DocumentServiceImpl) ExtractKnowledge(ctx context.Context, docID string
 		return nil, fmt.Errorf("failed to find document: %w", err)
 	}
 	if doc == nil {
-		return nil, fmt.Errorf("document not found")
+		return nil, &models.NotFoundError{
+			Resource: "document",
+			Message:  "document not found",
+		}
 	}
 
 	if doc.Status != models.DocumentStatusCompleted {

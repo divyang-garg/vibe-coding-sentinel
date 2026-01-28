@@ -58,8 +58,8 @@ func TestConfidenceScorer_ScoreRule(t *testing.T) {
 
 	t.Run("rule_with_constraints", func(t *testing.T) {
 		rule := BusinessRule{
-			ID:    "BR1",
-			Title: "Test Rule with Constraints",
+			ID:          "BR1",
+			Title:       "Test Rule with Constraints",
 			Description: "This rule has constraints",
 			Specification: Specification{
 				Constraints: []Constraint{{ID: "C1", Type: "state_based"}},

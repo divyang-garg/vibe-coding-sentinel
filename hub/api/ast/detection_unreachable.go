@@ -6,10 +6,13 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-// detectUnreachableCode finds unreachable code blocks
+// detectUnreachableCode finds unreachable code blocks.
+// Uses registry when a detector is registered; otherwise falls back to switch.
 func detectUnreachableCode(root *sitter.Node, code string, language string) []ASTFinding {
+	if d := GetLanguageDetector(language); d != nil {
+		return d.DetectUnreachable(root, code)
+	}
 	findings := []ASTFinding{}
-
 	switch language {
 	case "go":
 		findings = detectUnreachableCodeGo(root, code)
@@ -18,7 +21,6 @@ func detectUnreachableCode(root *sitter.Node, code string, language string) []AS
 	case "python":
 		findings = detectUnreachableCodePython(root, code)
 	}
-
 	return findings
 }
 

@@ -207,7 +207,7 @@ func TestAddToBaselineFile_ErrorHandling(t *testing.T) {
 		// Clean up any existing baseline
 		os.Remove(".sentinel/baseline.json")
 		os.MkdirAll(".sentinel", 0755)
-		
+
 		err := addToBaselineFile("test.js", 1, "reason")
 		if err != nil {
 			t.Errorf("addToBaselineFile() error = %v", err)

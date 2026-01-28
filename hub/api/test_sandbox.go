@@ -8,6 +8,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -520,7 +521,7 @@ func getTestExecutionHandler(w http.ResponseWriter, r *http.Request) {
 		&resultJSON, &execution.ExecutionTimeMs, &execution.CreatedAt, &completedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		http.Error(w, "Execution not found", http.StatusNotFound)
 		return
 	}

@@ -67,7 +67,7 @@ func listKnowledge() error {
 			fmt.Println("\nUse 'sentinel knowledge add' to add entries.")
 			return nil
 		}
-		return fmt.Errorf("failed to load knowledge: %w", err)
+		return fmt.Errorf("unable to load knowledge base: %w", err)
 	}
 
 	if len(kb.Entries) == 0 {
@@ -112,7 +112,7 @@ func addKnowledge(args []string) error {
 
 	kb, err := loadKnowledge()
 	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to load knowledge: %w", err)
+		return fmt.Errorf("unable to load knowledge base: %w", err)
 	}
 
 	entry := KnowledgeEntry{
@@ -129,7 +129,7 @@ func addKnowledge(args []string) error {
 	kb.Entries = append(kb.Entries, entry)
 
 	if err := saveKnowledge(kb); err != nil {
-		return fmt.Errorf("failed to save knowledge: %w", err)
+		return fmt.Errorf("unable to save knowledge base: %w", err)
 	}
 
 	fmt.Printf("✅ Added knowledge entry: %s\n", title)
@@ -145,7 +145,7 @@ func searchKnowledge(args []string) error {
 	query := strings.ToLower(strings.Join(args, " "))
 	kb, err := loadKnowledge()
 	if err != nil {
-		return fmt.Errorf("failed to load knowledge: %w", err)
+		return fmt.Errorf("unable to load knowledge base: %w", err)
 	}
 
 	matches := []KnowledgeEntry{}
@@ -180,16 +180,16 @@ func exportKnowledge(args []string) error {
 	outputFile := args[0]
 	kb, err := loadKnowledge()
 	if err != nil {
-		return fmt.Errorf("failed to load knowledge: %w", err)
+		return fmt.Errorf("unable to load knowledge base: %w", err)
 	}
 
 	data, err := json.MarshalIndent(kb, "", "  ")
 	if err != nil {
-		return fmt.Errorf("failed to marshal knowledge: %w", err)
+		return fmt.Errorf("unable to format knowledge data: %w", err)
 	}
 
 	if err := os.WriteFile(outputFile, data, 0644); err != nil {
-		return fmt.Errorf("failed to write file: %w", err)
+		return fmt.Errorf("unable to save file: %w", err)
 	}
 
 	fmt.Printf("✅ Knowledge base exported to: %s\n", outputFile)
@@ -205,16 +205,16 @@ func importKnowledge(args []string) error {
 	inputFile := args[0]
 	data, err := os.ReadFile(inputFile)
 	if err != nil {
-		return fmt.Errorf("failed to read file: %w", err)
+		return fmt.Errorf("unable to read file: %w", err)
 	}
 
 	var kb KnowledgeBase
 	if err := json.Unmarshal(data, &kb); err != nil {
-		return fmt.Errorf("failed to parse knowledge: %w", err)
+		return fmt.Errorf("unable to parse knowledge data: %w", err)
 	}
 
 	if err := saveKnowledge(&kb); err != nil {
-		return fmt.Errorf("failed to save knowledge: %w", err)
+		return fmt.Errorf("unable to save knowledge base: %w", err)
 	}
 
 	fmt.Printf("✅ Imported %d knowledge entries\n", len(kb.Entries))

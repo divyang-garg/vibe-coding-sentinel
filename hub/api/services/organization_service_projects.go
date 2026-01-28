@@ -21,8 +21,14 @@ func (s *OrganizationServiceImpl) CreateProject(ctx context.Context, orgID strin
 
 	// Verify organization exists
 	org, err := s.orgRepo.FindByID(ctx, orgID)
-	if err != nil || org == nil {
-		return nil, fmt.Errorf("organization not found")
+	if err != nil {
+		return nil, err // Error already wrapped with context from repository
+	}
+	if org == nil {
+		return nil, &models.NotFoundError{
+			Resource: "organization",
+			Message:  fmt.Sprintf("organization not found: %s", orgID),
+		}
 	}
 
 	// Check for duplicate project names within organization
@@ -78,7 +84,10 @@ func (s *OrganizationServiceImpl) GetProject(ctx context.Context, id string) (*m
 		return nil, fmt.Errorf("failed to find project: %w", err)
 	}
 	if project == nil {
-		return nil, fmt.Errorf("project not found")
+		return nil, &models.NotFoundError{
+			Resource: "project",
+			Message:  "project not found",
+		}
 	}
 
 	return project, nil
@@ -112,7 +121,10 @@ func (s *OrganizationServiceImpl) UpdateProject(ctx context.Context, id string, 
 		return nil, fmt.Errorf("failed to find project: %w", err)
 	}
 	if project == nil {
-		return nil, fmt.Errorf("project not found")
+		return nil, &models.NotFoundError{
+			Resource: "project",
+			Message:  "project not found",
+		}
 	}
 
 	// Check for duplicate names within organization (excluding current project)

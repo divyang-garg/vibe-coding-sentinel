@@ -68,10 +68,28 @@ func analyzeASTInternal(code string, language string, analyses []string) ([]ASTF
 	parseStart := time.Now()
 	ctx := context.Background()
 	tree, err := parser.ParseCtx(ctx, nil, []byte(code))
-	if err != nil {
-		return nil, AnalysisStats{}, fmt.Errorf("parse error: %w", err)
-	}
 	parseTime := time.Since(parseStart).Milliseconds()
+
+	// Handle parsing errors with partial tree support
+	// Tree-sitter may create partial AST even with syntax errors
+	if err != nil {
+		if tree != nil {
+			// Check if we have a usable partial tree
+			rootNode := tree.RootNode()
+			if rootNode != nil && rootNode.ChildCount() > 0 {
+				// Partial parsing succeeded - use it!
+				// Continue with partial tree instead of falling back
+				// The parse error is logged at higher level if needed.
+				// Note: We continue with partial AST for better accuracy than code-based fallback
+			} else {
+				// No usable tree - fall back
+				return nil, AnalysisStats{}, fmt.Errorf("parse error: %w", err)
+			}
+		} else {
+			// No tree at all - fall back
+			return nil, AnalysisStats{}, fmt.Errorf("parse error: %w", err)
+		}
+	}
 
 	if tree == nil {
 		return nil, AnalysisStats{}, fmt.Errorf("failed to parse code")
@@ -94,6 +112,7 @@ func analyzeASTInternal(code string, language string, analyses []string) ([]ASTF
 	checkEmptyCatch := contains(analyses, "empty_catch") || contains(analyses, "vibe") || len(analyses) == 0
 	checkMissingAwait := contains(analyses, "missing_await") || contains(analyses, "vibe") || len(analyses) == 0
 	checkBraceMismatch := contains(analyses, "brace_mismatch") || contains(analyses, "vibe") || len(analyses) == 0
+	checkSecurityMiddleware := contains(analyses, "security_middleware") || contains(analyses, "middleware") || contains(analyses, "security")
 
 	if checkDuplicates {
 		duplicates := detectDuplicateFunctions(rootNode, code, language)
@@ -131,6 +150,12 @@ func analyzeASTInternal(code string, language string, analyses []string) ([]ASTF
 	if checkBraceMismatch {
 		braceMismatch := detectBraceMismatch(tree, code, language)
 		findings = append(findings, braceMismatch...)
+	}
+
+	// Security middleware detection
+	if checkSecurityMiddleware {
+		securityMiddleware := detectSecurityMiddleware(rootNode, code, language)
+		findings = append(findings, securityMiddleware...)
 	}
 
 	analysisTime := time.Since(analysisStart).Milliseconds()

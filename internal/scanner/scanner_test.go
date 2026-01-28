@@ -330,7 +330,7 @@ func TestFilterBaseline_NoBaselineFile(t *testing.T) {
 
 func TestScanSequential_WithFileErrors(t *testing.T) {
 	tmpDir := t.TempDir()
-	
+
 	// Create a file that will cause read errors
 	testFile := filepath.Join(tmpDir, "test.js")
 	os.WriteFile(testFile, []byte(`const apiKey = "test";`), 0644)

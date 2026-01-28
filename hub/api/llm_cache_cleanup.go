@@ -5,6 +5,8 @@ package main
 import (
 	"strings"
 	"time"
+
+	"sentinel-hub-api/pkg"
 )
 
 // cleanupAnalysisCache removes expired analysis cache entries
@@ -19,10 +21,10 @@ func cleanupAnalysisCache() {
 				parts := strings.Split(keyStr, ":")
 				if len(parts) >= 2 && parts[0] == "analysis" {
 					projectID := parts[1]
-					if val, ok := cacheSizeCounter.Load(projectID); ok {
+					if val, ok := pkg.CacheSizeCounter.Load(projectID); ok {
 						size := val.(int64)
 						if size > 0 {
-							cacheSizeCounter.Store(projectID, size-1)
+							pkg.CacheSizeCounter.Store(projectID, size-1)
 						}
 					}
 				}
@@ -45,10 +47,10 @@ func cleanupBusinessContextCache() {
 				parts := strings.Split(keyStr, ":")
 				if len(parts) >= 2 && parts[0] == "business" {
 					projectID := parts[1]
-					if val, ok := cacheSizeCounter.Load(projectID); ok {
+					if val, ok := pkg.CacheSizeCounter.Load(projectID); ok {
 						size := val.(int64)
 						if size > 0 {
-							cacheSizeCounter.Store(projectID, size-1)
+							pkg.CacheSizeCounter.Store(projectID, size-1)
 						}
 					}
 				}

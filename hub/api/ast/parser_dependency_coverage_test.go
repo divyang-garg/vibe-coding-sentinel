@@ -1,3 +1,5 @@
+//go:build !js && !wasm
+
 // Package ast - Parser and dependency graph coverage tests
 // Tests for parser creation, dependency graphs, and multi-file analysis
 // Complies with CODING_STANDARDS.md: Tests max 500 lines

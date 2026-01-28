@@ -6,6 +6,7 @@ package main
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 )
 
@@ -40,7 +41,7 @@ func getChangeRequest(ctx context.Context, changeRequestID string) (*ChangeReque
 		&cr.CreatedAt, &approvedBy, &approvedAt, &rejectedBy, &rejectedAt, &rejectionReason,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("change request not found: %s", changeRequestID)
 		}
 		return nil, fmt.Errorf("failed to load change request: %w", err)
@@ -221,7 +222,8 @@ func approveChangeRequest(ctx context.Context, changeRequestID string, approvedB
 	}
 
 	// Apply changes based on type
-	if cr.Type == ChangeModified {
+	switch cr.Type {
+	case ChangeModified:
 		// Update existing knowledge item
 		if cr.KnowledgeItemID != nil && *cr.KnowledgeItemID != "" && cr.ProposedState != nil {
 			updateKIQuery := `
@@ -242,7 +244,7 @@ func approveChangeRequest(ctx context.Context, changeRequestID string, approvedB
 				return fmt.Errorf("failed to update knowledge item: %w", err)
 			}
 		}
-	} else if cr.Type == ChangeNew {
+	case ChangeNew:
 		// Create new knowledge item
 		if cr.ProposedState != nil {
 			// Extract document_id from change request context or use project default
@@ -300,7 +302,7 @@ func approveChangeRequest(ctx context.Context, changeRequestID string, approvedB
 			// Invalidate cache for this project
 			invalidateGapAnalysisCache(cr.ProjectID)
 		}
-	} else if cr.Type == ChangeRemoved {
+	case ChangeRemoved:
 		// Mark knowledge item as deprecated
 		if cr.KnowledgeItemID != nil && *cr.KnowledgeItemID != "" {
 			updateKIQuery := `

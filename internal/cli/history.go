@@ -48,7 +48,7 @@ func runHistory(args []string) error {
 			fmt.Println("\nRun 'sentinel audit' to start building history.")
 			return nil
 		}
-		return fmt.Errorf("failed to load history: %w", err)
+		return fmt.Errorf("unable to load history: %w", err)
 	}
 
 	if len(history.Entries) == 0 {
@@ -66,7 +66,7 @@ func runHistory(args []string) error {
 	if jsonOutput {
 		data, err := json.MarshalIndent(entries, "", "  ")
 		if err != nil {
-			return fmt.Errorf("failed to marshal history: %w", err)
+			return fmt.Errorf("unable to format history data: %w", err)
 		}
 		fmt.Println(string(data))
 		return nil

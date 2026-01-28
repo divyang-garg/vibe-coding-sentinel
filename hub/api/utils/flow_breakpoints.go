@@ -14,6 +14,11 @@ func identifyBreakpoints(ctx context.Context, flow *Flow, feature *feature_disco
 	breakpoints := []Breakpoint{}
 
 	for i, step := range flow.Steps {
+		// Check for context cancellation
+		if ctx.Err() != nil {
+			return breakpoints
+		}
+
 		// Check for missing error handling
 		if !hasErrorHandling(step, feature) {
 			breakpoints = append(breakpoints, Breakpoint{
@@ -73,7 +78,15 @@ func verifyIntegrationPoints(ctx context.Context, flows []Flow, feature *feature
 	breakpoints := []Breakpoint{}
 
 	for _, flow := range flows {
+		if ctx.Err() != nil {
+			return breakpoints, ctx.Err()
+		}
 		for i := 0; i < len(flow.Steps)-1; i++ {
+			// Check for context cancellation in inner loop
+			if ctx.Err() != nil {
+				return breakpoints, ctx.Err()
+			}
+
 			currentStep := flow.Steps[i]
 			nextStep := flow.Steps[i+1]
 

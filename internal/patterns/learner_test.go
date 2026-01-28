@@ -292,9 +292,9 @@ let snake_case_variable = 1;
 
 func TestDetectLanguageAndFramework(t *testing.T) {
 	testCases := []struct {
-		name     string
-		path     string
-		content  string
+		name      string
+		path      string
+		content   string
 		checkLang func(*testing.T, *PatternData)
 	}{
 		{
@@ -400,9 +400,9 @@ func TestDetectLanguageAndFramework(t *testing.T) {
 
 func TestAnalyzeNamingPatterns(t *testing.T) {
 	testCases := []struct {
-		name     string
-		content  string
-		check    func(*testing.T, *PatternData)
+		name    string
+		content string
+		check   func(*testing.T, *PatternData)
 	}{
 		{
 			name:    "camelCase",
@@ -597,8 +597,8 @@ func TestGenerateOutputFiles_WithBusinessRules(t *testing.T) {
 	patterns.BusinessRules = &BusinessRuleData{
 		Rules: []BusinessRule{
 			{
-				ID:    "BR1",
-				Title: "Test Rule",
+				ID:      "BR1",
+				Title:   "Test Rule",
 				Content: "Test content",
 			},
 		},

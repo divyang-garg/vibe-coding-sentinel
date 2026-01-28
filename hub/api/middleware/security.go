@@ -12,6 +12,8 @@ import (
 	"sync"
 	"time"
 
+	"encoding/json"
+	"sentinel-hub-api/models"
 	"sentinel-hub-api/pkg/security"
 	"sentinel-hub-api/services"
 )
@@ -63,7 +65,11 @@ func RateLimitMiddleware(maxTokens, refillRate float64) func(http.Handler) http.
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			// For simplicity, using global limiter (in production, use per-IP limiters)
 			if !limiter.Allow() {
-				http.Error(w, "Rate limit exceeded", http.StatusTooManyRequests)
+				writeRateLimitError(w, &models.RateLimitError{
+					Message: "Rate limit exceeded",
+				})
+				// Note: r is unused in this path but required by http.HandlerFunc signature
+				_ = r
 				return
 			}
 
@@ -165,19 +171,19 @@ func AuthMiddleware(config AuthMiddlewareConfig) func(http.Handler) http.Handler
 			if apiKey == "" {
 				ipAddr := getClientIP(r)
 				userAgent := r.UserAgent()
-				
+
 				if config.Logger != nil {
 					config.Logger.Warn("Authentication failed: missing API key",
 						"path", r.URL.Path,
 						"ip", ipAddr,
 					)
 				}
-				
+
 				// Log security event
 				if config.AuditLogger != nil {
 					config.AuditLogger.LogAuthFailure(r.Context(), "missing API key", ipAddr, userAgent, r.URL.Path)
 				}
-				
+
 				http.Error(w, "Unauthorized: API key required", http.StatusUnauthorized)
 				return
 			}
@@ -197,7 +203,7 @@ func AuthMiddleware(config AuthMiddlewareConfig) func(http.Handler) http.Handler
 				if err != nil {
 					reason = err.Error()
 				}
-				
+
 				if config.Logger != nil {
 					config.Logger.Warn("Authentication failed: invalid API key",
 						"path", r.URL.Path,
@@ -205,12 +211,12 @@ func AuthMiddleware(config AuthMiddlewareConfig) func(http.Handler) http.Handler
 						"error", err,
 					)
 				}
-				
+
 				// Log security event
 				if config.AuditLogger != nil {
 					config.AuditLogger.LogAuthFailure(r.Context(), reason, ipAddr, userAgent, r.URL.Path)
 				}
-				
+
 				http.Error(w, "Unauthorized: invalid API key", http.StatusUnauthorized)
 				return
 			}
@@ -225,7 +231,7 @@ func AuthMiddleware(config AuthMiddlewareConfig) func(http.Handler) http.Handler
 			// Log successful authentication
 			ipAddr := getClientIP(r)
 			userAgent := r.UserAgent()
-			
+
 			if config.Logger != nil {
 				config.Logger.Info("Authentication successful",
 					"project_id", project.ID,
@@ -233,7 +239,7 @@ func AuthMiddleware(config AuthMiddlewareConfig) func(http.Handler) http.Handler
 					"path", r.URL.Path,
 				)
 			}
-			
+
 			// Log security event
 			if config.AuditLogger != nil {
 				config.AuditLogger.LogAuthSuccess(r.Context(), project.ID, project.OrgID, ipAddr, userAgent)
@@ -315,8 +321,8 @@ func RecoveryMiddleware() func(http.Handler) http.Handler {
 	return func(next http.Handler) http.Handler {
 		return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 			defer func() {
-				if err := recover(); err != nil {
-					log.Printf("Panic recovered: %v", err)
+				if rec := recover(); rec != nil {
+					log.Printf("Panic recovered: %v", rec)
 					http.Error(w, "Internal server error", http.StatusInternalServerError)
 				}
 			}()
@@ -375,4 +381,25 @@ func GetUserFromContext(ctx context.Context) (string, bool) {
 func GetAPIKeyFromContext(ctx context.Context) (string, bool) {
 	apiKey, ok := ctx.Value("api_key").(string)
 	return apiKey, ok
+}
+
+// writeRateLimitError writes a standardized rate limit error response.
+// This avoids importing handlers package to prevent import cycles.
+func writeRateLimitError(w http.ResponseWriter, err *models.RateLimitError) {
+	w.Header().Set("Content-Type", "application/json")
+	w.WriteHeader(http.StatusTooManyRequests)
+
+	response := map[string]interface{}{
+		"success": false,
+		"error": map[string]interface{}{
+			"type":    "rate_limit_error",
+			"message": err.Error(),
+			"details": map[string]interface{}{
+				"retry_after": err.RetryAfter,
+				"reset_time":  err.ResetTime,
+			},
+		},
+	}
+
+	json.NewEncoder(w).Encode(response)
 }

@@ -43,8 +43,8 @@ func TestStringValidator_Required(t *testing.T) {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			v := &StringValidator{
-				Field:    tt.field,
-				Required:  true,
+				Field:      tt.field,
+				Required:   true,
 				AllowEmpty: false,
 			}
 			err := v.Validate(tt.data)
@@ -57,12 +57,12 @@ func TestStringValidator_Required(t *testing.T) {
 
 func TestStringValidator_Length(t *testing.T) {
 	tests := []struct {
-		name     string
-		field    string
-		value    string
-		minLen   int
-		maxLen   int
-		wantErr  bool
+		name    string
+		field   string
+		value   string
+		minLen  int
+		maxLen  int
+		wantErr bool
 	}{
 		{
 			name:    "valid length",
@@ -183,12 +183,12 @@ func TestStringValidator_Enum(t *testing.T) {
 
 func TestNumericValidator(t *testing.T) {
 	tests := []struct {
-		name     string
-		field    string
-		value    interface{}
-		min      *float64
-		max      *float64
-		wantErr  bool
+		name    string
+		field   string
+		value   interface{}
+		min     *float64
+		max     *float64
+		wantErr bool
 	}{
 		{
 			name:    "valid number",
@@ -281,8 +281,8 @@ func TestCompositeValidator(t *testing.T) {
 	v := &CompositeValidator{
 		Validators: []Validator{
 			&StringValidator{
-				Field:    "name",
-				Required: true,
+				Field:     "name",
+				Required:  true,
 				MinLength: 1,
 			},
 			&StringValidator{
@@ -355,4 +355,3 @@ func TestValidateNoSQLInjection(t *testing.T) {
 		})
 	}
 }
-

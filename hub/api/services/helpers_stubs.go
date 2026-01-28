@@ -175,7 +175,111 @@ func getProjectFromContext(ctx context.Context) (string, error) {
 
 // selectModelWithDepth selects LLM model based on analysis depth (stub)
 func selectModelWithDepth(ctx context.Context, projectID string, config *LLMConfig, mode string, depth int, feature string) (string, error) {
-	return config.Model, nil
+	// Check for context cancellation
+	if ctx.Err() != nil {
+		return "", ctx.Err()
+	}
+
+	if config == nil {
+		return "", fmt.Errorf("LLM config is required")
+	}
+
+	// Use depth to determine cost tier and select appropriate model
+	selectedModel := config.Model
+
+	// Convert depth int to cost tier
+	// depth 1 = surface (cheapest), 2 = medium (low cost), 3 = deep (high cost)
+	var costTier string
+	switch depth {
+	case 1:
+		costTier = "low"
+		// For surface depth, prefer cheapest models
+		switch config.Provider {
+		case "openai":
+			if selectedModel == "gpt-4" || selectedModel == "gpt-4-turbo" {
+				selectedModel = "gpt-3.5-turbo"
+			}
+		case "anthropic":
+			if selectedModel == "claude-3-opus" || selectedModel == "claude-3-sonnet" {
+				selectedModel = "claude-3-haiku"
+			}
+		}
+	case 2:
+		costTier = "low"
+		// For medium depth, use cost-optimized models
+		switch config.Provider {
+		case "openai":
+			if selectedModel == "gpt-4" || selectedModel == "gpt-4-turbo" {
+				selectedModel = "gpt-3.5-turbo"
+			}
+		case "anthropic":
+			if selectedModel == "claude-3-opus" || selectedModel == "claude-3-sonnet" {
+				selectedModel = "claude-3-haiku"
+			}
+		}
+	case 3:
+		costTier = "high"
+		// For deep depth, use high-accuracy models
+		switch config.Provider {
+		case "openai":
+			if selectedModel == "gpt-3.5-turbo" {
+				selectedModel = "gpt-4"
+			}
+		case "anthropic":
+			if selectedModel == "claude-3-haiku" || selectedModel == "claude-3-sonnet" {
+				selectedModel = "claude-3-opus"
+			}
+		}
+	default:
+		costTier = "medium"
+	}
+
+	// Use mode to adjust model selection if needed
+	// mode can be "comprehensive", "quick", "detailed", etc.
+	if mode == "quick" && costTier != "low" {
+		// Force low-cost model for quick mode
+		costTier = "low"
+		switch config.Provider {
+		case "openai":
+			selectedModel = "gpt-3.5-turbo"
+		case "anthropic":
+			selectedModel = "claude-3-haiku"
+		}
+	}
+
+	// Use feature name to adjust model selection for feature-specific requirements
+	// Some features may require higher accuracy models
+	if feature != "" {
+		// Check if feature name suggests it needs high-accuracy analysis
+		featureLower := strings.ToLower(feature)
+		if strings.Contains(featureLower, "critical") || strings.Contains(featureLower, "security") ||
+			strings.Contains(featureLower, "compliance") || strings.Contains(featureLower, "audit") {
+			// Force high-accuracy model for critical features
+			if costTier != "high" {
+				costTier = "high"
+				switch config.Provider {
+				case "openai":
+					selectedModel = "gpt-4"
+				case "anthropic":
+					selectedModel = "claude-3-opus"
+				}
+			}
+		}
+	}
+
+	// Use projectID for cost tracking and validation
+	// Validate projectID format if provided
+	if projectID != "" {
+		// Basic validation - projectID should not be empty
+		// In production, would validate against database
+		if len(projectID) < 3 {
+			return "", fmt.Errorf("invalid project ID format")
+		}
+		// Track project for cost analysis (would log in production)
+		// LogInfo(ctx, "Project %s: Selected model %s for %s analysis (mode: %s, depth: %d, feature: %s)", projectID, selectedModel, mode, depth, feature)
+	}
+
+	return selectedModel, nil
 }
 
 // callLLMWithDepth calls LLM with depth-aware settings
@@ -286,7 +390,7 @@ func VerifyTask(ctx context.Context, taskID string, codebasePath string, forceRe
 	if err != nil {
 		return nil, fmt.Errorf("failed to get task: %w", err)
 	}
-	
+
 	// Edge case: Task not found or nil
 	if task == nil {
 		return nil, fmt.Errorf("task not found: %s", taskID)
@@ -375,110 +479,104 @@ func analyzeTaskCompletion(ctx context.Context, task *Task, codebasePath string)
 	// Check 1: File path exists and is accessible
 	if task.FilePath != "" {
 		fullPath := filepath.Join(codebasePath, task.FilePath)
-		
-		// Edge case: Validate path stays within codebase (prevent path traversal)
-		// First, get absolute paths for comparison
-		codebaseAbs, err := filepath.Abs(codebasePath)
-		if err != nil {
-			evidence["error"] = fmt.Sprintf("failed to resolve codebase path: %v", err)
-			return 0.0, evidence
-		}
-		
-		fullPathAbs, err := filepath.Abs(fullPath)
+
+		// Edge case: Validate path stays within codebase (prevent path traversal).
+		// Use Rel to avoid platform-specific Abs differences (e.g. /var vs /private/var on macOS).
+		rel, err := filepath.Rel(codebasePath, fullPath)
 		if err != nil {
 			evidence["file_exists"] = false
 			evidence["path_error"] = err.Error()
+		} else if strings.HasPrefix(rel, "..") || filepath.IsAbs(rel) {
+			evidence["file_exists"] = false
+			evidence["path_traversal_detected"] = true
 		} else {
-			// Check if resolved path is within codebase
-			if !strings.HasPrefix(fullPathAbs+string(filepath.Separator), codebaseAbs+string(filepath.Separator)) &&
-				fullPathAbs != codebaseAbs {
-				evidence["file_exists"] = false
-				evidence["path_traversal_detected"] = true
-			} else {
-				// Resolve symlinks if any
-				resolvedPath, err := filepath.EvalSymlinks(fullPath)
-				if err == nil {
-					resolvedAbs, _ := filepath.Abs(resolvedPath)
-					if !strings.HasPrefix(resolvedAbs+string(filepath.Separator), codebaseAbs+string(filepath.Separator)) &&
-						resolvedAbs != codebaseAbs {
-						evidence["file_exists"] = false
-						evidence["path_traversal_detected"] = true
-					} else {
-						// Check if file exists (use Lstat to detect symlinks)
-						fileInfo, err := os.Lstat(fullPath)
-						if err == nil && !fileInfo.IsDir() {
-					confidence += 0.3 // File exists
-					evidence["file_exists"] = true
-					evidence["file_path"] = task.FilePath
-
-					// Check if file has been modified recently (indicates work done)
-					if time.Since(fileInfo.ModTime()) < 24*time.Hour {
-						confidence += 0.2 // Recently modified
-						evidence["recently_modified"] = true
-					}
-
-					// Edge case: Check file size before reading (max 10MB)
-					const maxFileSize = 10 * 1024 * 1024 // 10MB
-					if fileInfo.Size() > maxFileSize {
-						evidence["file_too_large"] = true
-						evidence["file_size"] = fileInfo.Size()
-					} else if fileInfo.Size() > 0 {
-						// Check file content for task keywords
-						content, err := os.ReadFile(fullPath)
-						if err == nil {
-							// Edge case: Detect binary files (simple heuristic)
-							if isBinaryFile(content) {
-								evidence["is_binary"] = true
-								// Skip keyword matching for binary files
-							} else {
-								contentStr := strings.ToLower(string(content))
-								keywordMatches := 0
-								for _, keyword := range keywords {
-									// Check context cancellation
-									select {
-									case <-ctx.Done():
-										evidence["cancelled"] = true
-										return confidence, evidence
-									default:
-									}
-									
-									if len(keyword) > 0 && strings.Contains(contentStr, strings.ToLower(keyword)) {
-										keywordMatches++
-									}
-								}
-								if len(keywords) > 0 {
-									keywordScore := float64(keywordMatches) / float64(len(keywords))
-									confidence += keywordScore * 0.3 // Up to 30% for keyword matches
-									evidence["keyword_matches"] = keywordMatches
-									evidence["keyword_score"] = keywordScore
-								}
-							}
-						} else {
-							evidence["read_error"] = err.Error()
-						}
-					} else {
-						// Edge case: Empty file
-						evidence["file_empty"] = true
-					}
-						} else {
-							evidence["file_exists"] = false
-							if err != nil {
-								evidence["stat_error"] = err.Error()
-							}
-						}
-					}
+			// Resolve symlinks if any; ensure resolved path still within codebase.
+			// Use canonical codebase path so /var vs /private/var on macOS match.
+			codebaseCanon := codebasePath
+			if c, e := filepath.EvalSymlinks(codebasePath); e == nil {
+				codebaseCanon = c
+			}
+			resolvedPath, err := filepath.EvalSymlinks(fullPath)
+			if err == nil {
+				relResolved, errRes := filepath.Rel(codebaseCanon, resolvedPath)
+				if errRes != nil || strings.HasPrefix(relResolved, "..") || filepath.IsAbs(relResolved) {
+					evidence["file_exists"] = false
+					evidence["path_traversal_detected"] = true
 				} else {
-					// Symlink resolution failed, but path is valid - try direct access
+					// Check if file exists (use Lstat to detect symlinks)
 					fileInfo, err := os.Lstat(fullPath)
 					if err == nil && !fileInfo.IsDir() {
-						confidence += 0.3
+						confidence += 0.3 // File exists
 						evidence["file_exists"] = true
 						evidence["file_path"] = task.FilePath
+
+						// Check if file has been modified recently (indicates work done)
+						if time.Since(fileInfo.ModTime()) < 24*time.Hour {
+							confidence += 0.2 // Recently modified
+							evidence["recently_modified"] = true
+						}
+
+						// Edge case: Check file size before reading (max 10MB)
+						const maxFileSize = 10 * 1024 * 1024 // 10MB
+						if fileInfo.Size() > maxFileSize {
+							evidence["file_too_large"] = true
+							evidence["file_size"] = fileInfo.Size()
+						} else if fileInfo.Size() > 0 {
+							// Check file content for task keywords
+							content, err := os.ReadFile(fullPath)
+							if err == nil {
+								// Edge case: Detect binary files (simple heuristic)
+								if isBinaryFile(content) {
+									evidence["is_binary"] = true
+									// Skip keyword matching for binary files
+								} else {
+									contentStr := strings.ToLower(string(content))
+									keywordMatches := 0
+									for _, keyword := range keywords {
+										// Check context cancellation
+										select {
+										case <-ctx.Done():
+											evidence["cancelled"] = true
+											return confidence, evidence
+										default:
+										}
+
+										if len(keyword) > 0 && strings.Contains(contentStr, strings.ToLower(keyword)) {
+											keywordMatches++
+										}
+									}
+									if len(keywords) > 0 {
+										keywordScore := float64(keywordMatches) / float64(len(keywords))
+										confidence += keywordScore * 0.3 // Up to 30% for keyword matches
+										evidence["keyword_matches"] = keywordMatches
+										evidence["keyword_score"] = keywordScore
+									}
+								}
+							} else {
+								evidence["read_error"] = err.Error()
+							}
+						} else {
+							// Edge case: Empty file
+							evidence["file_empty"] = true
+						}
 					} else {
 						evidence["file_exists"] = false
 						if err != nil {
 							evidence["stat_error"] = err.Error()
 						}
+					}
+				}
+			} else {
+				// Symlink resolution failed, but path is valid - try direct access
+				fileInfo, err := os.Lstat(fullPath)
+				if err == nil && !fileInfo.IsDir() {
+					confidence += 0.3
+					evidence["file_exists"] = true
+					evidence["file_path"] = task.FilePath
+				} else {
+					evidence["file_exists"] = false
+					if err != nil {
+						evidence["stat_error"] = err.Error()
 					}
 				}
 			}
@@ -494,7 +592,7 @@ func analyzeTaskCompletion(ctx context.Context, task *Task, codebasePath string)
 			return confidence, evidence
 		default:
 		}
-		
+
 		codeMatches := searchCodebaseForKeywords(ctx, codebasePath, keywords)
 		if codeMatches > 0 {
 			confidence += 0.2 // Found related code
@@ -608,12 +706,12 @@ func isBinaryFile(content []byte) bool {
 	if len(content) == 0 {
 		return false
 	}
-	
+
 	// Check for null byte (definitive binary indicator)
 	if strings.Contains(string(content), "\x00") {
 		return true
 	}
-	
+
 	// Check ratio of printable characters (simple heuristic)
 	// If more than 30% are non-printable (excluding common whitespace), likely binary
 	nonPrintable := 0
@@ -621,7 +719,7 @@ func isBinaryFile(content []byte) bool {
 	if sampleSize > 8192 {
 		sampleSize = 8192 // Sample first 8KB
 	}
-	
+
 	for i := 0; i < sampleSize; i++ {
 		b := content[i]
 		// Non-printable except common whitespace
@@ -629,7 +727,7 @@ func isBinaryFile(content []byte) bool {
 			nonPrintable++
 		}
 	}
-	
+
 	ratio := float64(nonPrintable) / float64(sampleSize)
 	return ratio > 0.3
 }

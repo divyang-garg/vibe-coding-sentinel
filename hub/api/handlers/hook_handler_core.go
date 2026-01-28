@@ -6,6 +6,7 @@ package handlers
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"log"
 	"net/http"
 	"strconv"
@@ -215,7 +216,7 @@ func hookMetricsHandler(w http.ResponseWriter, r *http.Request) {
 		&metrics.OverriddenCount,
 		&metrics.AvgDurationMs,
 	)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		log.Printf("Error querying hook metrics: %v", err)
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
@@ -389,7 +390,7 @@ func hookLimitsHandler(w http.ResponseWriter, r *http.Request) {
 		AND result = 'overridden'
 		AND DATE(created_at) = $3`
 	err := database.QueryRowWithTimeout(r.Context(), db, overrideQuery, agentID, orgID, today).Scan(&overrideCount)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		log.Printf("Error querying override count: %v", err)
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
@@ -405,7 +406,7 @@ func hookLimitsHandler(w http.ResponseWriter, r *http.Request) {
 		AND source = 'hook'
 		AND DATE(created_at) >= $3`
 	err = database.QueryRowWithTimeout(r.Context(), db, baselineQuery, agentID, orgID, weekStart).Scan(&baselineCount)
-	if err != nil && err != sql.ErrNoRows {
+	if err != nil && !errors.Is(err, sql.ErrNoRows) {
 		log.Printf("Error querying baseline count: %v", err)
 		http.Error(w, "Database error", http.StatusInternalServerError)
 		return
@@ -448,7 +449,7 @@ func hookPoliciesHandler(w http.ResponseWriter, r *http.Request) {
 		&policyRecord.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		// Return default policy
 		defaultPolicy := map[string]interface{}{
 			"audit_config": map[string]interface{}{

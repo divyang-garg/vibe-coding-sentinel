@@ -31,7 +31,7 @@ func ProcessOrder(orderID string) {
 func HelperFunction() {
 	// Helper
 }`,
-			expectedCount: 0,
+			expectedCount:  0,
 			shouldFallback: false,
 		},
 		{
@@ -59,7 +59,7 @@ func Calculate() {
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
 			patterns := extractPatternsFromCode("test.go", tt.code, "go")
-			
+
 			if tt.shouldFallback {
 				// If fallback is expected, just check it doesn't panic
 				_ = patterns
@@ -163,7 +163,7 @@ func TestExtractPatternsFromCode_EdgeCases(t *testing.T) {
 	tests := []struct {
 		name          string
 		code          string
-		language     string
+		language      string
 		expectedCount int
 	}{
 		{

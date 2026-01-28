@@ -485,10 +485,16 @@ func generateTestRequirementsHandler(w http.ResponseWriter, r *http.Request) {
 	// Generate test requirements for each rule
 	var allRequirements []TestRequirement
 	for _, rule := range rules {
-		// CURRENT IMPLEMENTATION: Uses empty code function (manual mapping can be done later)
-		// FUTURE ENHANCEMENT: Use AST analysis (Phase 6) to automatically map rules to code functions
-		// This would enable automatic detection of which code implements which business rule
+		// Use AST-based business rule detection to find implementing functions
+		// Note: This requires codebasePath which may not be available in all contexts
+		// If codebasePath is available, use detectBusinessRuleImplementation for accurate mapping
+		// Otherwise, fall back to empty codeFunction (manual mapping can be done later)
 		codeFunction := ""
+		// TODO: Get codebasePath from project configuration and use:
+		// evidence := detectBusinessRuleImplementation(rule, codebasePath)
+		// if len(evidence.Functions) > 0 {
+		//     codeFunction = evidence.Functions[0]
+		// }
 
 		requirements := generateTestRequirements(rule, codeFunction)
 		allRequirements = append(allRequirements, requirements...)

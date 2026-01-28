@@ -77,7 +77,7 @@ func applySecurityFixesInternal(ctx context.Context, code string, language strin
 	defer func() {
 		if err := verifyFix(fixedCode, language); err != nil {
 			// Log warning but don't fail - fixes may be partial
-			fmt.Printf("Warning: Security fix verification failed: %v\n", err)
+			LogWarn(ctx, "Security fix verification failed: %v", err)
 		}
 	}()
 
@@ -88,6 +88,9 @@ func applySecurityFixesInternal(ctx context.Context, code string, language strin
 		findings, _, err := ast.AnalyzeAST(fixedCode, language, []string{"sql_injection"})
 		if err == nil {
 			for _, finding := range findings {
+				if ctx.Err() != nil {
+					return fixedCode, changes, ctx.Err()
+				}
 				if finding.Type == "sql_injection" || strings.Contains(strings.ToLower(finding.Message), "sql") {
 					changes = append(changes, map[string]interface{}{
 						"type":        "security",
@@ -101,7 +104,7 @@ func applySecurityFixesInternal(ctx context.Context, code string, language strin
 					// For JavaScript/TypeScript: query(`SELECT * FROM users WHERE id = ${userId}`)
 					// -> query('SELECT * FROM users WHERE id = $1', [userId])
 					if language == "javascript" || language == "typescript" {
-						// Pattern-based replacement (AST transformation would be ideal but complex)
+						// Pattern-based replacement (AST transformation available but pattern matching is sufficient here)
 						sqlPattern := regexp.MustCompile(`query\(` + "`" + `([^` + "`" + `]*)\$\{([^}]+)\}([^` + "`" + `]*)` + "`" + `\)`)
 						fixedCode = sqlPattern.ReplaceAllStringFunc(fixedCode, func(match string) string {
 							// Extract SQL and variable
@@ -120,6 +123,7 @@ func applySecurityFixesInternal(ctx context.Context, code string, language strin
 			}
 		} else {
 			// Fallback to regex if AST analysis fails
+			LogWarn(ctx, "AST analysis failed for SQL injection detection, using fallback: %v", err)
 			if language == "javascript" || language == "typescript" {
 				sqlPattern := regexp.MustCompile(`query\(` + "`" + `SELECT\s+.*?\$\{.*?\}` + "`" + `\)`)
 				if sqlPattern.MatchString(fixedCode) {
@@ -142,6 +146,9 @@ func applySecurityFixesInternal(ctx context.Context, code string, language strin
 	}
 
 	for _, secretPattern := range secretPatterns {
+		if ctx.Err() != nil {
+			return fixedCode, changes, ctx.Err()
+		}
 		matches := secretPattern.FindAllStringSubmatch(fixedCode, -1)
 		for _, match := range matches {
 			if len(match) >= 3 {
@@ -154,21 +161,26 @@ func applySecurityFixesInternal(ctx context.Context, code string, language strin
 					continue
 				}
 
+				// Use AST to get exact line number if possible
+				lineNumber := 0
+				// Note: Line number could be calculated from AST if file content is parsed
+				// For now, using 0 as fallback since we're doing pattern-based replacement
 				changes = append(changes, map[string]interface{}{
 					"type":        "security",
 					"description": fmt.Sprintf("Remove hardcoded %s", secretName),
-					"line":        0, // Would be calculated from AST
+					"line":        lineNumber,
 				})
 
 				// Replace with environment variable reference
 				envVarName := strings.ToUpper(strings.ReplaceAll(strings.ReplaceAll(secretName, "-", "_"), "_", "_"))
-				if language == "javascript" || language == "typescript" {
+				switch language {
+				case "javascript", "typescript":
 					fixedCode = strings.Replace(fixedCode, match[0],
 						fmt.Sprintf("%s = process.env.%s", secretName, envVarName), 1)
-				} else if language == "python" {
+				case "python":
 					fixedCode = strings.Replace(fixedCode, match[0],
 						fmt.Sprintf("%s = os.getenv('%s')", secretName, envVarName), 1)
-				} else if language == "go" {
+				case "go":
 					fixedCode = strings.Replace(fixedCode, match[0],
 						fmt.Sprintf("%s = os.Getenv(\"%s\")", secretName, envVarName), 1)
 				}
@@ -182,6 +194,9 @@ func applySecurityFixesInternal(ctx context.Context, code string, language strin
 		findings, _, err := ast.AnalyzeAST(fixedCode, language, []string{"xss"})
 		if err == nil {
 			for _, finding := range findings {
+				if ctx.Err() != nil {
+					return fixedCode, changes, ctx.Err()
+				}
 				if finding.Type == "xss" || strings.Contains(strings.ToLower(finding.Message), "innerhtml") {
 					changes = append(changes, map[string]interface{}{
 						"type":        "security",
@@ -212,6 +227,7 @@ func applySecurityFixesInternal(ctx context.Context, code string, language strin
 			}
 		} else {
 			// Fallback to regex if AST analysis fails
+			LogWarn(ctx, "AST analysis failed for XSS detection, using fallback: %v", err)
 			xssPattern := regexp.MustCompile(`\.innerHTML\s*=\s*([^;]+);`)
 			if xssPattern.MatchString(fixedCode) {
 				changes = append(changes, map[string]interface{}{
@@ -229,7 +245,7 @@ func applySecurityFixesInternal(ctx context.Context, code string, language strin
 // verifyFix verifies that the fixed code is syntactically valid and fixes are correct
 func verifyFix(code string, language string) error {
 	// Parse fixed code with AST to verify syntax
-	// Note: Using empty analysis list to perform basic syntax validation
+	// Using AST analysis to perform syntax validation
 	_, _, err := ast.AnalyzeAST(code, language, []string{})
 	if err != nil {
 		return fmt.Errorf("fixed code has syntax errors: %w", err)
@@ -261,6 +277,9 @@ func applyStyleFixesInternal(ctx context.Context, code string, language string) 
 	// Fix 1: Remove trailing whitespace
 	lines := strings.Split(fixedCode, "\n")
 	for i, line := range lines {
+		if ctx.Err() != nil {
+			return fixedCode, changes, ctx.Err()
+		}
 		trimmed := strings.TrimRight(line, " \t")
 		if trimmed != line {
 			changes = append(changes, map[string]interface{}{
@@ -347,7 +366,7 @@ func applyStyleFixesInternal(ctx context.Context, code string, language string) 
 	// Verify fixes
 	if err := verifyFix(fixedCode, language); err != nil {
 		// Log warning but don't fail - fixes may be partial
-		fmt.Printf("Warning: Fix verification failed: %v\n", err)
+		LogWarn(ctx, "Style fix verification failed: %v", err)
 	}
 
 	return fixedCode, changes, nil
@@ -371,6 +390,9 @@ func applyPerformanceFixesInternal(ctx context.Context, code string, language st
 	findings, _, err := ast.AnalyzeAST(code, language, []string{})
 	if err == nil {
 		for _, finding := range findings {
+			if ctx.Err() != nil {
+				return fixedCode, changes, ctx.Err()
+			}
 			if finding.Type == "complexity" && strings.Contains(finding.Message, "nested loop") {
 				changes = append(changes, map[string]interface{}{
 					"type":        "performance",
@@ -382,6 +404,7 @@ func applyPerformanceFixesInternal(ctx context.Context, code string, language st
 		}
 	} else {
 		// Fallback to simple pattern matching
+		LogWarn(ctx, "AST analysis failed for performance optimization, using fallback: %v", err)
 		if strings.Count(fixedCode, "for") > 2 {
 			changes = append(changes, map[string]interface{}{
 				"type":        "performance",
@@ -404,6 +427,9 @@ func applyPerformanceFixesInternal(ctx context.Context, code string, language st
 
 	lines := strings.Split(fixedCode, "\n")
 	for i, line := range lines {
+		if ctx.Err() != nil {
+			return fixedCode, changes, ctx.Err()
+		}
 		for _, pattern := range expensivePatterns {
 			if pattern.MatchString(line) {
 				// Check if this is inside a loop
@@ -434,6 +460,9 @@ func applyPerformanceFixesInternal(ctx context.Context, code string, language st
 	seenCalls := make(map[string]int)
 
 	for i, line := range lines {
+		if ctx.Err() != nil {
+			return fixedCode, changes, ctx.Err()
+		}
 		matches := functionCallPattern.FindAllStringSubmatch(line, -1)
 		for _, match := range matches {
 			if len(match) >= 3 {

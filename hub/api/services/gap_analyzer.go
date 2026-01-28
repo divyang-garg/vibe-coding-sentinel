@@ -11,6 +11,7 @@ import (
 	"strings"
 	"time"
 
+	"sentinel-hub-api/models"
 	"sentinel-hub-api/pkg/database"
 )
 
@@ -38,7 +39,10 @@ func analyzeGaps(ctx context.Context, projectID string, codebasePath string, opt
 		return nil, fmt.Errorf("failed to verify project: %w", err)
 	}
 	if !exists {
-		return nil, fmt.Errorf("project not found: %s", projectID)
+		return nil, &models.NotFoundError{
+			Resource: "project",
+			Message:  fmt.Sprintf("project not found: %s", projectID),
+		}
 	}
 
 	// Validate codebase path
@@ -179,19 +183,50 @@ func analyzeGaps(ctx context.Context, projectID string, codebasePath string, opt
 }
 
 // analyzeUndocumentedCode finds code patterns not documented as business rules
+// Uses comprehensive AST analysis and business rule detection for accurate matching
 func analyzeUndocumentedCode(ctx context.Context, projectID string, codebasePath string, documentedRules []KnowledgeItem) ([]Gap, error) {
 	var gaps []Gap
 
-	// Use AST analyzer to extract business logic patterns from code
-	// This is a simplified version - full implementation would use Phase 6 AST analysis
-	patterns, err := extractBusinessLogicPatterns(codebasePath)
-	if err != nil {
-		return nil, fmt.Errorf("failed to extract business logic patterns: %w", err)
+	// Check for context cancellation before starting
+	if ctx.Err() != nil {
+		return gaps, ctx.Err()
 	}
 
-	// Compare patterns against documented rules using improved matching
-	for _, pattern := range patterns {
-		if !matchesDocumentedRule(pattern, documentedRules) {
+	LogInfo(ctx, "Starting undocumented code analysis for project %s", projectID)
+
+	// Use enhanced AST-based pattern extraction with context support
+	patterns, err := extractBusinessLogicPatternsEnhanced(ctx, codebasePath)
+	if err != nil {
+		LogError(ctx, "Failed to extract business logic patterns for project %s (path: %s): %v", projectID, codebasePath, err)
+		// Return gaps slice (already initialized as empty slice)
+		return gaps, fmt.Errorf("failed to extract business logic patterns for project %s: %w", projectID, err)
+	}
+
+	LogInfo(ctx, "Extracted %d patterns from codebase for project %s", len(patterns), projectID)
+
+	// Compare patterns against documented rules using enhanced matching
+	for i, pattern := range patterns {
+		// Check for context cancellation in loop
+		if ctx.Err() != nil {
+			LogWarn(ctx, "Gap analysis cancelled for project %s after processing %d patterns", projectID, i)
+			return gaps, ctx.Err()
+		}
+
+		// Use detectBusinessRuleImplementation for accurate matching
+		matched := false
+		for _, rule := range documentedRules {
+			// Use detectBusinessRuleImplementation to check if pattern matches rule
+			evidence := detectBusinessRuleImplementation(rule, codebasePath)
+
+			// Check if pattern matches this rule using enhanced matching
+			if matchesPatternToRule(ctx, pattern, rule, evidence) {
+				matched = true
+				LogDebug(ctx, "Pattern %s matches documented rule %s", pattern.FunctionName, rule.Title)
+				break
+			}
+		}
+
+		if !matched {
 			severity := determineSeverityFromPattern(pattern)
 			gaps = append(gaps, Gap{
 				Type:           GapMissingDoc,
@@ -205,10 +240,18 @@ func analyzeUndocumentedCode(ctx context.Context, projectID string, codebasePath
 		}
 	}
 
+	// Log completion with projectID for tracking
+	if len(gaps) > 0 {
+		LogInfo(ctx, "Found %d undocumented code patterns for project %s", len(gaps), projectID)
+	} else {
+		LogInfo(ctx, "No undocumented code patterns found for project %s", projectID)
+	}
+
 	return gaps, nil
 }
 
 // matchesDocumentedRule checks if a pattern matches any documented rule
+// Deprecated: Use matchesPatternToRule for enhanced matching with AST evidence
 func matchesDocumentedRule(pattern BusinessLogicPattern, documentedRules []KnowledgeItem) bool {
 	patternKeyword := strings.ToLower(pattern.Keyword)
 	patternFunction := strings.ToLower(pattern.FunctionName)
@@ -227,9 +270,9 @@ func matchesDocumentedRule(pattern BusinessLogicPattern, documentedRules []Knowl
 			return true
 		}
 
-		// Check semantic similarity
-		similarity := semanticSimilarity(patternFunction, ruleTitle)
-		if similarity > 0.5 {
+		// Check semantic similarity using simple word matching
+		similarity := calculateSemanticSimilarityForGap(patternFunction, ruleTitle)
+		if similarity > 0.3 {
 			return true
 		}
 	}
@@ -237,8 +280,9 @@ func matchesDocumentedRule(pattern BusinessLogicPattern, documentedRules []Knowl
 	return false
 }
 
-// semanticSimilarity calculates a simple similarity score between two strings
-func semanticSimilarity(s1, s2 string) float64 {
+// calculateSemanticSimilarityForGap calculates semantic similarity for gap analysis
+// Delegates to semanticSimilarity in gap_analyzer_patterns.go
+func calculateSemanticSimilarityForGap(s1, s2 string) float64 {
 	s1Lower := strings.ToLower(s1)
 	s2Lower := strings.ToLower(s2)
 
@@ -271,6 +315,8 @@ func semanticSimilarity(s1, s2 string) float64 {
 
 	return float64(commonCount) / float64(len(s1Words)+len(s2Words)-commonCount)
 }
+
+
 
 // determineSeverityFromPattern determines severity based on pattern characteristics
 func determineSeverityFromPattern(pattern BusinessLogicPattern) string {

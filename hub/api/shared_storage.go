@@ -7,6 +7,7 @@ import (
 	"context"
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 )
 
@@ -39,7 +40,7 @@ func GetChangeRequestByID(ctx context.Context, changeRequestID string) (*ChangeR
 		&cr.CreatedAt, &approvedBy, &approvedAt, &rejectedBy, &rejectedAt, &rejectionReason,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("change request not found: %s", changeRequestID)
 		}
 		return nil, fmt.Errorf("failed to load change request: %w", err)
@@ -117,7 +118,7 @@ func GetKnowledgeItemByID(ctx context.Context, knowledgeItemID string) (*Knowled
 		&approvedBy, &approvedAt, &ki.CreatedAt, &structuredDataJSON,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("knowledge item not found: %s", knowledgeItemID)
 		}
 		return nil, fmt.Errorf("failed to load knowledge item: %w", err)
@@ -161,7 +162,7 @@ func GetComprehensiveValidationByID(ctx context.Context, validationID string) (*
 		&cv.CreatedAt, &completedAt,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("comprehensive validation not found: %s", validationID)
 		}
 		return nil, fmt.Errorf("failed to load comprehensive validation: %w", err)
@@ -219,7 +220,7 @@ func GetTestRequirementByID(ctx context.Context, testRequirementID string) (*Tes
 		&tr.Description, &codeFunction, &tr.Priority, &tr.CreatedAt, &tr.UpdatedAt,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			return nil, fmt.Errorf("test requirement not found: %s", testRequirementID)
 		}
 		return nil, fmt.Errorf("failed to load test requirement: %w", err)

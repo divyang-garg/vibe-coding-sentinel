@@ -9,11 +9,13 @@ import (
 	sitter "github.com/smacker/go-tree-sitter"
 )
 
-// detectXSS finds XSS vulnerabilities
+// detectXSS finds XSS vulnerabilities.
+// Uses registry when a detector is registered; otherwise falls back to switch.
 func detectXSS(root *sitter.Node, code string, language string) []SecurityVulnerability {
+	if d := GetLanguageDetector(language); d != nil {
+		return d.DetectXSS(root, code)
+	}
 	vulnerabilities := []SecurityVulnerability{}
-
-	// Language-specific detection
 	switch language {
 	case "go":
 		vulnerabilities = append(vulnerabilities, detectXSSGo(root, code)...)
@@ -22,7 +24,6 @@ func detectXSS(root *sitter.Node, code string, language string) []SecurityVulner
 	case "python":
 		vulnerabilities = append(vulnerabilities, detectXSSPython(root, code)...)
 	}
-
 	return vulnerabilities
 }
 

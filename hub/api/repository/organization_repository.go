@@ -3,7 +3,9 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"sentinel-hub-api/models"
+	"sentinel-hub-api/utils"
 )
 
 // OrganizationRepositoryImpl implements organization data access
@@ -26,7 +28,10 @@ func (r *OrganizationRepositoryImpl) Save(ctx context.Context, org *models.Organ
 		WHERE organizations.id = EXCLUDED.id`
 
 	_, err := r.db.Exec(ctx, query, org.ID, org.Name, org.CreatedAt)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to save organization %s: %w", org.ID, err)
+	}
+	return nil
 }
 
 // FindByID retrieves an organization by ID
@@ -36,7 +41,7 @@ func (r *OrganizationRepositoryImpl) FindByID(ctx context.Context, id string) (*
 	var org models.Organization
 	err := r.db.QueryRow(ctx, query, id).Scan(&org.ID, &org.Name, &org.CreatedAt)
 	if err != nil {
-		return nil, err
+		return nil, utils.HandleNotFoundError(err, "organization", id)
 	}
 
 	return &org, nil
@@ -48,7 +53,7 @@ func (r *OrganizationRepositoryImpl) FindAll(ctx context.Context) ([]models.Orga
 
 	rows, err := r.db.Query(ctx, query)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query organizations: %w", err)
 	}
 	defer rows.Close()
 
@@ -57,7 +62,7 @@ func (r *OrganizationRepositoryImpl) FindAll(ctx context.Context) ([]models.Orga
 		var org models.Organization
 		err := rows.Scan(&org.ID, &org.Name, &org.CreatedAt)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan organization row: %w", err)
 		}
 		orgs = append(orgs, org)
 	}
@@ -74,7 +79,10 @@ func (r *OrganizationRepositoryImpl) Update(ctx context.Context, org *models.Org
 func (r *OrganizationRepositoryImpl) Delete(ctx context.Context, id string) error {
 	query := "DELETE FROM organizations WHERE id = $1"
 	_, err := r.db.Exec(ctx, query, id)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to delete organization %s: %w", id, err)
+	}
+	return nil
 }
 
 // ProjectRepositoryImpl implements project data access
@@ -100,7 +108,10 @@ func (r *ProjectRepositoryImpl) Save(ctx context.Context, project *models.Projec
 		WHERE projects.id = EXCLUDED.id`
 
 	_, err := r.db.Exec(ctx, query, project.ID, project.OrgID, project.Name, project.APIKey, project.APIKeyHash, project.APIKeyPrefix, project.CreatedAt)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to save project %s: %w", project.ID, err)
+	}
+	return nil
 }
 
 // FindByID retrieves a project by ID
@@ -112,7 +123,7 @@ func (r *ProjectRepositoryImpl) FindByID(ctx context.Context, id string) (*model
 
 	err := r.db.QueryRow(ctx, query, id).Scan(&project.ID, &project.OrgID, &project.Name, &apiKey, &apiKeyHash, &apiKeyPrefix, &project.CreatedAt)
 	if err != nil {
-		return nil, err
+		return nil, utils.HandleNotFoundError(err, "project", id)
 	}
 
 	if apiKey != nil {
@@ -134,7 +145,7 @@ func (r *ProjectRepositoryImpl) FindByOrganizationID(ctx context.Context, orgID 
 
 	rows, err := r.db.Query(ctx, query, orgID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query projects for organization %s: %w", orgID, err)
 	}
 	defer rows.Close()
 
@@ -145,7 +156,7 @@ func (r *ProjectRepositoryImpl) FindByOrganizationID(ctx context.Context, orgID 
 
 		err := rows.Scan(&project.ID, &project.OrgID, &project.Name, &apiKey, &apiKeyHash, &apiKeyPrefix, &project.CreatedAt)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan project row: %w", err)
 		}
 
 		if apiKey != nil {
@@ -172,7 +183,7 @@ func (r *ProjectRepositoryImpl) FindByAPIKey(ctx context.Context, apiKey string)
 	var apiKeyHash, apiKeyPrefix *string
 	err := r.db.QueryRow(ctx, query, apiKey).Scan(&project.ID, &project.OrgID, &project.Name, &project.APIKey, &apiKeyHash, &apiKeyPrefix, &project.CreatedAt)
 	if err != nil {
-		return nil, err
+		return nil, utils.HandleNotFoundError(err, "project", "by API key")
 	}
 
 	if apiKeyHash != nil {
@@ -193,7 +204,7 @@ func (r *ProjectRepositoryImpl) FindByAPIKeyHash(ctx context.Context, apiKeyHash
 	var apiKey, apiKeyPrefix *string
 	err := r.db.QueryRow(ctx, query, apiKeyHash).Scan(&project.ID, &project.OrgID, &project.Name, &apiKey, &project.APIKeyHash, &apiKeyPrefix, &project.CreatedAt)
 	if err != nil {
-		return nil, err
+		return nil, utils.HandleNotFoundError(err, "project", "by API key hash")
 	}
 
 	if apiKey != nil {
@@ -215,5 +226,8 @@ func (r *ProjectRepositoryImpl) Update(ctx context.Context, project *models.Proj
 func (r *ProjectRepositoryImpl) Delete(ctx context.Context, id string) error {
 	query := "DELETE FROM projects WHERE id = $1"
 	_, err := r.db.Exec(ctx, query, id)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to delete project %s: %w", id, err)
+	}
+	return nil
 }

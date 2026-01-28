@@ -37,6 +37,8 @@ type LLMUsage = models.LLMUsage
 // Type aliases from feature_discovery package
 type DiscoveredFeature = feature_discovery.DiscoveredFeature
 type EndpointInfo = feature_discovery.EndpointInfo
+type ParameterInfo = feature_discovery.ParameterInfo
+type ResponseInfo = feature_discovery.ResponseInfo
 type ComponentInfo = feature_discovery.ComponentInfo
 type BusinessLogicFunctionInfo = feature_discovery.BusinessLogicFunctionInfo
 type IntegrationInfo = feature_discovery.IntegrationInfo
@@ -232,4 +234,99 @@ type IntentPattern struct {
 	Frequency   int                    `json:"frequency"`
 	LastUsed    string                 `json:"last_used"`
 	CreatedAt   string                 `json:"created_at"`
+}
+
+// LayerAnalysis represents analysis results for a specific layer
+type LayerAnalysis struct {
+	Layer        string                 `json:"layer"`
+	Files        []string                `json:"files"`
+	Findings     []LayerFinding          `json:"findings"`
+	QualityScore float64                 `json:"quality_score"`
+	Issues       []Issue                 `json:"issues"`
+	Dependencies []Dependency             `json:"dependencies"`
+	AnalyzedAt   string                  `json:"analyzed_at"`
+}
+
+// LayerFinding represents a finding from layer analysis
+type LayerFinding struct {
+	Type       string `json:"type"`
+	Severity   string `json:"severity"`
+	Line       int    `json:"line"`
+	Message    string `json:"message"`
+	Suggestion string `json:"suggestion,omitempty"`
+	FilePath   string `json:"file_path,omitempty"`
+}
+
+// ComprehensiveAnalysisResult represents complete analysis results
+type ComprehensiveAnalysisResult struct {
+	ProjectID      string                  `json:"project_id"`
+	Feature        string                  `json:"feature,omitempty"`
+	Mode           string                  `json:"mode"`
+	Depth          string                  `json:"depth"`
+	Layers         []LayerAnalysis         `json:"layers"`
+	OverallScore   float64                 `json:"overall_score"`
+	BusinessContext *BusinessContextResponse `json:"business_context,omitempty"`
+	AnalyzedAt     string                  `json:"analyzed_at"`
+}
+
+// Issue represents a code issue found during analysis
+type Issue struct {
+	Type       string `json:"type"`
+	Severity   string `json:"severity"`
+	Line       int    `json:"line"`
+	Message    string `json:"message"`
+	Suggestion string `json:"suggestion,omitempty"`
+	FilePath   string `json:"file_path,omitempty"`
+}
+
+// Dependency represents a code dependency
+type Dependency struct {
+	Name    string `json:"name"`
+	Type    string `json:"type"` // "internal", "external", "standard_library"
+	Version string `json:"version,omitempty"`
+	Path    string `json:"path,omitempty"`
+}
+
+// QualityMetrics represents comprehensive code quality metrics
+type QualityMetrics struct {
+	OverallScore      float64            `json:"overall_score"`
+	Maintainability   float64            `json:"maintainability"`
+	Readability       float64            `json:"readability"`
+	Testability       float64            `json:"testability"`
+	Complexity        float64            `json:"complexity"`
+	Documentation     float64            `json:"documentation"`
+	IssueCount        int                `json:"issue_count"`
+	SeverityBreakdown map[string]int     `json:"severity_breakdown"`
+	CategoryScores    map[string]float64 `json:"category_scores"`
+}
+
+// TechnicalDebtEstimate represents technical debt estimation
+type TechnicalDebtEstimate struct {
+	TotalDebtHours    float64            `json:"total_debt_hours"`
+	DebtByCategory    map[string]float64 `json:"debt_by_category"`
+	PriorityIssues    []DebtIssue        `json:"priority_issues"`
+	EstimatedCost     string             `json:"estimated_cost"`
+	PayoffTime        string             `json:"payoff_time"`
+	DebtRatio         float64            `json:"debt_ratio"` // 0.0-1.0
+}
+
+// DebtIssue represents a technical debt issue
+type DebtIssue struct {
+	Type        string  `json:"type"`
+	Severity    string  `json:"severity"`
+	Line        int     `json:"line"`
+	Message     string  `json:"message"`
+	EffortHours float64 `json:"effort_hours"`
+	Priority    string  `json:"priority"` // "high", "medium", "low"
+}
+
+// RefactoringPriority represents refactoring priority ranking
+type RefactoringPriority struct {
+	Type        string  `json:"type"`
+	Description string  `json:"description"`
+	Priority    string  `json:"priority"` // "high", "medium", "low"
+	Effort      string  `json:"effort"`   // "low", "medium", "high"
+	Impact      string  `json:"impact"`   // "low", "medium", "high"
+	Score       float64 `json:"score"`    // Calculated priority score
+	Location    string  `json:"location,omitempty"`
 }

@@ -31,16 +31,16 @@ func analyzeDatabaseLayer(ctx context.Context, feature *DiscoveredFeature) ([]Da
 	// Analyze based on ORM type
 	switch ormType {
 	case "prisma":
-		findings = analyzePrismaSchema(feature.DatabaseLayer)
+		findings = analyzePrismaSchema(ctx, feature.DatabaseLayer)
 	case "typeorm":
-		findings = analyzeTypeORMSchema(feature.DatabaseLayer)
+		findings = analyzeTypeORMSchema(ctx, feature.DatabaseLayer)
 	case "raw_sql":
-		findings = analyzeSQLSchema(feature.DatabaseLayer)
+		findings = analyzeSQLSchema(ctx, feature.DatabaseLayer)
 	default:
 		// Try all methods
-		prismaFindings := analyzePrismaSchema(feature.DatabaseLayer)
-		typeormFindings := analyzeTypeORMSchema(feature.DatabaseLayer)
-		sqlFindings := analyzeSQLSchema(feature.DatabaseLayer)
+		prismaFindings := analyzePrismaSchema(ctx, feature.DatabaseLayer)
+		typeormFindings := analyzeTypeORMSchema(ctx, feature.DatabaseLayer)
+		sqlFindings := analyzeSQLSchema(ctx, feature.DatabaseLayer)
 		findings = append(findings, prismaFindings...)
 		findings = append(findings, typeormFindings...)
 		findings = append(findings, sqlFindings...)
@@ -102,7 +102,7 @@ func analyzeSchema(tables []TableInfo) []DatabaseLayerFinding {
 }
 
 // analyzePrismaSchema analyzes Prisma schema files
-func analyzePrismaSchema(dbLayer *DatabaseLayerTables) []DatabaseLayerFinding {
+func analyzePrismaSchema(ctx context.Context, dbLayer *DatabaseLayerTables) []DatabaseLayerFinding {
 	findings := []DatabaseLayerFinding{}
 
 	// Find Prisma schema file
@@ -121,6 +121,7 @@ func analyzePrismaSchema(dbLayer *DatabaseLayerTables) []DatabaseLayerFinding {
 	// Read schema file
 	data, err := os.ReadFile(schemaFile)
 	if err != nil {
+		LogWarn(ctx, "Failed to read Prisma schema file %s: %v", schemaFile, err)
 		return findings
 	}
 
@@ -152,7 +153,7 @@ func analyzePrismaSchema(dbLayer *DatabaseLayerTables) []DatabaseLayerFinding {
 }
 
 // analyzeTypeORMSchema analyzes TypeORM entity files
-func analyzeTypeORMSchema(dbLayer *DatabaseLayerTables) []DatabaseLayerFinding {
+func analyzeTypeORMSchema(ctx context.Context, dbLayer *DatabaseLayerTables) []DatabaseLayerFinding {
 	findings := []DatabaseLayerFinding{}
 
 	// Analyze each entity file
@@ -160,6 +161,7 @@ func analyzeTypeORMSchema(dbLayer *DatabaseLayerTables) []DatabaseLayerFinding {
 		if table.Source == "typeorm" && table.File != "" {
 			data, err := os.ReadFile(table.File)
 			if err != nil {
+				LogWarn(ctx, "Failed to read TypeORM entity file %s: %v", table.File, err)
 				continue
 			}
 
@@ -219,7 +221,7 @@ func analyzeTypeORMSchema(dbLayer *DatabaseLayerTables) []DatabaseLayerFinding {
 }
 
 // analyzeSQLSchema analyzes raw SQL migration files
-func analyzeSQLSchema(dbLayer *DatabaseLayerTables) []DatabaseLayerFinding {
+func analyzeSQLSchema(ctx context.Context, dbLayer *DatabaseLayerTables) []DatabaseLayerFinding {
 	findings := []DatabaseLayerFinding{}
 
 	// Analyze each migration file
@@ -227,6 +229,7 @@ func analyzeSQLSchema(dbLayer *DatabaseLayerTables) []DatabaseLayerFinding {
 		if table.Source == "migration" && table.File != "" {
 			data, err := os.ReadFile(table.File)
 			if err != nil {
+				LogWarn(ctx, "Failed to read SQL migration file %s: %v", table.File, err)
 				continue
 			}
 

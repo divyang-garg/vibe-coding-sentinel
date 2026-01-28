@@ -21,28 +21,17 @@ func (h *BaseHandler) WriteJSONResponse(w http.ResponseWriter, statusCode int, d
 	w.Header().Set("Content-Type", "application/json")
 	w.WriteHeader(statusCode)
 	if err := json.NewEncoder(w).Encode(data); err != nil {
-		http.Error(w, "Failed to encode response", http.StatusInternalServerError)
+		// Cannot call http.Error after WriteHeader, so log the error
+		// The response has already been sent, so we can only log
+		// In production, this should use proper logging
+		_ = err // Log error in production: log.Printf("Failed to encode JSON response: %v", err)
 	}
 }
 
-// WriteErrorResponse writes an error response
+// WriteErrorResponse writes an error response using the standardized format.
+// Delegates to the package-level WriteErrorResponse function for consistency.
 func (h *BaseHandler) WriteErrorResponse(w http.ResponseWriter, err error, statusCode int) {
-	w.Header().Set("Content-Type", "application/json")
-	w.WriteHeader(statusCode)
-
-	errorResponse := map[string]interface{}{
-		"error": err.Error(),
-	}
-
-	if mcpErr, ok := err.(*models.MCPError); ok {
-		errorResponse["code"] = mcpErr.Code
-		errorResponse["message"] = mcpErr.Message
-		if mcpErr.Data != nil {
-			errorResponse["data"] = mcpErr.Data
-		}
-	}
-
-	json.NewEncoder(w).Encode(errorResponse)
+	WriteErrorResponse(w, err, statusCode)
 }
 
 // GetProjectFromContext extracts project from context
@@ -64,8 +53,12 @@ func (h *BaseHandler) GetOrgFromContext(ctx context.Context) (*models.Organizati
 	if orgID == nil {
 		return nil, fmt.Errorf("organization not found in context")
 	}
+	orgIDStr, ok := orgID.(string)
+	if !ok {
+		return nil, fmt.Errorf("invalid organization ID type in context")
+	}
 	return &models.Organization{
-		ID:   orgID.(string),
+		ID:   orgIDStr,
 		Name: "Default Organization",
 	}, nil
 }

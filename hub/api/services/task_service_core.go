@@ -5,6 +5,7 @@ package services
 import (
 	"context"
 	"fmt"
+	"strings"
 	"time"
 
 	"sentinel-hub-api/models"
@@ -69,7 +70,10 @@ func (s *TaskServiceImpl) GetDependencies(ctx context.Context, taskID string) (*
 // GetTaskExecutionPlan creates an execution plan for the given tasks
 func (s *TaskServiceImpl) GetTaskExecutionPlan(ctx context.Context, taskIDs []string) (*models.TaskExecutionPlan, error) {
 	if len(taskIDs) == 0 {
-		return nil, fmt.Errorf("no task IDs provided")
+		return nil, &models.ValidationError{
+			Field:   "task_ids",
+			Message: "at least one task ID is required",
+		}
 	}
 
 	// Load tasks
@@ -77,11 +81,12 @@ func (s *TaskServiceImpl) GetTaskExecutionPlan(ctx context.Context, taskIDs []st
 	for _, id := range taskIDs {
 		task, err := s.taskRepo.FindByID(ctx, id)
 		if err != nil {
-			return nil, fmt.Errorf("failed to find task %s: %w", id, err)
+			return nil, fmt.Errorf("failed to find task: %w", err)
 		}
-		if task != nil {
-			tasks = append(tasks, *task)
+		if task == nil {
+			return nil, fmt.Errorf("failed to find task %s", id)
 		}
+		tasks = append(tasks, *task)
 	}
 
 	plan := &models.TaskExecutionPlan{
@@ -97,12 +102,18 @@ func (s *TaskServiceImpl) GetTaskExecutionPlan(ctx context.Context, taskIDs []st
 
 // GetTaskImpactAnalysis retrieves the impact analysis for a task
 func (s *TaskServiceImpl) GetTaskImpactAnalysis(ctx context.Context, taskID string) (*models.TaskImpactAnalysis, error) {
+	if strings.TrimSpace(taskID) == "" {
+		return nil, fmt.Errorf("task ID is required")
+	}
 	task, err := s.taskRepo.FindByID(ctx, taskID)
 	if err != nil {
 		return nil, fmt.Errorf("failed to find task: %w", err)
 	}
 	if task == nil {
-		return nil, fmt.Errorf("task not found")
+		return nil, &models.NotFoundError{
+			Resource: "task",
+			Message:  fmt.Sprintf("task not found: %s", taskID),
+		}
 	}
 
 	// Create basic impact analysis

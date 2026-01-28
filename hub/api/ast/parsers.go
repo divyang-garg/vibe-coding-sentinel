@@ -1,3 +1,5 @@
+//go:build !js && !wasm
+
 // Package ast provides AST parsing and analysis capabilities
 // Complies with CODING_STANDARDS.md: AST modules max 300 lines
 package ast

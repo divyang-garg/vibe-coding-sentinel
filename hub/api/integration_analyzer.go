@@ -64,6 +64,11 @@ func analyzeIntegrationLayer(ctx context.Context, feature *DiscoveredFeature) ([
 func validateIntegrationContracts(ctx context.Context, codebasePath string, integrations []IntegrationInfo) ([]IntegrationLayerFinding, error) {
 	findings := []IntegrationLayerFinding{}
 
+	// Check for context cancellation
+	if ctx.Err() != nil {
+		return findings, ctx.Err()
+	}
+
 	// Look for API contract documentation
 	contractFiles := []string{
 		"api-contracts.yaml",
@@ -75,12 +80,20 @@ func validateIntegrationContracts(ctx context.Context, codebasePath string, inte
 	var contractData []byte
 	var contractFile string
 	for _, filename := range contractFiles {
+		// Check for context cancellation in loop
+		if ctx.Err() != nil {
+			return findings, ctx.Err()
+		}
+
 		filepath := filepath.Join(codebasePath, filename)
-		if data, err := os.ReadFile(filepath); err == nil {
+		data, err := os.ReadFile(filepath)
+		if err == nil {
 			contractData = data
 			contractFile = filepath
 			break
 		}
+		// Log file read errors with context (non-critical, continue searching)
+		LogWarn(ctx, "Failed to read contract file %s: %v", filepath, err)
 	}
 
 	if contractData == nil {
@@ -93,6 +106,11 @@ func validateIntegrationContracts(ctx context.Context, codebasePath string, inte
 
 	// Compare actual integrations with documented contracts
 	for _, integration := range integrations {
+		// Check for context cancellation in loop
+		if ctx.Err() != nil {
+			return findings, ctx.Err()
+		}
+
 		contractEndpoint := findMatchingIntegrationContract(integration, contractEndpoints)
 
 		if contractEndpoint == nil {

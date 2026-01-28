@@ -10,6 +10,7 @@ import (
 	"database/sql"
 	"encoding/hex"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"log"
 	"net/http"
@@ -216,7 +217,7 @@ func getValidationHandler(w http.ResponseWriter, r *http.Request) {
 		&issuesStr, &validation.Score, &validation.ValidatedAt, &validation.CreatedAt,
 	)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		http.Error(w, "Validation not found", http.StatusNotFound)
 		return
 	}

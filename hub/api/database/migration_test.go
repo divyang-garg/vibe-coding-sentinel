@@ -113,12 +113,13 @@ func TestMigration_TransactionHandling(t *testing.T) {
 
 		ctx := context.Background()
 
-		// Try to create same table concurrently
+		// Create different tables concurrently; same-table CREATE TABLE IF NOT EXISTS
+		// can race on pg_class in PostgreSQL and violate uniqueness.
 		done := make(chan error, 2)
 
 		go func() {
 			_, err := db.ExecContext(ctx, `
-				CREATE TABLE IF NOT EXISTS concurrent_test (
+				CREATE TABLE IF NOT EXISTS concurrent_test_a (
 					id SERIAL PRIMARY KEY,
 					name TEXT
 				)
@@ -128,7 +129,7 @@ func TestMigration_TransactionHandling(t *testing.T) {
 
 		go func() {
 			_, err := db.ExecContext(ctx, `
-				CREATE TABLE IF NOT EXISTS concurrent_test (
+				CREATE TABLE IF NOT EXISTS concurrent_test_b (
 					id SERIAL PRIMARY KEY,
 					name TEXT
 				)
@@ -136,15 +137,14 @@ func TestMigration_TransactionHandling(t *testing.T) {
 			done <- err
 		}()
 
-		// Both should succeed (IF NOT EXISTS handles concurrency)
 		err1 := <-done
 		err2 := <-done
 
 		assert.NoError(t, err1)
 		assert.NoError(t, err2)
 
-		// Cleanup
-		db.ExecContext(ctx, "DROP TABLE IF EXISTS concurrent_test")
+		db.ExecContext(ctx, "DROP TABLE IF EXISTS concurrent_test_a")
+		db.ExecContext(ctx, "DROP TABLE IF EXISTS concurrent_test_b")
 	})
 }
 

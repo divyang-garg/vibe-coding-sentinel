@@ -133,9 +133,9 @@ func TestRunAudit_FailedAuditPaths(t *testing.T) {
 func TestDisplayResults_EdgeCases(t *testing.T) {
 	t.Run("findings exceed 10", func(t *testing.T) {
 		result := &scanner.Result{
-			Success:  false,
-			Findings: make([]scanner.Finding, 15), // More than 10
-			Summary:  map[string]int{"test": 15},
+			Success:   false,
+			Findings:  make([]scanner.Finding, 15), // More than 10
+			Summary:   map[string]int{"test": 15},
 			Timestamp: "2026-01-20T00:00:00Z",
 		}
 
@@ -155,7 +155,7 @@ func TestDisplayResults_EdgeCases(t *testing.T) {
 
 	t.Run("findings with patterns", func(t *testing.T) {
 		result := &scanner.Result{
-			Success:  false,
+			Success: false,
 			Findings: []scanner.Finding{
 				{
 					Type:     "test",
@@ -174,7 +174,7 @@ func TestDisplayResults_EdgeCases(t *testing.T) {
 					// No Pattern
 				},
 			},
-			Summary:  map[string]int{"test": 1, "test2": 1},
+			Summary:   map[string]int{"test": 1, "test2": 1},
 			Timestamp: "2026-01-20T00:00:00Z",
 		}
 
@@ -183,9 +183,9 @@ func TestDisplayResults_EdgeCases(t *testing.T) {
 
 	t.Run("findings exactly 10", func(t *testing.T) {
 		result := &scanner.Result{
-			Success:  false,
-			Findings: make([]scanner.Finding, 10), // Exactly 10
-			Summary:  map[string]int{"test": 10},
+			Success:   false,
+			Findings:  make([]scanner.Finding, 10), // Exactly 10
+			Summary:   map[string]int{"test": 10},
 			Timestamp: "2026-01-20T00:00:00Z",
 		}
 
@@ -204,9 +204,9 @@ func TestDisplayResults_EdgeCases(t *testing.T) {
 
 	t.Run("CI mode with empty summary", func(t *testing.T) {
 		result := &scanner.Result{
-			Success:  true,
-			Findings: []scanner.Finding{},
-			Summary:  map[string]int{}, // Empty summary
+			Success:   true,
+			Findings:  []scanner.Finding{},
+			Summary:   map[string]int{}, // Empty summary
 			Timestamp: "2026-01-20T00:00:00Z",
 		}
 

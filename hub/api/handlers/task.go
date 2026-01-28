@@ -49,7 +49,7 @@ func (h *TaskHandler) CreateTask(w http.ResponseWriter, r *http.Request) {
 
 // GetTask handles GET /api/v1/tasks/{id}
 func (h *TaskHandler) GetTask(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get("id")
+	id := chi.URLParam(r, "id")
 	if id == "" {
 		h.WriteErrorResponse(w, &models.ValidationError{
 			Field:   "id",
@@ -125,7 +125,7 @@ func (h *TaskHandler) ListTasks(w http.ResponseWriter, r *http.Request) {
 
 // UpdateTask handles PUT /api/v1/tasks/{id}
 func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get("id")
+	id := chi.URLParam(r, "id")
 	if id == "" {
 		h.WriteErrorResponse(w, &models.ValidationError{
 			Field:   "id",
@@ -154,7 +154,7 @@ func (h *TaskHandler) UpdateTask(w http.ResponseWriter, r *http.Request) {
 
 // DeleteTask handles DELETE /api/v1/tasks/{id}
 func (h *TaskHandler) DeleteTask(w http.ResponseWriter, r *http.Request) {
-	id := r.URL.Query().Get("id")
+	id := chi.URLParam(r, "id")
 	if id == "" {
 		h.WriteErrorResponse(w, &models.ValidationError{
 			Field:   "id",

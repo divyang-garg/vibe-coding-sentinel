@@ -250,6 +250,11 @@ func formatReport(
 	endToEndFlows []interface{},
 	hubURLBase string,
 ) (*ComprehensiveAnalysisReport, error) {
+	// Check for context cancellation
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
 	// Generate validation ID
 	validationID := generateValidationID()
 
@@ -261,6 +266,11 @@ func formatReport(
 	// Extract findings from layerAnalysis
 	combinedFindings := CombinedFindings{}
 	if layerAnalysis != nil {
+		// Check for context cancellation during processing
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
+
 		if business, ok := layerAnalysis["business"].([]BusinessContextFinding); ok {
 			combinedFindings.Business = business
 		}
@@ -282,6 +292,16 @@ func formatReport(
 		if test, ok := layerAnalysis["test"].([]TestLayerFinding); ok {
 			combinedFindings.Test = test
 		}
+	}
+
+	// Include projectID in validation ID for tracking (if provided)
+	if projectID != "" {
+		// Prepend project ID to validation ID for better tracking
+		projectPrefix := projectID
+		if len(projectID) > 8 {
+			projectPrefix = projectID[:8]
+		}
+		validationID = fmt.Sprintf("%s-%s", projectPrefix, validationID)
 	}
 
 	report := &ComprehensiveAnalysisReport{
@@ -377,14 +397,24 @@ func generateValidationID() string {
 
 func generateRemediation(findingType string, issue string) string {
 	// Generate remediation suggestions based on finding type
+	// Use issue parameter to provide more specific guidance when available
+	baseRemediation := ""
 	switch findingType {
 	case "business_rule_violation":
-		return "Review business rule and ensure code implementation matches requirements"
+		baseRemediation = "Review business rule and ensure code implementation matches requirements"
 	case "user_journey_mismatch":
-		return "Implement missing journey steps or update journey documentation"
+		baseRemediation = "Implement missing journey steps or update journey documentation"
 	case "entity_validation_failure":
-		return "Verify entity structure matches documented schema"
+		baseRemediation = "Verify entity structure matches documented schema"
 	default:
-		return "Review and fix the identified issue"
+		baseRemediation = "Review and fix the identified issue"
 	}
+
+	// Enhance remediation with specific issue details if provided
+	if issue != "" && len(issue) < 200 {
+		// Include specific issue context for more actionable remediation
+		return fmt.Sprintf("%s. Specific issue: %s", baseRemediation, issue)
+	}
+
+	return baseRemediation
 }

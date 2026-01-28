@@ -72,10 +72,7 @@ func GetChangeRequestByID(ctx context.Context, db *sql.DB, changeRequestID strin
 		&cr.CreatedAt, &approvedBy, &approvedAt, &rejectedBy, &rejectedAt, &rejectionReason,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("change request not found: %s", changeRequestID)
-		}
-		return nil, fmt.Errorf("failed to load change request: %w", err)
+		return nil, utils.HandleNotFoundError(err, "change request", changeRequestID)
 	}
 
 	// Handle nullable fields
@@ -150,10 +147,7 @@ func GetKnowledgeItemByID(ctx context.Context, knowledgeItemID string) (*models.
 		&approvedBy, &approvedAt, &ki.CreatedAt, &structuredDataJSON,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("knowledge item not found: %s", knowledgeItemID)
-		}
-		return nil, fmt.Errorf("failed to load knowledge item: %w", err)
+		return nil, utils.HandleNotFoundError(err, "knowledge item", knowledgeItemID)
 	}
 
 	if approvedBy.Valid {
@@ -194,10 +188,7 @@ func GetComprehensiveValidationByID(ctx context.Context, validationID string) (*
 		&cv.CreatedAt, &completedAt,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("comprehensive validation not found: %s", validationID)
-		}
-		return nil, fmt.Errorf("failed to load comprehensive validation: %w", err)
+		return nil, utils.HandleNotFoundError(err, "comprehensive validation", validationID)
 	}
 
 	// Unmarshal JSONB fields
@@ -260,10 +251,7 @@ func GetTestRequirementByID(ctx context.Context, testRequirementID string) (*mod
 		&tr.Description, &codeFunction, &tr.Priority, &tr.CreatedAt, &tr.UpdatedAt,
 	)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("test requirement not found: %s", testRequirementID)
-		}
-		return nil, fmt.Errorf("failed to load test requirement: %w", err)
+		return nil, utils.HandleNotFoundError(err, "test requirement", testRequirementID)
 	}
 
 	if codeFunction.Valid {

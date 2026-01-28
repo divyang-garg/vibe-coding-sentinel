@@ -23,7 +23,7 @@ func runValidateRules(args []string) error {
 	// Read all rule files
 	entries, err := os.ReadDir(rulesDir)
 	if err != nil {
-		return fmt.Errorf("failed to read rules directory: %w", err)
+		return fmt.Errorf("unable to read rules directory: %w", err)
 	}
 
 	validCount := 0
@@ -47,7 +47,7 @@ func runValidateRules(args []string) error {
 	fmt.Printf("\n📊 Validation complete: %d valid, %d invalid\n", validCount, invalidCount)
 
 	if invalidCount > 0 {
-		return fmt.Errorf("validation failed")
+		return fmt.Errorf("validation completed with errors found")
 	}
 
 	return nil
@@ -57,7 +57,7 @@ func runValidateRules(args []string) error {
 func validateRuleFile(path string) error {
 	data, err := os.ReadFile(path)
 	if err != nil {
-		return fmt.Errorf("failed to read file: %w", err)
+		return fmt.Errorf("unable to read rule file: %w", err)
 	}
 
 	content := string(data)

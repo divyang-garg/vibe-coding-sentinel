@@ -4,7 +4,9 @@ package repository
 import (
 	"context"
 	"database/sql"
+	"fmt"
 	"sentinel-hub-api/models"
+	"sentinel-hub-api/utils"
 	"time"
 )
 
@@ -34,7 +36,10 @@ func (r *DocumentRepositoryImpl) Save(ctx context.Context, doc *models.Document)
 		doc.ID, doc.ProjectID, doc.Name, doc.OriginalName, doc.Size, doc.MimeType,
 		string(doc.Status), doc.Progress, doc.FilePath, doc.CreatedAt)
 
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to save document %s: %w", doc.ID, err)
+	}
+	return nil
 }
 
 // FindByID retrieves a document by ID
@@ -56,15 +61,11 @@ func (r *DocumentRepositoryImpl) FindByID(ctx context.Context, id string) (*mode
 		&statusStr, &doc.Progress, &filePath, &extractedText, &err, &doc.CreatedAt, &processedAt)
 
 	if rowErr != nil {
-		return nil, rowErr
+		return nil, utils.HandleNotFoundError(rowErr, "document", id)
 	}
 
 	// Convert string enum to typed enum
 	doc.Status = models.DocumentStatus(statusStr)
-
-	if rowErr != nil {
-		return nil, rowErr
-	}
 
 	// Handle nullable fields
 	if filePath.Valid {
@@ -94,7 +95,7 @@ func (r *DocumentRepositoryImpl) FindByProjectID(ctx context.Context, projectID 
 
 	rows, err := r.db.Query(ctx, query, projectID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query documents for project %s: %w", projectID, err)
 	}
 	defer rows.Close()
 
@@ -112,7 +113,7 @@ func (r *DocumentRepositoryImpl) FindByProjectID(ctx context.Context, projectID 
 			&statusStr, &doc.Progress, &filePath, &extractedText, &docErr, &doc.CreatedAt, &processedAt)
 
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan document row: %w", err)
 		}
 
 		// Convert string enum to typed enum
@@ -147,7 +148,10 @@ func (r *DocumentRepositoryImpl) Update(ctx context.Context, doc *models.Documen
 func (r *DocumentRepositoryImpl) Delete(ctx context.Context, id string) error {
 	query := "UPDATE documents SET status = 'deleted', error = 'deleted by user' WHERE id = $1"
 	_, err := r.db.Exec(ctx, query, id)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to delete document %s: %w", id, err)
+	}
+	return nil
 }
 
 // UpdateStatus updates document processing status
@@ -164,7 +168,10 @@ func (r *DocumentRepositoryImpl) UpdateStatus(ctx context.Context, id string, st
 	}
 
 	_, err := r.db.Exec(ctx, query, status, progress, errorMsg, processedAt, id)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to update document %s status: %w", id, err)
+	}
+	return nil
 }
 
 // UpdateProcessedAt updates the processed timestamp

@@ -83,11 +83,6 @@ func getTestRequirement(ctx context.Context, requirementID string) (*TestRequire
 	}
 
 	return &requirement, nil
-	if err != nil {
-		return nil, fmt.Errorf("failed to get test requirement: %w", err)
-	}
-
-	return &requirement, nil
 }
 
 // saveTestValidation saves validation results to database

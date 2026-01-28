@@ -89,8 +89,8 @@ func TestExtractSymbolsFromAST_JavaScript(t *testing.T) {
 			expected: []string{"calculateTotal"},
 		},
 		{
-			name: "arrow function",
-			code: `const add = (a, b) => a + b;`,
+			name:     "arrow function",
+			code:     `const add = (a, b) => a + b;`,
 			expected: []string{"add"},
 		},
 		{
@@ -321,8 +321,8 @@ func main() {
 	}
 
 	otherTask := &Task{
-		FilePath: "file1.go",
-		Title:    "Calculate total",
+		FilePath:    "file1.go",
+		Title:       "Calculate total",
 		Description: "Calculate total with tax",
 	}
 

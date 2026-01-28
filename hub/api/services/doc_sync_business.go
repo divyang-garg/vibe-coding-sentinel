@@ -51,8 +51,8 @@ func compareBusinessRules(ctx context.Context, projectID string, codebasePath st
 		}
 	}
 
-	// FUTURE ENHANCEMENT: Reverse check - find code patterns not documented as rules
-	// This would require AST analysis to extract business logic patterns from code
+	// ENHANCEMENT OPPORTUNITY: Reverse check - find code patterns not documented as rules
+	// AST analysis is available (ast.AnalyzeAST, detectBusinessRuleImplementation) to extract business logic patterns from code
 	// and compare against documented business rules. This is a bidirectional validation
 	// that would help identify undocumented business logic in the codebase.
 	// Priority: P2 - Enhancement for future phase

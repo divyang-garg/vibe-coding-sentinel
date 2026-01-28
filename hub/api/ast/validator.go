@@ -46,6 +46,32 @@ func ValidateFinding(finding *ASTFinding, filePath, projectRoot, language string
 		}
 	case "empty_catch":
 		result, err = validateEmptyCatch(filePath, finding.Line, projectRoot)
+	case "duplicate_function":
+		// Extract function name from message or code
+		funcName := extractFunctionNameFromFinding(finding)
+		if funcName != "" {
+			result, err = validateDuplicateFunction(funcName, filePath, projectRoot, language)
+		}
+	case "unused_export":
+		// Extract export name from message
+		exportName := extractExportNameFromFinding(finding)
+		if exportName != "" {
+			result, err = validateUnusedExport(exportName, filePath, projectRoot, language)
+		}
+	case "undefined_reference":
+		// Extract reference name from message
+		refName := extractReferenceNameFromFinding(finding)
+		if refName != "" {
+			result, err = validateUndefinedReference(refName, filePath, projectRoot, language)
+		}
+	case "circular_dependency":
+		result, err = validateCircularDependency(filePath, projectRoot, language)
+	case "cross_file_duplicate":
+		// Extract function name from message
+		funcName := extractFunctionNameFromFinding(finding)
+		if funcName != "" {
+			result, err = validateCrossFileDuplicate(funcName, filePath, projectRoot, language)
+		}
 	default:
 		// For other types, set default validation
 		result = ValidationResult{

@@ -43,7 +43,7 @@ func isHighEntropySecret(s string) bool {
 	}
 
 	entropy := calculateShannonEntropy(s)
-	
+
 	// Check if string is hex-only (only contains 0-9, a-f, A-F)
 	isHex := true
 	for _, c := range s {
@@ -52,12 +52,12 @@ func isHighEntropySecret(s string) bool {
 			break
 		}
 	}
-	
+
 	// Hex strings have lower max entropy (~4.0), so use lower threshold for long hex strings
 	if isHex && len(s) >= 40 {
 		return entropy >= 3.8
 	}
-	
+
 	// For other strings, use standard threshold
 	return entropy > 4.5
 }

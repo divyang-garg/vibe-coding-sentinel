@@ -6,6 +6,8 @@ import (
 	"fmt"
 	"sync"
 	"time"
+
+	"sentinel-hub-api/pkg"
 )
 
 // BusinessContextCache represents cached business context (rules, entities, journeys)
@@ -37,10 +39,10 @@ func getCachedBusinessContext(projectID, codebaseHash string, config *LLMConfig)
 	entry := cached.(*BusinessContextCache)
 	if time.Now().After(entry.ExpiresAt) {
 		// Phase 14D: Decrement cache size counter
-		if val, ok := cacheSizeCounter.Load(projectID); ok {
+		if val, ok := pkg.CacheSizeCounter.Load(projectID); ok {
 			size := val.(int64)
 			if size > 0 {
-				cacheSizeCounter.Store(projectID, size-1)
+				pkg.CacheSizeCounter.Store(projectID, size-1)
 			}
 		}
 		businessContextCache.Delete(cacheKey)
@@ -81,11 +83,11 @@ func setCachedBusinessContext(projectID, codebaseHash string, rules, entities, j
 
 	// Phase 14D: Increment cache size counter if new entry
 	if !exists {
-		if val, ok := cacheSizeCounter.Load(projectID); ok {
+		if val, ok := pkg.CacheSizeCounter.Load(projectID); ok {
 			size := val.(int64)
-			cacheSizeCounter.Store(projectID, size+1)
+			pkg.CacheSizeCounter.Store(projectID, size+1)
 		} else {
-			cacheSizeCounter.Store(projectID, int64(1))
+			pkg.CacheSizeCounter.Store(projectID, int64(1))
 		}
 	}
 }

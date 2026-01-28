@@ -24,7 +24,10 @@ func (s *TaskServiceImpl) AddDependency(ctx context.Context, taskID string, req 
 		return nil, fmt.Errorf("failed to find task: %w", err)
 	}
 	if task == nil {
-		return nil, fmt.Errorf("task not found")
+		return nil, &models.NotFoundError{
+			Resource: "task",
+			Message:  "task not found",
+		}
 	}
 
 	dependsOnTask, err := s.taskRepo.FindByID(ctx, req.DependsOnTaskID)
@@ -32,7 +35,10 @@ func (s *TaskServiceImpl) AddDependency(ctx context.Context, taskID string, req 
 		return nil, fmt.Errorf("failed to find depends on task: %w", err)
 	}
 	if dependsOnTask == nil {
-		return nil, fmt.Errorf("depends on task not found")
+		return nil, &models.NotFoundError{
+			Resource: "task",
+			Message:  "depends on task not found",
+		}
 	}
 
 	// Check for cycles if dependency analyzer is available
@@ -86,7 +92,10 @@ func (s *TaskServiceImpl) VerifyTask(ctx context.Context, id string, req models.
 		return nil, fmt.Errorf("failed to find task: %w", err)
 	}
 	if task == nil {
-		return nil, fmt.Errorf("task not found")
+		return nil, &models.NotFoundError{
+			Resource: "task",
+			Message:  "task not found",
+		}
 	}
 
 	// Create verification record

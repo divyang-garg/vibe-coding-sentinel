@@ -26,9 +26,9 @@ func TestAuthMiddleware_Authenticate_ValidToken(t *testing.T) {
 	// Generate a valid JWT token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": float64(123),
-		"exp":      time.Now().Add(time.Hour).Unix(),
+		"exp":     time.Now().Add(time.Hour).Unix(),
 	})
-	
+
 	tokenString, err := token.SignedString([]byte("test-secret-key-for-jwt-signing"))
 	assert.NoError(t, err)
 
@@ -58,9 +58,9 @@ func TestAuthMiddleware_Authenticate_ExpiredToken(t *testing.T) {
 	// Generate an expired JWT token
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": float64(123),
-		"exp":      time.Now().Add(-time.Hour).Unix(), // Expired
+		"exp":     time.Now().Add(-time.Hour).Unix(), // Expired
 	})
-	
+
 	tokenString, err := token.SignedString([]byte("test-secret"))
 	assert.NoError(t, err)
 
@@ -103,7 +103,7 @@ func TestAuthMiddleware_Authenticate_InvalidClaims(t *testing.T) {
 		"exp": time.Now().Add(time.Hour).Unix(),
 		// Missing user_id
 	})
-	
+
 	tokenString, err := token.SignedString([]byte("test-secret"))
 	assert.NoError(t, err)
 
@@ -133,9 +133,9 @@ func TestAuthMiddleware_Authenticate_WrongSecret(t *testing.T) {
 	// Generate token with wrong secret
 	token := jwt.NewWithClaims(jwt.SigningMethodHS256, jwt.MapClaims{
 		"user_id": float64(123),
-		"exp":      time.Now().Add(time.Hour).Unix(),
+		"exp":     time.Now().Add(time.Hour).Unix(),
 	})
-	
+
 	tokenString, err := token.SignedString([]byte("wrong-secret"))
 	assert.NoError(t, err)
 

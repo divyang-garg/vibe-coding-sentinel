@@ -1,4 +1,5 @@
-// Fixed import structure
+// Package utils provides task integration types and linking functions
+// Complies with CODING_STANDARDS.md: Utilities max 250 lines
 package utils
 
 import (
@@ -29,7 +30,7 @@ type TaskLink struct {
 	CreatedAt time.Time
 }
 
-// ChangeRequest represents a change request (stub for now)
+// ChangeRequest represents a change request
 type ChangeRequest struct {
 	ID                   string
 	ProjectID            string
@@ -38,7 +39,7 @@ type ChangeRequest struct {
 	Type                 string
 }
 
-// Task represents a task (stub for now)
+// Task represents a task
 type Task struct {
 	ID      string
 	Status  string
@@ -66,8 +67,13 @@ type CreateTaskRequest struct {
 
 // ListTasksRequest represents a task listing request
 type ListTasksRequest struct {
-	Limit  int
-	Offset int
+	Limit           int
+	Offset          int
+	Status          string
+	StatusFilter    string
+	Priority        string
+	PriorityFilter  string
+	IncludeArchived bool
 }
 
 // ListTasksResponse represents a task listing response
@@ -75,20 +81,20 @@ type ListTasksResponse struct {
 	Tasks []Task
 }
 
-// KnowledgeItem represents a knowledge item (stub)
+// KnowledgeItem represents a knowledge item
 type KnowledgeItem struct {
 	ID     string
 	Status string
 }
 
-// TestRequirement represents a test requirement (stub)
+// TestRequirement represents a test requirement
 type TestRequirement struct {
 	ID          string
 	RuleTitle   string
 	Description string
 }
 
-// ComprehensiveValidation represents a comprehensive validation (stub)
+// ComprehensiveValidation represents a comprehensive validation
 type ComprehensiveValidation struct {
 	ID        string
 	ProjectID string
@@ -102,101 +108,6 @@ func ValidateTaskLink(ctx context.Context, linkType, linkedID string) error {
 	}
 	// Basic validation - in a full implementation, this would check the linked entity exists
 	return nil
-}
-
-// GetChangeRequestByID retrieves a change request by ID (stub)
-func GetChangeRequestByID(ctx context.Context, id string) (*ChangeRequest, error) {
-	if id == "" {
-		return nil, fmt.Errorf("change request not found: %s", id)
-	}
-	return &ChangeRequest{
-		ID:                   id,
-		Status:               ChangeRequestStatusPendingApproval,
-		ImplementationStatus: ImplementationStatusPending,
-	}, nil
-}
-
-// GetTask retrieves a task by ID (stub)
-func GetTask(ctx context.Context, taskID string) (*Task, error) {
-	if taskID == "" {
-		return nil, fmt.Errorf("task not found: %s", taskID)
-	}
-	return &Task{
-		ID:      taskID,
-		Status:  TaskStatusPending,
-		Version: 1,
-	}, nil
-}
-
-// UpdateTask updates a task (stub)
-func UpdateTask(ctx context.Context, taskID string, req UpdateTaskRequest) (*Task, error) {
-	task, err := GetTask(ctx, taskID)
-	if err != nil {
-		return nil, err
-	}
-	if req.Status != nil {
-		task.Status = *req.Status
-	}
-	task.Version = req.Version + 1
-	return task, nil
-}
-
-// CreateTask creates a new task (stub)
-func CreateTask(ctx context.Context, projectID string, req CreateTaskRequest) (*Task, error) {
-	task := &Task{
-		ID:      GenerateEntityID(),
-		Status:  TaskStatusPending,
-		Version: 1,
-	}
-	return task, nil
-}
-
-// ListTasks lists tasks for a project (stub)
-func ListTasks(ctx context.Context, projectID string, req ListTasksRequest) (*ListTasksResponse, error) {
-	return &ListTasksResponse{
-		Tasks: []Task{},
-	}, nil
-}
-
-// GetKnowledgeItemByID retrieves a knowledge item by ID (stub)
-func GetKnowledgeItemByID(ctx context.Context, id string) (*KnowledgeItem, error) {
-	if id == "" {
-		return nil, fmt.Errorf("knowledge item not found: %s", id)
-	}
-	return &KnowledgeItem{
-		ID:     id,
-		Status: KnowledgeItemStatusActive,
-	}, nil
-}
-
-// GetTestRequirementByID retrieves a test requirement by ID (stub)
-func GetTestRequirementByID(ctx context.Context, id string) (*TestRequirement, error) {
-	if id == "" {
-		return nil, fmt.Errorf("test requirement not found: %s", id)
-	}
-	return &TestRequirement{
-		ID:          id,
-		RuleTitle:   "Test Requirement",
-		Description: "Description",
-	}, nil
-}
-
-// GetComprehensiveValidationByID retrieves a comprehensive validation by ID (stub)
-func GetComprehensiveValidationByID(ctx context.Context, id string) (*ComprehensiveValidation, error) {
-	if id == "" {
-		return nil, fmt.Errorf("comprehensive validation not found: %s", id)
-	}
-	return &ComprehensiveValidation{
-		ID:        id,
-		ProjectID: "",
-		Feature:   "test",
-	}, nil
-}
-
-// LogError logs an error (stub - in production would use proper logging)
-func LogError(ctx context.Context, format string, args ...interface{}) {
-	// In production, this would use a proper logger
-	fmt.Printf("ERROR: "+format+"\n", args...)
 }
 
 // LinkTaskToChangeRequest links a task to a change request (Phase 12)

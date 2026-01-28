@@ -4,6 +4,7 @@ package main
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"log"
@@ -148,7 +149,7 @@ func createOrUpdateHookPolicyHandler(w http.ResponseWriter, r *http.Request) {
 	var existingID string
 	err = db.QueryRow("SELECT id FROM hook_policies WHERE org_id = $1", orgID).Scan(&existingID)
 
-	if err == sql.ErrNoRows {
+	if errors.Is(err, sql.ErrNoRows) {
 		// Create new policy
 		policyID := uuid.New().String()
 		query := `INSERT INTO hook_policies (id, org_id, policy_config, created_at, updated_at)

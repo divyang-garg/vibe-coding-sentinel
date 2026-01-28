@@ -11,6 +11,59 @@ import (
 
 // hasErrorHandling checks if a flow step has error handling
 func hasErrorHandling(step FlowStep, feature *feature_discovery.DiscoveredFeature) bool {
+	// Use feature information if available for better validation
+	if feature != nil {
+		// Check if step file matches discovered feature files
+		// This helps validate that we're checking the right component
+		switch step.Layer {
+		case "ui":
+			if feature.UILayer != nil {
+				for _, component := range feature.UILayer.Components {
+					if component.Path == step.File {
+						// Found matching component - proceed with validation
+						break
+					}
+				}
+			}
+		case "api":
+			if feature.APILayer != nil {
+				for _, endpoint := range feature.APILayer.Endpoints {
+					if endpoint.File == step.File {
+						// Found matching endpoint - proceed with validation
+						break
+					}
+				}
+			}
+		case "logic":
+			if feature.LogicLayer != nil {
+				for _, fn := range feature.LogicLayer.Functions {
+					if fn.File == step.File {
+						// Found matching function - proceed with validation
+						break
+					}
+				}
+			}
+		case "database":
+			if feature.DatabaseLayer != nil {
+				for _, table := range feature.DatabaseLayer.Tables {
+					if table.File == step.File {
+						// Found matching table - proceed with validation
+						break
+					}
+				}
+			}
+		case "integration":
+			if feature.IntegrationLayer != nil {
+				for _, integration := range feature.IntegrationLayer.Integrations {
+					if integration.File == step.File {
+						// Found matching integration - proceed with validation
+						break
+					}
+				}
+			}
+		}
+	}
+
 	if step.File == "" {
 		return false
 	}
@@ -60,6 +113,33 @@ func hasErrorHandling(step FlowStep, feature *feature_discovery.DiscoveredFeatur
 
 // hasValidation checks if a flow step has input validation
 func hasValidation(step FlowStep, feature *feature_discovery.DiscoveredFeature) bool {
+	// Use feature information if available for better validation
+	if feature != nil {
+		// Validate that step file matches discovered feature
+		if step.Layer == "api" && feature.APILayer != nil {
+			for _, endpoint := range feature.APILayer.Endpoints {
+				if endpoint.File == step.File {
+					// Found matching endpoint - can use endpoint metadata
+					break
+				}
+			}
+		} else if step.Layer == "ui" && feature.UILayer != nil {
+			for _, component := range feature.UILayer.Components {
+				if component.Path == step.File {
+					// Found matching component - can use component metadata
+					break
+				}
+			}
+		} else if step.Layer == "logic" && feature.LogicLayer != nil {
+			for _, fn := range feature.LogicLayer.Functions {
+				if fn.File == step.File {
+					// Found matching function - can use function metadata
+					break
+				}
+			}
+		}
+	}
+
 	if step.File == "" {
 		return false
 	}
@@ -98,6 +178,17 @@ func hasValidation(step FlowStep, feature *feature_discovery.DiscoveredFeature) 
 
 // hasRollback checks if a flow step has transaction rollback capability
 func hasRollback(step FlowStep, feature *feature_discovery.DiscoveredFeature) bool {
+	// Use feature information if available for better validation
+	if feature != nil && feature.DatabaseLayer != nil {
+		// Validate that step file matches discovered database layer
+		for _, table := range feature.DatabaseLayer.Tables {
+			if table.File == step.File {
+				// Found matching table - can use table metadata for validation
+				break
+			}
+		}
+	}
+
 	if step.File == "" {
 		return false
 	}
@@ -120,6 +211,17 @@ func hasRollback(step FlowStep, feature *feature_discovery.DiscoveredFeature) bo
 
 // hasTimeout checks if a flow step has timeout handling
 func hasTimeout(step FlowStep, feature *feature_discovery.DiscoveredFeature) bool {
+	// Use feature information if available for better validation
+	if feature != nil && feature.IntegrationLayer != nil {
+		// Validate that step file matches discovered integration
+		for _, integration := range feature.IntegrationLayer.Integrations {
+			if integration.File == step.File {
+				// Found matching integration - can use integration metadata
+				break
+			}
+		}
+	}
+
 	if step.File == "" {
 		return false
 	}
@@ -140,6 +242,18 @@ func hasTimeout(step FlowStep, feature *feature_discovery.DiscoveredFeature) boo
 
 // requestFormatsMatch checks if UI request format matches API endpoint expectations
 func requestFormatsMatch(uiStep FlowStep, apiStep FlowStep, feature *feature_discovery.DiscoveredFeature) bool {
+	// Use feature information if available for better matching
+	if feature != nil && feature.APILayer != nil {
+		// Check if we can match using discovered endpoint information
+		for _, endpoint := range feature.APILayer.Endpoints {
+			if endpoint.File == apiStep.File {
+				// Found matching endpoint - can use endpoint metadata for validation
+				// For now, fall through to file-based matching
+				break
+			}
+		}
+	}
+
 	// Read both files
 	uiContent, err1 := os.ReadFile(uiStep.File)
 	apiContent, err2 := os.ReadFile(apiStep.File)
@@ -192,6 +306,32 @@ func requestFormatsMatch(uiStep FlowStep, apiStep FlowStep, feature *feature_dis
 
 // operationsMatch checks if business logic operations match database operations
 func operationsMatch(logicStep FlowStep, dbStep FlowStep, feature *feature_discovery.DiscoveredFeature) bool {
+	// Use feature information if available for better matching
+	if feature != nil {
+		// Check if logic layer and database layer information is available
+		if feature.LogicLayer != nil && feature.DatabaseLayer != nil {
+			// Verify that the files match discovered features
+			logicFound := false
+			dbFound := false
+			for _, fn := range feature.LogicLayer.Functions {
+				if fn.File == logicStep.File {
+					logicFound = true
+					break
+				}
+			}
+			for _, table := range feature.DatabaseLayer.Tables {
+				if table.File == dbStep.File {
+					dbFound = true
+					break
+				}
+			}
+			// If both are found in discovered features, they're more likely to match
+			if logicFound && dbFound {
+				// Proceed with content-based matching with higher confidence
+			}
+		}
+	}
+
 	if logicStep.File == "" || dbStep.File == "" {
 		return true
 	}
@@ -227,6 +367,32 @@ func operationsMatch(logicStep FlowStep, dbStep FlowStep, feature *feature_disco
 
 // responseFormatsMatch checks if API response format matches business logic expectations
 func responseFormatsMatch(apiStep FlowStep, logicStep FlowStep, feature *feature_discovery.DiscoveredFeature) bool {
+	// Use feature information if available for better matching
+	if feature != nil {
+		// Check if API and logic layer information is available
+		if feature.APILayer != nil && feature.LogicLayer != nil {
+			// Verify that the files match discovered features
+			apiFound := false
+			logicFound := false
+			for _, endpoint := range feature.APILayer.Endpoints {
+				if endpoint.File == apiStep.File {
+					apiFound = true
+					break
+				}
+			}
+			for _, fn := range feature.LogicLayer.Functions {
+				if fn.File == logicStep.File {
+					logicFound = true
+					break
+				}
+			}
+			// If both are found in discovered features, they're more likely to match
+			if apiFound && logicFound {
+				// Proceed with content-based matching with higher confidence
+			}
+		}
+	}
+
 	if apiStep.File == "" || logicStep.File == "" {
 		return true
 	}

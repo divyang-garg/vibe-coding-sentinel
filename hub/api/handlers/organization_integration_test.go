@@ -3,6 +3,7 @@
 package handlers
 
 import (
+	"context"
 	"encoding/json"
 	"net/http"
 	"net/http/httptest"
@@ -55,7 +56,7 @@ func TestAPIKeyManagement_Integration(t *testing.T) {
 
 	// Create project first
 	createReq := models.CreateProjectRequest{Name: "Test Project"}
-	project, err := mockService.CreateProject(nil, "org_123", createReq)
+	project, err := mockService.CreateProject(context.TODO(), "org_123", createReq)
 	if err != nil {
 		t.Fatalf("Failed to create test project: %v", err)
 	}
@@ -130,7 +131,7 @@ func TestAPIKeyManagement_Integration(t *testing.T) {
 
 	t.Run("Full Workflow: Generate -> Get Info -> Revoke", func(t *testing.T) {
 		// Create new project for this test
-		project2, err := mockService.CreateProject(nil, "org_123", models.CreateProjectRequest{Name: "Test Project 2"})
+		project2, err := mockService.CreateProject(context.TODO(), "org_123", models.CreateProjectRequest{Name: "Test Project 2"})
 		if err != nil {
 			t.Fatalf("Failed to create project: %v", err)
 		}

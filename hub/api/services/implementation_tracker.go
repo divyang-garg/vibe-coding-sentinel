@@ -7,6 +7,7 @@ import (
 	"fmt"
 
 	"sentinel-hub-api/pkg/database"
+	"sentinel-hub-api/utils"
 )
 
 // Implementation status constants
@@ -81,10 +82,7 @@ func getImplementationStatus(ctx context.Context, changeRequestID string) (*Impl
 
 	err := database.QueryRowWithTimeout(ctx, db, query, changeRequestID).Scan(&status.Status, &notes)
 	if err != nil {
-		if err == sql.ErrNoRows {
-			return nil, fmt.Errorf("change request not found: %s", changeRequestID)
-		}
-		return nil, fmt.Errorf("failed to get implementation status: %w", err)
+		return nil, utils.HandleNotFoundError(err, "change request", changeRequestID)
 	}
 
 	if notes.Valid {

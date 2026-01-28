@@ -20,7 +20,7 @@ func TestRunAudit_RemainingPaths(t *testing.T) {
 		// Test the error path when saveResults fails
 		// Create invalid output directory
 		invalidPath := "/root/nonexistent/results.json"
-		
+
 		err := runAudit([]string{
 			".",
 			"--output-file", invalidPath,
@@ -133,7 +133,7 @@ func main() {
 	t.Run("files with exactly 10 findings - should not trigger", func(t *testing.T) {
 		// Threshold is > 10, so exactly 10 should not create issue
 		os.WriteFile("exact10.go", []byte("package main\nfunc main() {}"), 0644)
-		
+
 		issues := checkMissingDocumentation(".")
 		// Should handle threshold correctly
 		_ = issues
@@ -142,7 +142,7 @@ func main() {
 	t.Run("empty result from scanner", func(t *testing.T) {
 		// Create empty directory
 		emptyDir := t.TempDir()
-		
+
 		issues := checkMissingDocumentation(emptyDir)
 		// Should return empty slice
 		if issues == nil {
@@ -153,7 +153,7 @@ func main() {
 	t.Run("result with no findings", func(t *testing.T) {
 		// Create minimal valid code
 		os.WriteFile("clean.go", []byte("package main\nfunc main() {}"), 0644)
-		
+
 		issues := checkMissingDocumentation(".")
 		// Should handle empty findings gracefully
 		_ = issues

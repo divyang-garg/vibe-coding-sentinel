@@ -10,6 +10,7 @@ import (
 	"time"
 
 	"sentinel-hub-api/pkg/database"
+	"sentinel-hub-api/utils"
 
 	"github.com/google/uuid"
 )
@@ -65,7 +66,7 @@ func (s *KnowledgeServiceImpl) ListKnowledgeItems(ctx context.Context, req ListK
 
 	// Build query with filters
 	query := `
-		SELECT ki.id, ki.item_type, ki.title, ki.content, ki.confidence, 
+		SELECT ki.id, ki.type, ki.title, ki.content, ki.confidence, 
 		       ki.source_page, ki.status, ki.structured_data, ki.document_id,
 		       ki.approved_by, ki.approved_at, ki.created_at, ki.updated_at
 		FROM knowledge_items ki
@@ -76,7 +77,7 @@ func (s *KnowledgeServiceImpl) ListKnowledgeItems(ctx context.Context, req ListK
 	argIndex := 2
 
 	if req.Type != "" {
-		query += fmt.Sprintf(" AND ki.item_type = $%d", argIndex)
+		query += fmt.Sprintf(" AND ki.type = $%d", argIndex)
 		args = append(args, req.Type)
 		argIndex++
 	}
@@ -99,10 +100,11 @@ func (s *KnowledgeServiceImpl) ListKnowledgeItems(ctx context.Context, req ListK
 		}
 	}
 
+	// Use QueryContext directly with timeout to avoid context cancellation during iteration
 	ctx, cancel := context.WithTimeout(ctx, getQueryTimeout())
 	defer cancel()
-
-	rows, err := database.QueryWithTimeout(ctx, s.db, query, args...)
+	
+	rows, err := s.db.QueryContext(ctx, query, args...)
 	if err != nil {
 		return nil, fmt.Errorf("failed to query knowledge items: %w", err)
 	}
@@ -114,14 +116,20 @@ func (s *KnowledgeServiceImpl) ListKnowledgeItems(ctx context.Context, req ListK
 		var structuredDataJSON sql.NullString
 		var approvedBy sql.NullString
 		var approvedAt sql.NullTime
+		var sourcePage sql.NullInt32
 
 		err := rows.Scan(
 			&item.ID, &item.Type, &item.Title, &item.Content, &item.Confidence,
-			&item.SourcePage, &item.Status, &structuredDataJSON, &item.DocumentID,
+			&sourcePage, &item.Status, &structuredDataJSON, &item.DocumentID,
 			&approvedBy, &approvedAt, &item.CreatedAt, &item.UpdatedAt,
 		)
 		if err != nil {
 			return nil, fmt.Errorf("failed to scan knowledge item: %w", err)
+		}
+
+		// Handle nullable source_page
+		if sourcePage.Valid {
+			item.SourcePage = int(sourcePage.Int32)
 		}
 
 		if structuredDataJSON.Valid {
@@ -177,6 +185,21 @@ func (s *KnowledgeServiceImpl) CreateKnowledgeItem(ctx context.Context, item Kno
 		item.Status = "draft"
 	}
 
+	// Get project_id from document
+	var projectID string
+	projectQuery := `SELECT project_id FROM documents WHERE id = $1`
+	// Use QueryRowContext directly with timeout to avoid context cancellation during scan
+	ctx, cancel := context.WithTimeout(ctx, getQueryTimeout())
+	defer cancel()
+	
+	err := s.db.QueryRowContext(ctx, projectQuery, item.DocumentID).Scan(&projectID)
+	if err != nil {
+		if err == sql.ErrNoRows {
+			return nil, fmt.Errorf("document not found: %s", item.DocumentID)
+		}
+		return nil, fmt.Errorf("failed to get document project_id: %w", err)
+	}
+
 	// Marshal structured data
 	var structuredDataJSON sql.NullString
 	if item.StructuredData != nil {
@@ -188,18 +211,16 @@ func (s *KnowledgeServiceImpl) CreateKnowledgeItem(ctx context.Context, item Kno
 	}
 
 	query := `
-		INSERT INTO knowledge_items (id, document_id, item_type, title, content, 
+		INSERT INTO knowledge_items (id, document_id, project_id, type, title, content, 
 		                            confidence, source_page, status, structured_data, 
 		                            created_at, updated_at)
-		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11)
+		VALUES ($1, $2, $3, $4, $5, $6, $7, $8, $9, $10, $11, $12)
 		RETURNING id, created_at, updated_at
 	`
 
-	ctx, cancel := context.WithTimeout(ctx, getQueryTimeout())
-	defer cancel()
-
-	err := database.QueryRowWithTimeout(ctx, s.db, query,
-		item.ID, item.DocumentID, item.Type, item.Title, item.Content,
+	// Use QueryRowContext directly with timeout to avoid context cancellation during scan
+	err = s.db.QueryRowContext(ctx, query,
+		item.ID, item.DocumentID, projectID, item.Type, item.Title, item.Content,
 		item.Confidence, item.SourcePage, item.Status, structuredDataJSON,
 		item.CreatedAt, item.UpdatedAt,
 	).Scan(&item.ID, &item.CreatedAt, &item.UpdatedAt)
@@ -218,13 +239,14 @@ func (s *KnowledgeServiceImpl) GetKnowledgeItem(ctx context.Context, id string) 
 	}
 
 	query := `
-		SELECT id, item_type, title, content, confidence, source_page, status,
+		SELECT id, type, title, content, confidence, source_page, status,
 		       structured_data, document_id, approved_by, approved_at,
 		       created_at, updated_at
 		FROM knowledge_items
 		WHERE id = $1
 	`
 
+	// Use QueryRowContext directly with timeout to avoid context cancellation during scan
 	ctx, cancel := context.WithTimeout(ctx, getQueryTimeout())
 	defer cancel()
 
@@ -232,18 +254,21 @@ func (s *KnowledgeServiceImpl) GetKnowledgeItem(ctx context.Context, id string) 
 	var structuredDataJSON sql.NullString
 	var approvedBy sql.NullString
 	var approvedAt sql.NullTime
+	var sourcePage sql.NullInt32
 
-	err := database.QueryRowWithTimeout(ctx, s.db, query, id).Scan(
+	err := s.db.QueryRowContext(ctx, query, id).Scan(
 		&item.ID, &item.Type, &item.Title, &item.Content, &item.Confidence,
-		&item.SourcePage, &item.Status, &structuredDataJSON, &item.DocumentID,
+		&sourcePage, &item.Status, &structuredDataJSON, &item.DocumentID,
 		&approvedBy, &approvedAt, &item.CreatedAt, &item.UpdatedAt,
 	)
 
-	if err == sql.ErrNoRows {
-		return nil, fmt.Errorf("knowledge item not found: %s", id)
-	}
 	if err != nil {
-		return nil, fmt.Errorf("failed to get knowledge item: %w", err)
+		return nil, utils.HandleNotFoundError(err, "knowledge item", id)
+	}
+
+	// Handle nullable source_page
+	if sourcePage.Valid {
+		item.SourcePage = int(sourcePage.Int32)
 	}
 
 	if structuredDataJSON.Valid {
@@ -312,16 +337,17 @@ func (s *KnowledgeServiceImpl) UpdateKnowledgeItem(ctx context.Context, id strin
 
 	query := `
 		UPDATE knowledge_items
-		SET item_type = $2, title = $3, content = $4, confidence = $5,
+		SET type = $2, title = $3, content = $4, confidence = $5,
 		    source_page = $6, status = $7, structured_data = $8, updated_at = $9
 		WHERE id = $1
 		RETURNING updated_at
 	`
 
+	// Use QueryRowContext directly with timeout to avoid context cancellation during scan
 	ctx, cancel := context.WithTimeout(ctx, getQueryTimeout())
 	defer cancel()
 
-	err = database.QueryRowWithTimeout(ctx, s.db, query,
+	err = s.db.QueryRowContext(ctx, query,
 		id, existing.Type, existing.Title, existing.Content,
 		existing.Confidence, existing.SourcePage, existing.Status,
 		structuredDataJSON, existing.UpdatedAt,
@@ -368,8 +394,14 @@ func (s *KnowledgeServiceImpl) GetBusinessContext(ctx context.Context, req Busin
 		return nil, fmt.Errorf("project_id is required")
 	}
 
-	// Extract business rules
-	rules, err := extractBusinessRules(ctx, req.ProjectID, nil, "", nil)
+	// Extract business rules using ListKnowledgeItems instead of extractBusinessRules
+	// (extractBusinessRules uses global db which may be nil)
+	listReq := ListKnowledgeItemsRequest{
+		ProjectID: req.ProjectID,
+		Type:      "business_rule",
+		Status:    "approved",
+	}
+	rules, err := s.ListKnowledgeItems(ctx, listReq)
 	if err != nil {
 		return nil, fmt.Errorf("failed to extract business rules: %w", err)
 	}
@@ -399,14 +431,14 @@ func (s *KnowledgeServiceImpl) GetBusinessContext(ctx context.Context, req Busin
 	}
 
 	// Extract entities
-	entities, err := extractEntitiesSimple(ctx, req.ProjectID)
+	entities, err := s.extractEntitiesSimple(ctx, req.ProjectID)
 	if err != nil {
 		LogWarn(ctx, "Failed to extract entities: %v", err)
 		entities = []KnowledgeItem{}
 	}
 
 	// Extract user journeys
-	journeys, err := extractUserJourneysSimple(ctx, req.ProjectID)
+	journeys, err := s.extractUserJourneysSimple(ctx, req.ProjectID)
 	if err != nil {
 		LogWarn(ctx, "Failed to extract user journeys: %v", err)
 		journeys = []KnowledgeItem{}
@@ -440,8 +472,13 @@ func (s *KnowledgeServiceImpl) GetBusinessContext(ctx context.Context, req Busin
 		}
 	}
 
-	// Get security rules (simplified - would query security_rules table in production)
-	securityRules := []string{"SEC-001", "SEC-002", "SEC-003"} // Placeholder
+	// Get security rules from database
+	securityRules, err := s.getSecurityRules(ctx, req.ProjectID)
+	if err != nil {
+		LogWarn(ctx, "Failed to retrieve security rules: %v", err)
+		// Use defaults as fallback
+		securityRules = []string{"SEC-001", "SEC-002", "SEC-003"}
+	}
 
 	// Count test requirements
 	testReqCount := 0
@@ -504,13 +541,11 @@ func (s *KnowledgeServiceImpl) SyncKnowledge(ctx context.Context, req SyncKnowle
 		}
 	}
 
-	// Sync items (simplified - would update sync timestamp in production)
-	syncedItems := make([]string, 0, len(items))
-	failedItems := make([]string, 0)
-
-	for _, item := range items {
-		// In production, would update sync metadata
-		syncedItems = append(syncedItems, item.ID)
+	// Sync items with metadata updates using transaction for atomicity
+	// Use batch operations for better performance with large datasets
+	syncedItems, failedItems, err := s.syncKnowledgeItems(ctx, items, req.Force)
+	if err != nil {
+		return nil, fmt.Errorf("failed to sync knowledge items: %w", err)
 	}
 
 	return &SyncKnowledgeResponse{
@@ -518,7 +553,7 @@ func (s *KnowledgeServiceImpl) SyncKnowledge(ctx context.Context, req SyncKnowle
 		FailedCount: len(failedItems),
 		SyncedItems: syncedItems,
 		FailedItems: failedItems,
-		Message:     fmt.Sprintf("Synced %d knowledge items", len(syncedItems)),
+		Message:     fmt.Sprintf("Synced %d knowledge items, %d failed", len(syncedItems), len(failedItems)),
 	}, nil
 }
 
@@ -549,14 +584,156 @@ func indexOf(s, substr string) int {
 	return -1
 }
 
-// extractEntities extracts entity knowledge items
-func extractEntitiesSimple(ctx context.Context, projectID string) ([]KnowledgeItem, error) {
-	// Simplified - would query knowledge_items with type='entity' in production
-	return []KnowledgeItem{}, nil
+// extractEntitiesSimple extracts entity knowledge items from database.
+// It queries knowledge_items table for approved entities for the given project.
+func (s *KnowledgeServiceImpl) extractEntitiesSimple(ctx context.Context, projectID string) ([]KnowledgeItem, error) {
+	if projectID == "" {
+		return nil, fmt.Errorf("project_id is required")
+	}
+
+	query := `
+		SELECT ki.id, ki.type, ki.title, ki.content, ki.confidence,
+		       ki.source_page, ki.status, ki.structured_data, ki.document_id,
+		       ki.approved_by, ki.approved_at, ki.created_at, ki.updated_at
+		FROM knowledge_items ki
+		WHERE ki.project_id = $1
+		  AND ki.type = 'entity'
+		  AND ki.status = 'approved'
+		ORDER BY ki.created_at DESC
+	`
+
+	// Use QueryContext directly with timeout to avoid context cancellation during iteration
+	ctx, cancel := context.WithTimeout(ctx, getQueryTimeout())
+	defer cancel()
+	
+	rows, err := s.db.QueryContext(ctx, query, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query entities: %w", err)
+	}
+	defer rows.Close()
+
+	var entities []KnowledgeItem
+	for rows.Next() {
+		var item KnowledgeItem
+		var structuredDataJSON sql.NullString
+		var approvedBy sql.NullString
+		var approvedAt sql.NullTime
+		var sourcePage sql.NullInt32
+
+		err := rows.Scan(
+			&item.ID, &item.Type, &item.Title, &item.Content, &item.Confidence,
+			&sourcePage, &item.Status, &structuredDataJSON, &item.DocumentID,
+			&approvedBy, &approvedAt, &item.CreatedAt, &item.UpdatedAt,
+		)
+		if err != nil {
+			LogWarn(ctx, "Failed to scan entity: %v", err)
+			continue
+		}
+
+		// Handle nullable source_page
+		if sourcePage.Valid {
+			item.SourcePage = int(sourcePage.Int32)
+		}
+
+		// Unmarshal structured data
+		if structuredDataJSON.Valid {
+			item.StructuredData = make(map[string]interface{})
+			if err := json.Unmarshal([]byte(structuredDataJSON.String), &item.StructuredData); err != nil {
+				LogWarn(ctx, "Failed to unmarshal structured_data for entity %s: %v", item.ID, err)
+			}
+		}
+
+		// Set approval fields
+		if approvedBy.Valid {
+			item.ApprovedBy = &approvedBy.String
+		}
+		if approvedAt.Valid {
+			item.ApprovedAt = &approvedAt.Time
+		}
+
+		entities = append(entities, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating entities: %w", err)
+	}
+
+	return entities, nil
 }
 
-// extractUserJourneys extracts user journey knowledge items
-func extractUserJourneysSimple(ctx context.Context, projectID string) ([]KnowledgeItem, error) {
-	// Simplified - would query knowledge_items with type='user_journey' in production
-	return []KnowledgeItem{}, nil
+// extractUserJourneysSimple extracts user journey knowledge items from database.
+// It queries knowledge_items table for approved user journeys for the given project.
+func (s *KnowledgeServiceImpl) extractUserJourneysSimple(ctx context.Context, projectID string) ([]KnowledgeItem, error) {
+	if projectID == "" {
+		return nil, fmt.Errorf("project_id is required")
+	}
+
+	query := `
+		SELECT ki.id, ki.type, ki.title, ki.content, ki.confidence,
+		       ki.source_page, ki.status, ki.structured_data, ki.document_id,
+		       ki.approved_by, ki.approved_at, ki.created_at, ki.updated_at
+		FROM knowledge_items ki
+		WHERE ki.project_id = $1
+		  AND ki.type = 'user_journey'
+		  AND ki.status = 'approved'
+		ORDER BY ki.created_at DESC
+	`
+
+	// Use QueryContext directly with timeout to avoid context cancellation during iteration
+	ctx, cancel := context.WithTimeout(ctx, getQueryTimeout())
+	defer cancel()
+	
+	rows, err := s.db.QueryContext(ctx, query, projectID)
+	if err != nil {
+		return nil, fmt.Errorf("failed to query user journeys: %w", err)
+	}
+	defer rows.Close()
+
+	var journeys []KnowledgeItem
+	for rows.Next() {
+		var item KnowledgeItem
+		var structuredDataJSON sql.NullString
+		var approvedBy sql.NullString
+		var approvedAt sql.NullTime
+		var sourcePage sql.NullInt32
+
+		err := rows.Scan(
+			&item.ID, &item.Type, &item.Title, &item.Content, &item.Confidence,
+			&sourcePage, &item.Status, &structuredDataJSON, &item.DocumentID,
+			&approvedBy, &approvedAt, &item.CreatedAt, &item.UpdatedAt,
+		)
+		if err != nil {
+			LogWarn(ctx, "Failed to scan user journey: %v", err)
+			continue
+		}
+
+		// Handle nullable source_page
+		if sourcePage.Valid {
+			item.SourcePage = int(sourcePage.Int32)
+		}
+
+		// Unmarshal structured data
+		if structuredDataJSON.Valid {
+			item.StructuredData = make(map[string]interface{})
+			if err := json.Unmarshal([]byte(structuredDataJSON.String), &item.StructuredData); err != nil {
+				LogWarn(ctx, "Failed to unmarshal structured_data for journey %s: %v", item.ID, err)
+			}
+		}
+
+		// Set approval fields
+		if approvedBy.Valid {
+			item.ApprovedBy = &approvedBy.String
+		}
+		if approvedAt.Valid {
+			item.ApprovedAt = &approvedAt.Time
+		}
+
+		journeys = append(journeys, item)
+	}
+
+	if err := rows.Err(); err != nil {
+		return nil, fmt.Errorf("error iterating user journeys: %w", err)
+	}
+
+	return journeys, nil
 }

@@ -69,8 +69,8 @@ func TestValidateCreateProjectRequest_Integration(t *testing.T) {
 			wantErr: false,
 		},
 		{
-			name: "missing name",
-			data: map[string]interface{}{},
+			name:    "missing name",
+			data:    map[string]interface{}{},
 			wantErr: true,
 		},
 		{

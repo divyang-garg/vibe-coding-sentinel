@@ -4,7 +4,9 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"sentinel-hub-api/models"
+	"sentinel-hub-api/utils"
 	"time"
 )
 
@@ -79,7 +81,10 @@ func (r *TaskRepositoryImpl) Save(ctx context.Context, task *models.Task) error 
 		task.FilePath, task.LineNumber, string(task.Status), string(task.Priority), task.AssignedTo,
 		task.EstimatedEffort, task.VerificationConfidence, task.CreatedAt, task.UpdatedAt, task.Version)
 
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to save task %s: %w", task.ID, err)
+	}
+	return nil
 }
 
 // FindByID retrieves a task by ID
@@ -103,7 +108,7 @@ func (r *TaskRepositoryImpl) FindByID(ctx context.Context, id string) (*models.T
 	)
 
 	if err != nil {
-		return nil, err
+		return nil, utils.HandleNotFoundError(err, "task", id)
 	}
 
 	task.CompletedAt = completedAt
@@ -142,7 +147,7 @@ func (r *TaskRepositoryImpl) FindByProjectID(ctx context.Context, projectID stri
 	row := r.db.QueryRow(ctx, countQuery, args...)
 	var total int
 	if err := row.Scan(&total); err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("failed to count tasks for project %s: %w", projectID, err)
 	}
 
 	// Get paginated results
@@ -158,7 +163,7 @@ func (r *TaskRepositoryImpl) FindByProjectID(ctx context.Context, projectID stri
 
 	rows, err := r.db.Query(ctx, query, args...)
 	if err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("failed to query tasks for project %s: %w", projectID, err)
 	}
 	defer rows.Close()
 
@@ -174,7 +179,7 @@ func (r *TaskRepositoryImpl) FindByProjectID(ctx context.Context, projectID stri
 			&task.CreatedAt, &task.UpdatedAt, &completedAt, &verifiedAt, &archivedAt, &task.Version,
 		)
 		if err != nil {
-			return nil, 0, err
+			return nil, 0, fmt.Errorf("failed to scan task row: %w", err)
 		}
 
 		task.CompletedAt = completedAt
@@ -185,7 +190,7 @@ func (r *TaskRepositoryImpl) FindByProjectID(ctx context.Context, projectID stri
 	}
 
 	if err = rows.Err(); err != nil {
-		return nil, 0, err
+		return nil, 0, fmt.Errorf("failed to iterate tasks for project %s: %w", projectID, err)
 	}
 
 	return tasks, total, nil
@@ -207,12 +212,18 @@ func (r *TaskRepositoryImpl) Update(ctx context.Context, task *models.Task) erro
 		task.ActualEffort, task.VerificationConfidence, task.UpdatedAt, task.CompletedAt,
 		task.VerifiedAt, task.ArchivedAt, task.Version, task.Version-1)
 
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to update task %s: %w", task.ID, err)
+	}
+	return nil
 }
 
 // Delete removes a task from the database
 func (r *TaskRepositoryImpl) Delete(ctx context.Context, id string) error {
 	query := "DELETE FROM tasks WHERE id = $1"
 	_, err := r.db.Exec(ctx, query, id)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to delete task %s: %w", id, err)
+	}
+	return nil
 }

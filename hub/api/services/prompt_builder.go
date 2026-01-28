@@ -27,18 +27,23 @@ func buildDepthAwarePrompt(basePrompt string, depth int, taskType string) string
 func buildBasicPrompt(basePrompt string, taskType string) string {
 	instructions := "Provide a brief, high-level analysis focusing on the most critical issues only."
 
+	taskContext := getBasicContextForTaskType(taskType)
+
 	return fmt.Sprintf(`%s
 
 Analysis Instructions:
 - %s
 - Focus on critical issues only
 - Keep responses concise
-- Limit to top 3-5 findings`, basePrompt, instructions)
+- Limit to top 3-5 findings
+%s`, basePrompt, instructions, taskContext)
 }
 
 // buildDetailedPrompt builds a detailed prompt for depth level 2
 func buildDetailedPrompt(basePrompt string, taskType string) string {
 	instructions := "Provide a thorough analysis covering major issues, patterns, and recommendations."
+
+	taskContext := getDetailedContextForTaskType(taskType)
 
 	return fmt.Sprintf(`%s
 
@@ -47,7 +52,8 @@ Analysis Instructions:
 - Cover major issues and patterns
 - Include specific examples
 - Provide actionable recommendations
-- Consider edge cases`, basePrompt, instructions)
+- Consider edge cases
+%s`, basePrompt, instructions, taskContext)
 }
 
 // buildComprehensivePrompt builds a comprehensive prompt for depth level 3
@@ -68,7 +74,51 @@ Analysis Instructions:
 %s`, basePrompt, instructions, additionalContext)
 }
 
-// getAdditionalContextForTaskType returns additional context based on task type
+// getBasicContextForTaskType returns brief, high-level context for basic depth analysis
+func getBasicContextForTaskType(taskType string) string {
+	switch strings.ToLower(taskType) {
+	case "semantic_analysis":
+		return "- Focus on obvious logic errors and null pointer risks"
+	case "business_logic":
+		return "- Identify critical business rule violations"
+	case "error_handling":
+		return "- Check for missing error handling in critical paths"
+	case "security":
+		return "- Flag obvious security vulnerabilities (injection, auth issues)"
+	case "performance":
+		return "- Identify major performance bottlenecks"
+	case "maintainability":
+		return "- Note significant code duplication or readability issues"
+	case "architecture":
+		return "- Flag major architectural violations"
+	default:
+		return ""
+	}
+}
+
+// getDetailedContextForTaskType returns moderate context for detailed depth analysis
+func getDetailedContextForTaskType(taskType string) string {
+	switch strings.ToLower(taskType) {
+	case "semantic_analysis":
+		return "- Analyze control flow and data flow patterns\n- Check for null pointer exceptions and race conditions"
+	case "business_logic":
+		return "- Verify business rule compliance\n- Check validation logic and error handling for business rules"
+	case "error_handling":
+		return "- Analyze error propagation paths\n- Check error recovery and logging mechanisms"
+	case "security":
+		return "- Check for injection vulnerabilities\n- Verify authentication, authorization, and input validation"
+	case "performance":
+		return "- Identify performance bottlenecks\n- Check for inefficient algorithms and resource usage"
+	case "maintainability":
+		return "- Assess code readability and structure\n- Check for code duplication and documentation quality"
+	case "architecture":
+		return "- Analyze design patterns and structure\n- Check for architectural violations and separation of concerns"
+	default:
+		return "- Consider code quality aspects including maintainability and readability"
+	}
+}
+
+// getAdditionalContextForTaskType returns comprehensive context for deep depth analysis
 func getAdditionalContextForTaskType(taskType string) string {
 	switch strings.ToLower(taskType) {
 	case "semantic_analysis":
@@ -132,7 +182,8 @@ func GeneratePrompt(analysisType string, depth string, fileContent string) strin
 		userPrompt = fmt.Sprintf("Quick analysis: Provide a brief summary of key findings in the following code:\n\n%s", fileContent)
 	case "medium":
 		// For semantic_analysis, business_logic, error_handling, use detailed JSON format
-		if analysisType == "semantic_analysis" {
+		switch analysisType {
+		case "semantic_analysis":
 			userPrompt = fmt.Sprintf(`Analyze the following code with %s depth for semantic issues:
 
 %s
@@ -148,24 +199,25 @@ Provide your analysis in JSON format with the following structure:
     }
   ]
 }`, depth, fileContent)
-		} else if analysisType == "business_logic" {
+		case "business_logic":
 			userPrompt = fmt.Sprintf(`Analyze the following business logic code with %s depth:
 
 %s
 
 Identify any violations of business rules, missing validations, or incorrect logic flows.`, depth, fileContent)
-		} else if analysisType == "error_handling" {
+		case "error_handling":
 			userPrompt = fmt.Sprintf(`Analyze the following code for error handling with %s depth:
 
 %s
 
 Identify missing error handling, improper error propagation, or error handling anti-patterns.`, depth, fileContent)
-		} else {
+		default:
 			userPrompt = fmt.Sprintf("Medium analysis: Analyze the code and provide findings with examples. Focus on the most important issues:\n\n%s", fileContent)
 		}
 	case "deep":
 		// For semantic_analysis, business_logic, error_handling, use detailed format
-		if analysisType == "semantic_analysis" {
+		switch analysisType {
+		case "semantic_analysis":
 			userPrompt = fmt.Sprintf(`Analyze the following code with %s depth for semantic issues:
 
 %s
@@ -181,19 +233,19 @@ Provide your analysis in JSON format with the following structure:
     }
   ]
 }`, depth, fileContent)
-		} else if analysisType == "business_logic" {
+		case "business_logic":
 			userPrompt = fmt.Sprintf(`Analyze the following business logic code with %s depth:
 
 %s
 
 Identify any violations of business rules, missing validations, or incorrect logic flows.`, depth, fileContent)
-		} else if analysisType == "error_handling" {
+		case "error_handling":
 			userPrompt = fmt.Sprintf(`Analyze the following code for error handling with %s depth:
 
 %s
 
 Identify missing error handling, improper error propagation, or error handling anti-patterns.`, depth, fileContent)
-		} else {
+		default:
 			userPrompt = fmt.Sprintf("Deep analysis: Perform comprehensive analysis of the code. Include detailed findings, recommendations, and examples:\n\n%s", fileContent)
 		}
 	default:

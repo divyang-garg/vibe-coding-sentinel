@@ -129,7 +129,7 @@ func TestFilterBaselineParallel(t *testing.T) {
 	t.Run("handles missing baseline file", func(t *testing.T) {
 		// Ensure no baseline file exists
 		os.Remove(".sentinel/baseline.json")
-		
+
 		result := &Result{
 			Findings: []Finding{
 				{File: "test.js", Line: 1, Type: "secrets"},

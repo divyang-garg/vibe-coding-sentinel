@@ -30,13 +30,15 @@ import (
 
 // analyzeWithProgressiveDepth performs analysis with progressive depth levels
 func analyzeWithProgressiveDepth(ctx context.Context, config *LLMConfig, fileContent string, analysisType string, depth string, projectID string, validationID string) (string, error) {
-	// Generate cache key
+	// Generate cache key including projectID and validationID for better cache isolation
 	fileHash := calculateFileHash(fileContent)
-	cacheKey := generateLLMCacheKey(fileHash, analysisType, depth)
+	// Include projectID and validationID in analysis type for project/validation-specific caching
+	analysisTypeWithContext := fmt.Sprintf("%s:%s:%s", analysisType, projectID, validationID)
+	cacheKey := generateLLMCacheKey(fileHash, analysisTypeWithContext, depth)
 
 	// Check cache first
 	if cached, ok := getCachedLLMResponse(cacheKey, config); ok {
-		LogInfo(ctx, "Cache hit for analysis: %s (depth: %s)", analysisType, depth)
+		LogInfo(ctx, "Cache hit for analysis: %s (depth: %s, project: %s, validation: %s)", analysisType, depth, projectID, validationID)
 		return cached, nil
 	}
 
@@ -46,11 +48,13 @@ func analyzeWithProgressiveDepth(ctx context.Context, config *LLMConfig, fileCon
 	// Call LLM
 	response, tokensUsed, err := callLLM(ctx, config, prompt, "progressive_analysis")
 	if err != nil {
+		LogError(ctx, "LLM call failed for project %s, validation %s: %v", projectID, validationID, err)
 		return "", fmt.Errorf("LLM call failed: %w", err)
 	}
 
 	// Cache the response
 	setCachedLLMResponse(cacheKey, response, tokensUsed, config)
+	LogInfo(ctx, "Cached analysis result for project %s, validation %s (analysis: %s, depth: %s)", projectID, validationID, analysisType, depth)
 
 	return response, nil
 }

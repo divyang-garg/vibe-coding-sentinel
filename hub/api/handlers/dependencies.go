@@ -24,6 +24,9 @@ type Dependencies struct {
 	MonitoringService   services.MonitoringService
 	KnowledgeService    services.KnowledgeService
 	TestService         services.TestService
+	FixService          services.FixService
+	LLMService          services.LLMService
+	MetricsService      services.MetricsService
 }
 
 // NewDependencies creates and wires all dependencies
@@ -68,6 +71,9 @@ func NewDependencies(db *sql.DB) *Dependencies {
 	repositoryService := services.NewRepositoryService()
 	knowledgeService := services.NewKnowledgeService(db)
 	testService := services.NewTestService(db)
+	fixService := services.NewFixService()
+	llmService := services.NewLLMService()
+	metricsService := services.NewMetricsService(llmUsageRepo)
 
 	return &Dependencies{
 		DB:                  db,
@@ -82,6 +88,9 @@ func NewDependencies(db *sql.DB) *Dependencies {
 		MonitoringService:   monitoringService,
 		KnowledgeService:    knowledgeService,
 		TestService:         testService,
+		FixService:          fixService,
+		LLMService:          llmService,
+		MetricsService:      metricsService,
 	}
 }
 

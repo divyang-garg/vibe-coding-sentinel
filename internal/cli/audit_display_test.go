@@ -10,7 +10,7 @@ import (
 func TestDisplayResults_DetailedScenarios(t *testing.T) {
 	t.Run("with findings and summary", func(t *testing.T) {
 		result := &scanner.Result{
-			Success:  false,
+			Success: false,
 			Findings: []scanner.Finding{
 				{
 					Type:     "pattern1",
@@ -38,9 +38,9 @@ func TestDisplayResults_DetailedScenarios(t *testing.T) {
 
 	t.Run("empty findings", func(t *testing.T) {
 		result := &scanner.Result{
-			Success:  true,
-			Findings: []scanner.Finding{},
-			Summary:  map[string]int{},
+			Success:   true,
+			Findings:  []scanner.Finding{},
+			Summary:   map[string]int{},
 			Timestamp: "2026-01-20T00:00:00Z",
 		}
 		displayResults(result, false)
@@ -56,7 +56,7 @@ func TestDisplayResults_DetailedScenarios(t *testing.T) {
 				{Type: "test", Severity: scanner.SeverityLow, File: "test.go", Line: 4},
 				{Type: "test", Severity: scanner.SeverityWarning, File: "test.go", Line: 5},
 			},
-			Summary:  map[string]int{"test": 5},
+			Summary:   map[string]int{"test": 5},
 			Timestamp: "2026-01-20T00:00:00Z",
 		}
 		displayResults(result, false)

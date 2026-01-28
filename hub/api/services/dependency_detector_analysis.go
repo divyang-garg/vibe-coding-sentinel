@@ -8,6 +8,8 @@ import (
 	"context"
 	"database/sql"
 	"fmt"
+	"os"
+	"path/filepath"
 	"regexp"
 	"strings"
 
@@ -121,6 +123,14 @@ func detectImplicitDependencies(ctx context.Context, task *Task, codebasePath st
 func detectIntegrationDependencies(ctx context.Context, task *Task, codebasePath string) ([]TaskDependency, error) {
 	var dependencies []TaskDependency
 
+	// Validate codebasePath for security (graceful degradation if invalid)
+	if codebasePath != "" {
+		if err := ValidateDirectory(codebasePath); err != nil {
+			// Log warning but continue with database-only detection
+			LogWarn(ctx, "Invalid codebase path for integration dependency detection: %v", err)
+		}
+	}
+
 	// Check if task mentions integration keywords
 	integrationKeywords := []string{"api", "integration", "service", "external", "third-party", "sdk", "client"}
 	taskText := strings.ToLower(task.Title + " " + task.Description)
@@ -133,8 +143,29 @@ func detectIntegrationDependencies(ctx context.Context, task *Task, codebasePath
 		}
 	}
 
-	if !hasIntegrationKeyword {
-		return dependencies, nil // No integration dependency
+	// If task has FilePath, validate it's within codebase and check for integration patterns
+	hasCodebaseIntegrationEvidence := false
+	if codebasePath != "" && task.FilePath != "" {
+		// Validate path is within codebase (security check)
+		fullPath := filepath.Join(codebasePath, task.FilePath)
+		relPath, err := filepath.Rel(codebasePath, fullPath)
+		if err == nil && !strings.HasPrefix(relPath, "..") {
+			// Path is valid, check if file exists and contains integration patterns
+			if content, err := os.ReadFile(fullPath); err == nil {
+				contentStr := strings.ToLower(string(content))
+				for _, keyword := range integrationKeywords {
+					if strings.Contains(contentStr, keyword) {
+						hasCodebaseIntegrationEvidence = true
+						break
+					}
+				}
+			}
+		}
+	}
+
+	// If no keyword match and no codebase evidence, return early
+	if !hasIntegrationKeyword && !hasCodebaseIntegrationEvidence {
+		return dependencies, nil
 	}
 
 	// Query comprehensive analysis for integration-related features
@@ -169,6 +200,15 @@ func detectIntegrationDependencies(ctx context.Context, task *Task, codebasePath
 		featureKeywords := extractKeywords(feature)
 		overlap := calculateKeywordOverlap(keywords, featureKeywords)
 
+		// Boost confidence if codebase evidence exists
+		if hasCodebaseIntegrationEvidence {
+			// Increase confidence by 20%, cap at 1.0
+			overlap = overlap * 1.2
+			if overlap > 1.0 {
+				overlap = 1.0
+			}
+		}
+
 		if overlap > 0.3 {
 			// Find tasks linked to this comprehensive analysis
 			linkQuery := `
@@ -201,6 +241,14 @@ func detectIntegrationDependencies(ctx context.Context, task *Task, codebasePath
 // detectFeatureDependencies detects feature-level dependencies
 func detectFeatureDependencies(ctx context.Context, task *Task, codebasePath string) ([]TaskDependency, error) {
 	var dependencies []TaskDependency
+
+	// Validate codebasePath for security (graceful degradation if invalid)
+	if codebasePath != "" {
+		if err := ValidateDirectory(codebasePath); err != nil {
+			// Log warning but continue with database-only detection
+			LogWarn(ctx, "Invalid codebase path for feature dependency detection: %v", err)
+		}
+	}
 
 	// Query comprehensive analysis for feature dependencies
 	query := `
@@ -237,10 +285,43 @@ func detectFeatureDependencies(ctx context.Context, task *Task, codebasePath str
 	// Extract keywords from task
 	keywords := extractKeywords(task.Title + " " + task.Description)
 
+	// If task has FilePath, validate and check for feature patterns in codebase
+	hasCodebaseFeatureEvidence := false
+	var codebaseFeatureKeywords []string
+	if codebasePath != "" && task.FilePath != "" {
+		// Validate path is within codebase (security check)
+		fullPath := filepath.Join(codebasePath, task.FilePath)
+		relPath, err := filepath.Rel(codebasePath, fullPath)
+		if err == nil && !strings.HasPrefix(relPath, "..") {
+			// Path is valid, check if file exists
+			if content, err := os.ReadFile(fullPath); err == nil {
+				// Extract feature-related keywords from code
+				codebaseFeatureKeywords = extractKeywords(string(content))
+				hasCodebaseFeatureEvidence = len(codebaseFeatureKeywords) > 0
+			}
+		}
+	}
+
 	// Find matching features
 	for _, feature := range features {
 		featureKeywords := extractKeywords(feature.Feature + " " + feature.Checklist)
-		overlap := calculateKeywordOverlap(keywords, featureKeywords)
+
+		// Combine task keywords with codebase keywords if available
+		allKeywords := keywords
+		if hasCodebaseFeatureEvidence {
+			allKeywords = append(allKeywords, codebaseFeatureKeywords...)
+		}
+
+		overlap := calculateKeywordOverlap(allKeywords, featureKeywords)
+
+		// Boost confidence if codebase evidence found
+		if hasCodebaseFeatureEvidence {
+			// Increase confidence by 15%, cap at 1.0
+			overlap = overlap * 1.15
+			if overlap > 1.0 {
+				overlap = 1.0
+			}
+		}
 
 		if overlap > 0.3 {
 			// Find tasks linked to this comprehensive analysis

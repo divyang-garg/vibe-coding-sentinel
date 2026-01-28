@@ -65,6 +65,7 @@ func (p *responseParser) Parse(response string) (*ExtractResult, error) {
 
 func (p *responseParser) cleanResponse(response string) string {
 	// Remove markdown code fences
+	// Note: Cannot use raw string here because pattern contains backticks
 	re := regexp.MustCompile("```(?:json)?\\s*")
 	cleaned := re.ReplaceAllString(response, "")
 	cleaned = strings.ReplaceAll(cleaned, "```", "")
@@ -76,7 +77,7 @@ func (p *responseParser) repairJSON(response string) string {
 	repaired := response
 
 	// Fix trailing commas before closing brackets
-	re := regexp.MustCompile(",\\s*([\\]\\}])")
+	re := regexp.MustCompile(`,\s*([\]\}])`)
 	repaired = re.ReplaceAllString(repaired, "$1")
 
 	return repaired

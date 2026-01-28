@@ -64,8 +64,8 @@ type Project struct {
 	ID           string    `json:"id"`
 	OrgID        string    `json:"org_id"`
 	Name         string    `json:"name"`
-	APIKey       string    `json:"api_key,omitempty"`       // Deprecated: Use APIKeyHash. Kept for backward compatibility during migration
-	APIKeyHash   string    `json:"api_key_hash,omitempty"`  // SHA-256 hash of API key
+	APIKey       string    `json:"api_key,omitempty"`        // Deprecated: Use APIKeyHash. Kept for backward compatibility during migration
+	APIKeyHash   string    `json:"api_key_hash,omitempty"`   // SHA-256 hash of API key
 	APIKeyPrefix string    `json:"api_key_prefix,omitempty"` // First 8 characters for identification
 	CreatedAt    time.Time `json:"created_at"`
 }

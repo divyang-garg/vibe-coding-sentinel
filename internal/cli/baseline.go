@@ -41,7 +41,7 @@ func showBaseline() error {
 			fmt.Println("\nUse 'sentinel baseline add' to accept findings.")
 			return nil
 		}
-		return fmt.Errorf("failed to load baseline: %w", err)
+		return fmt.Errorf("unable to load baseline: %w", err)
 	}
 
 	if len(baseline.Entries) == 0 {
@@ -87,7 +87,7 @@ func addToBaseline(args []string) error {
 	// Load existing baseline
 	baseline, err := loadBaseline()
 	if err != nil && !os.IsNotExist(err) {
-		return fmt.Errorf("failed to load baseline: %w", err)
+		return fmt.Errorf("unable to load baseline: %w", err)
 	}
 
 	// Get current user (simplified - in production would use git config)
@@ -112,7 +112,7 @@ func addToBaseline(args []string) error {
 
 	// Save baseline
 	if err := saveBaseline(baseline); err != nil {
-		return fmt.Errorf("failed to save baseline: %w", err)
+		return fmt.Errorf("unable to save baseline: %w", err)
 	}
 
 	fmt.Printf("✅ Added to baseline: %s:%d\n", file, line)
@@ -138,7 +138,7 @@ func removeFromBaseline(args []string) error {
 	// Load existing baseline
 	baseline, err := loadBaseline()
 	if err != nil {
-		return fmt.Errorf("failed to load baseline: %w", err)
+		return fmt.Errorf("unable to load baseline: %w", err)
 	}
 
 	if index < 1 || index > len(baseline.Entries) {
@@ -151,7 +151,7 @@ func removeFromBaseline(args []string) error {
 
 	// Save baseline
 	if err := saveBaseline(baseline); err != nil {
-		return fmt.Errorf("failed to save baseline: %w", err)
+		return fmt.Errorf("unable to save baseline: %w", err)
 	}
 
 	fmt.Printf("✅ Removed from baseline: %s:%d\n", removed.File, removed.Line)
@@ -171,7 +171,7 @@ func clearBaseline() error {
 
 	// Remove baseline file
 	if err := os.Remove(baselinePath); err != nil {
-		return fmt.Errorf("failed to remove baseline: %w", err)
+		return fmt.Errorf("unable to remove baseline: %w", err)
 	}
 
 	fmt.Println("✅ Baseline cleared")

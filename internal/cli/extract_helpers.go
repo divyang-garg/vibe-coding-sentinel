@@ -74,7 +74,7 @@ func newLLMClientAdapter() (*llmClientAdapter, error) {
 
 	apiKey := os.Getenv("LLM_API_KEY")
 	if apiKey == "" {
-		return nil, fmt.Errorf("LLM_API_KEY environment variable is required")
+		return nil, fmt.Errorf("LLM API key is required. Please set the LLM_API_KEY environment variable")
 	}
 
 	model := os.Getenv("LLM_MODEL")
@@ -109,5 +109,5 @@ func (a *llmClientAdapter) Call(ctx context.Context, prompt string, taskType str
 type noOpLLMClient struct{}
 
 func (a *noOpLLMClient) Call(ctx context.Context, prompt string, taskType string) (string, int, error) {
-	return "", 0, fmt.Errorf("LLM client is disabled")
+	return "", 0, fmt.Errorf("AI service is currently disabled")
 }

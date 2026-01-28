@@ -1,3 +1,5 @@
+//go:build !js && !wasm
+
 // Package ast provides dependency graph for cross-file analysis
 // Complies with CODING_STANDARDS.md: Utility modules max 250 lines
 package ast

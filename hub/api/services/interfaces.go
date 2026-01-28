@@ -144,6 +144,22 @@ type TestService interface {
 	GetTestExecutionStatus(ctx context.Context, executionID string) (*TestExecution, error)
 }
 
+// FixService defines the interface for code fix operations
+type FixService interface {
+	ApplyFix(ctx context.Context, req models.ApplyFixRequest) (*models.ApplyFixResponse, error)
+}
+
+// LLMService defines the interface for LLM configuration operations
+type LLMService interface {
+	ValidateConfig(ctx context.Context, config models.LLMConfig) (*models.ValidateLLMConfigResponse, error)
+}
+
+// MetricsService defines the interface for metrics operations
+type MetricsService interface {
+	GetCacheMetrics(ctx context.Context, projectID string) (*models.CacheMetricsResponse, error)
+	GetCostMetrics(ctx context.Context, projectID string) (*models.CostMetricsResponse, error)
+}
+
 // Utility functions
 func generateID() string {
 	return time.Now().Format("20060102150405") + "_id"

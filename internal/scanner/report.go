@@ -30,7 +30,7 @@ func FormatHTML(result *Result) string {
 	sb.WriteString("<div class=\"header\">\n")
 	sb.WriteString("<h1>Sentinel Security Audit Report</h1>\n")
 	sb.WriteString(fmt.Sprintf("<p><strong>Timestamp:</strong> %s</p>\n", html.EscapeString(result.Timestamp)))
-	sb.WriteString(fmt.Sprintf("<p><strong>Status:</strong> "))
+	sb.WriteString("<p><strong>Status:</strong> ")
 	if result.Success {
 		sb.WriteString("<span style=\"color: green;\">✅ PASSED</span>")
 	} else {
@@ -82,7 +82,7 @@ func FormatMarkdown(result *Result) string {
 
 	sb.WriteString("# Sentinel Security Audit Report\n\n")
 	sb.WriteString(fmt.Sprintf("**Timestamp:** %s\n\n", result.Timestamp))
-	sb.WriteString(fmt.Sprintf("**Status:** "))
+	sb.WriteString("**Status:** ")
 	if result.Success {
 		sb.WriteString("✅ PASSED\n\n")
 	} else {
@@ -138,7 +138,7 @@ func FormatText(result *Result) string {
 	sb.WriteString("Sentinel Security Audit Report\n")
 	sb.WriteString(strings.Repeat("=", 50) + "\n")
 	sb.WriteString(fmt.Sprintf("Timestamp: %s\n", result.Timestamp))
-	sb.WriteString(fmt.Sprintf("Status: "))
+	sb.WriteString("Status: ")
 	if result.Success {
 		sb.WriteString("✅ PASSED\n")
 	} else {

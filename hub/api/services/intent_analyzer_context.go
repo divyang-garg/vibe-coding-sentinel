@@ -158,11 +158,20 @@ func getGitStatus(ctx context.Context, codebasePath string) (map[string]string, 
 
 // getProjectStructure gets project structure information
 func getProjectStructure(ctx context.Context, codebasePath string) (map[string]interface{}, error) {
+	// Check context cancellation before starting
+	if ctx.Err() != nil {
+		return nil, ctx.Err()
+	}
+
 	structure := make(map[string]interface{})
 	dirs := []string{"src", "lib", "app", "components", "packages", "server", "client", "api", "routes"}
 
 	foundDirs := []string{}
 	for _, dir := range dirs {
+		// Check context cancellation during directory checks
+		if ctx.Err() != nil {
+			return nil, ctx.Err()
+		}
 		path := filepath.Join(codebasePath, dir)
 		if _, err := os.Stat(path); err == nil {
 			foundDirs = append(foundDirs, dir)
@@ -173,6 +182,10 @@ func getProjectStructure(ctx context.Context, codebasePath string) (map[string]i
 	// Get file extensions
 	extensions := make(map[string]int)
 	err := filepath.Walk(codebasePath, func(path string, info os.FileInfo, err error) error {
+		// Check context cancellation during file walk
+		if ctx.Err() != nil {
+			return ctx.Err()
+		}
 		if err != nil || info.IsDir() {
 			return nil
 		}
@@ -184,6 +197,9 @@ func getProjectStructure(ctx context.Context, codebasePath string) (map[string]i
 	})
 	if err == nil {
 		structure["file_extensions"] = extensions
+	} else if ctx.Err() != nil {
+		// If error is due to context cancellation, return context error
+		return nil, ctx.Err()
 	}
 
 	return structure, nil

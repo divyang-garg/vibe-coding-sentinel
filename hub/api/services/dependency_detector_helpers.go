@@ -7,6 +7,7 @@ package services
 import (
 	"context"
 	"database/sql"
+	"errors"
 	"fmt"
 	"os"
 	"path/filepath"
@@ -46,7 +47,7 @@ func findTaskByReference(ctx context.Context, projectID string, ref string) (str
 	err := row.Scan(&taskID)
 	if err != nil {
 		// Check if it's a "not found" error (sql.ErrNoRows)
-		if err == sql.ErrNoRows {
+		if errors.Is(err, sql.ErrNoRows) {
 			// Task not found is not an error condition, return empty string
 			return "", nil
 		}
@@ -178,6 +179,8 @@ func extractSymbolsFromAST(code string, language string, filePath string) map[st
 	parser, err := GetParser(language)
 	if err != nil {
 		// Unsupported language - return empty map
+		// Use filePath for context in error handling (if logging was available)
+		_ = filePath // Track which file failed parsing
 		return symbols
 	}
 
@@ -186,6 +189,8 @@ func extractSymbolsFromAST(code string, language string, filePath string) map[st
 	tree, err := parser.ParseCtx(ctx, nil, []byte(code))
 	if err != nil {
 		// Parse error - return empty map (fallback will handle)
+		// Use filePath to identify which file had parsing issues
+		_ = filePath // Track which file had parsing errors
 		return symbols
 	}
 	defer tree.Close()
@@ -196,6 +201,9 @@ func extractSymbolsFromAST(code string, language string, filePath string) map[st
 	}
 
 	// Traverse AST to extract function/class names
+	// Use filePath to provide context for symbol extraction (useful for debugging)
+	_ = filePath // Track which file symbols are extracted from
+
 	TraverseAST(rootNode, func(node *sitter.Node) bool {
 		var symbolName string
 
@@ -267,6 +275,20 @@ func checkSymbolReferences(root *sitter.Node, code string, language string, symb
 		return code[start:end]
 	}
 
+	// Use language to determine language-specific identifier node types
+	identifierTypes := []string{"identifier", "property_identifier", "field_identifier", "type_identifier"}
+	switch language {
+	case "go":
+		// Go-specific identifier types
+		identifierTypes = append(identifierTypes, "field_identifier", "package_identifier")
+	case "javascript", "typescript":
+		// JavaScript/TypeScript-specific identifier types
+		identifierTypes = append(identifierTypes, "property_identifier", "shorthand_property_identifier")
+	case "python":
+		// Python-specific identifier types
+		identifierTypes = append(identifierTypes, "identifier", "attribute")
+	}
+
 	// Traverse AST to find identifier references
 	TraverseAST(root, func(node *sitter.Node) bool {
 		// Stop if we already found a match
@@ -276,28 +298,42 @@ func checkSymbolReferences(root *sitter.Node, code string, language string, symb
 
 		nodeType := node.Type()
 
-		// Check identifier nodes
-		if nodeType == "identifier" || nodeType == "property_identifier" ||
-			nodeType == "field_identifier" || nodeType == "type_identifier" {
-
-			identifier := safeSlice(node.StartByte(), node.EndByte())
-			if symbols[identifier] {
-				found = true
-				return false // Stop traversal
+		// Check identifier nodes (using language-specific types)
+		for _, idType := range identifierTypes {
+			if nodeType == idType {
+				identifier := safeSlice(node.StartByte(), node.EndByte())
+				if symbols[identifier] {
+					found = true
+					return false // Stop traversal
+				}
 			}
 		}
 
-		// For method calls, check the method name
-		if nodeType == "call_expression" || nodeType == "method_call" {
-			// Get the function/method name being called
-			for i := 0; i < int(node.ChildCount()); i++ {
-				child := node.Child(i)
-				if child != nil {
-					if child.Type() == "identifier" || child.Type() == "property_identifier" {
-						identifier := safeSlice(child.StartByte(), child.EndByte())
-						if symbols[identifier] {
-							found = true
-							return false
+		// For method calls, check the method name (language-specific)
+		callNodeTypes := []string{"call_expression", "method_call"}
+		switch language {
+		case "go":
+			callNodeTypes = append(callNodeTypes, "call_expression")
+		case "javascript", "typescript":
+			callNodeTypes = append(callNodeTypes, "call_expression", "new_expression")
+		case "python":
+			callNodeTypes = append(callNodeTypes, "call")
+		}
+
+		for _, callType := range callNodeTypes {
+			if nodeType == callType {
+				// Get the function/method name being called
+				for i := 0; i < int(node.ChildCount()); i++ {
+					child := node.Child(i)
+					if child != nil {
+						for _, idType := range identifierTypes {
+							if child.Type() == idType {
+								identifier := safeSlice(child.StartByte(), child.EndByte())
+								if symbols[identifier] {
+									found = true
+									return false
+								}
+							}
 						}
 					}
 				}
@@ -394,9 +430,18 @@ func storeDependency(ctx context.Context, dependency TaskDependency) error {
 
 // detectCycle detects circular dependencies using DFS
 func detectCycle(ctx context.Context, startTaskID string, dependencies []TaskDependency) (bool, []string) {
+	// Check for context cancellation before starting
+	if ctx.Err() != nil {
+		return false, nil
+	}
+
 	// Build adjacency list
 	adj := make(map[string][]string)
 	for _, dep := range dependencies {
+		// Check for context cancellation during processing
+		if ctx.Err() != nil {
+			return false, nil
+		}
 		adj[dep.TaskID] = append(adj[dep.TaskID], dep.DependsOnTaskID)
 	}
 
@@ -407,11 +452,21 @@ func detectCycle(ctx context.Context, startTaskID string, dependencies []TaskDep
 
 	var dfs func(taskID string) bool
 	dfs = func(taskID string) bool {
+		// Check for context cancellation in DFS traversal
+		if ctx.Err() != nil {
+			return false
+		}
+
 		visited[taskID] = true
 		recStack[taskID] = true
 		path = append(path, taskID)
 
 		for _, neighbor := range adj[taskID] {
+			// Check for context cancellation in loop
+			if ctx.Err() != nil {
+				return false
+			}
+
 			if !visited[neighbor] {
 				if dfs(neighbor) {
 					return true

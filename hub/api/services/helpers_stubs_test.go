@@ -12,22 +12,22 @@ import (
 
 func TestVerifyTask_EmptyInputs(t *testing.T) {
 	testCases := []struct {
-		name        string
-		taskID      string
+		name         string
+		taskID       string
 		codebasePath string
-		wantError   bool
+		wantError    bool
 	}{
 		{
-			name:        "empty task ID",
-			taskID:      "",
+			name:         "empty task ID",
+			taskID:       "",
 			codebasePath: "/tmp/test",
-			wantError:   true,
+			wantError:    true,
 		},
 		{
-			name:        "empty codebase path",
-			taskID:      "task-123",
+			name:         "empty codebase path",
+			taskID:       "task-123",
 			codebasePath: "",
-			wantError:   true,
+			wantError:    true,
 		},
 	}
 

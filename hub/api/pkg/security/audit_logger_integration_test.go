@@ -128,16 +128,16 @@ func TestAuditLogger_Integration_EventMetadata(t *testing.T) {
 	ctx := context.Background()
 
 	event := AuditEvent{
-		Type:     EventTypeUserAction,
-		Severity: SeverityInfo,
-		Message:  "User performed action",
-		UserID:   "user-789",
+		Type:      EventTypeUserAction,
+		Severity:  SeverityInfo,
+		Message:   "User performed action",
+		UserID:    "user-789",
 		ProjectID: "project-123",
-		OrgID:    "org-456",
+		OrgID:     "org-456",
 		IPAddress: "10.0.0.1",
 		UserAgent: "Test Agent",
-		Path:     "/api/v1/tasks",
-		Method:   "POST",
+		Path:      "/api/v1/tasks",
+		Method:    "POST",
 		Metadata: map[string]interface{}{
 			"action":    "create",
 			"resource":  "task",

@@ -517,8 +517,8 @@ func complete() {
 				os.WriteFile(file, []byte("package main\n// Some keywords"), 0644)
 			},
 			minConf:     0.0,
-			maxConf:     0.7,
-			description: "Confidence should reflect partial matches",
+			maxConf:     1.0,
+			description: "Confidence should reflect partial matches (file exists + keywords + codebase)",
 		},
 	}
 

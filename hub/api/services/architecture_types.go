@@ -12,7 +12,8 @@ type FileContent struct {
 
 // ArchitectureAnalysisRequest represents a request for architecture analysis
 type ArchitectureAnalysisRequest struct {
-	Files []FileContent `json:"files"`
+	Files        []FileContent `json:"files"`
+	CodebasePath string        `json:"codebase_path,omitempty"` // optional, for import resolution
 }
 
 // ArchitectureAnalysisResponse represents the response from architecture analysis

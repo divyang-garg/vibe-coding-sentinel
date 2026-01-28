@@ -43,8 +43,8 @@ func NewMemoryCache(maxSize int, ttl time.Duration) Cache {
 }
 
 func (c *MemoryCache) Get(key string) (string, bool) {
-	c.mu.RLock()
-	defer c.mu.RUnlock()
+	c.mu.Lock()
+	defer c.mu.Unlock()
 
 	entry, ok := c.entries[key]
 	if !ok {

@@ -34,7 +34,7 @@ func TestRunStatus_AllPaths(t *testing.T) {
 		os.MkdirAll(".git", 0755)
 		// Initialize git if available
 		exec.Command("git", "init").Run()
-		
+
 		err := runStatus([]string{})
 		if err != nil {
 			t.Errorf("runStatus() error = %v", err)
@@ -46,7 +46,7 @@ func TestRunStatus_AllPaths(t *testing.T) {
 		exec.Command("git", "init").Run()
 		os.WriteFile("modified.go", []byte("package main"), 0644)
 		exec.Command("git", "add", "modified.go").Run()
-		
+
 		err := runStatus([]string{})
 		if err != nil {
 			t.Errorf("runStatus() error = %v", err)
@@ -57,7 +57,7 @@ func TestRunStatus_AllPaths(t *testing.T) {
 		os.MkdirAll("tests", 0755)
 		os.WriteFile("tests/test.go", []byte("package main"), 0644)
 		os.WriteFile("main_test.go", []byte("package main"), 0644)
-		
+
 		err := runStatus([]string{})
 		if err != nil {
 			t.Errorf("runStatus() error = %v", err)
@@ -67,7 +67,7 @@ func TestRunStatus_AllPaths(t *testing.T) {
 	t.Run("with patterns.json", func(t *testing.T) {
 		os.MkdirAll(".sentinel", 0755)
 		os.WriteFile(".sentinel/patterns.json", []byte("{}"), 0644)
-		
+
 		err := runStatus([]string{})
 		if err != nil {
 			t.Errorf("runStatus() error = %v", err)
@@ -76,7 +76,7 @@ func TestRunStatus_AllPaths(t *testing.T) {
 
 	t.Run("with cursor rules", func(t *testing.T) {
 		os.MkdirAll(".cursor/rules", 0755)
-		
+
 		err := runStatus([]string{})
 		if err != nil {
 			t.Errorf("runStatus() error = %v", err)
@@ -96,7 +96,7 @@ func TestRunStatus_AllPaths(t *testing.T) {
 		os.WriteFile("spec_file.js", []byte("test"), 0644)
 		os.MkdirAll("testdir", 0755)
 		os.WriteFile("testdir/test.go", []byte("package main"), 0644)
-		
+
 		err := runStatus([]string{})
 		if err != nil {
 			t.Errorf("runStatus() error = %v", err)
@@ -123,7 +123,7 @@ func TestRunStatus_WalkError(t *testing.T) {
 	t.Run("filepath walk with error", func(t *testing.T) {
 		// Create a directory structure
 		os.MkdirAll("testdir", 0755)
-		
+
 		err := runStatus([]string{})
 		// Should handle walk errors gracefully
 		if err != nil {

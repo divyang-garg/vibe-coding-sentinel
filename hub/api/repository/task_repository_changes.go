@@ -4,6 +4,7 @@ package repository
 
 import (
 	"context"
+	"fmt"
 	"sentinel-hub-api/models"
 )
 
@@ -16,7 +17,10 @@ func (r *TaskRepositoryImpl) SaveChange(ctx context.Context, change *models.Task
 	_, err := r.db.Exec(ctx, query,
 		change.ID, change.TaskID, change.ChangeType, change.OldValues, change.NewValues,
 		change.ChangedBy, change.ChangedAt, change.Justification)
-	return err
+	if err != nil {
+		return fmt.Errorf("failed to save change %s for task %s: %w", change.ID, change.TaskID, err)
+	}
+	return nil
 }
 
 // FindChanges retrieves change history for a task
@@ -24,7 +28,7 @@ func (r *TaskRepositoryImpl) FindChanges(ctx context.Context, taskID string) ([]
 	query := "SELECT id, task_id, change_type, old_values, new_values, changed_by, changed_at, justification FROM task_changes WHERE task_id = $1 ORDER BY changed_at DESC"
 	rows, err := r.db.Query(ctx, query, taskID)
 	if err != nil {
-		return nil, err
+		return nil, fmt.Errorf("failed to query changes for task %s: %w", taskID, err)
 	}
 	defer rows.Close()
 
@@ -33,7 +37,7 @@ func (r *TaskRepositoryImpl) FindChanges(ctx context.Context, taskID string) ([]
 		var c models.TaskChange
 		err := rows.Scan(&c.ID, &c.TaskID, &c.ChangeType, &c.OldValues, &c.NewValues, &c.ChangedBy, &c.ChangedAt, &c.Justification)
 		if err != nil {
-			return nil, err
+			return nil, fmt.Errorf("failed to scan change row: %w", err)
 		}
 		changes = append(changes, c)
 	}

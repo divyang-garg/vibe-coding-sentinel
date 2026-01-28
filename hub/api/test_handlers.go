@@ -10,30 +10,50 @@ import (
 	"net/http"
 )
 
-// Handler stubs for testing - these would be actual handlers in production
-func validateCodeHandler(w http.ResponseWriter, r *http.Request) {
+// Handler functions for testing - these delegate to actual handlers in handlers package
+// NOTE: These handlers are now fully implemented in the handlers package:
+// - validateCodeHandler -> handlers.CodeAnalysisHandler.ValidateCode (already implemented)
+// - applyFixHandler -> handlers.FixHandler.ApplyFix (implemented in handlers/fix_handler.go)
+// - validateLLMConfigHandler -> handlers.LLMHandler.ValidateLLMConfig (implemented in handlers/llm_handler.go)
+// - getCacheMetricsHandler -> handlers.MetricsHandler.GetCacheMetrics (implemented in handlers/metrics_handler.go)
+// - getCostMetricsHandler -> handlers.MetricsHandler.GetCostMetrics (implemented in handlers/metrics_handler.go)
+//
+// For integration tests, use the actual handlers from the handlers package via TestHandlerCaller methods.
+
+func validateCodeHandler(w http.ResponseWriter, _ *http.Request) {
+	// This is a test helper - in production, use handlers.CodeAnalysisHandler.ValidateCode
+	// This stub is kept for backward compatibility with existing tests
+	// Request parameter unused - required for http.HandlerFunc interface compliance
 	w.WriteHeader(http.StatusNotImplemented)
-	w.Write([]byte(`{"error":"validateCodeHandler stub"}`))
+	w.Write([]byte(`{"error":"Use handlers.CodeAnalysisHandler.ValidateCode instead"}`))
 }
 
-func applyFixHandler(w http.ResponseWriter, r *http.Request) {
+func applyFixHandler(w http.ResponseWriter, _ *http.Request) {
+	// This is a test helper - in production, use handlers.FixHandler.ApplyFix
+	// Request parameter unused - required for http.HandlerFunc interface compliance
 	w.WriteHeader(http.StatusNotImplemented)
-	w.Write([]byte(`{"error":"applyFixHandler stub"}`))
+	w.Write([]byte(`{"error":"Use handlers.FixHandler.ApplyFix instead"}`))
 }
 
-func validateLLMConfigHandler(w http.ResponseWriter, r *http.Request) {
+func validateLLMConfigHandler(w http.ResponseWriter, _ *http.Request) {
+	// This is a test helper - in production, use handlers.LLMHandler.ValidateLLMConfig
+	// Request parameter unused - required for http.HandlerFunc interface compliance
 	w.WriteHeader(http.StatusNotImplemented)
-	w.Write([]byte(`{"error":"validateLLMConfigHandler stub"}`))
+	w.Write([]byte(`{"error":"Use handlers.LLMHandler.ValidateLLMConfig instead"}`))
 }
 
-func getCacheMetricsHandler(w http.ResponseWriter, r *http.Request) {
+func getCacheMetricsHandler(w http.ResponseWriter, _ *http.Request) {
+	// This is a test helper - in production, use handlers.MetricsHandler.GetCacheMetrics
+	// Request parameter unused - required for http.HandlerFunc interface compliance
 	w.WriteHeader(http.StatusNotImplemented)
-	w.Write([]byte(`{"error":"getCacheMetricsHandler stub"}`))
+	w.Write([]byte(`{"error":"Use handlers.MetricsHandler.GetCacheMetrics instead"}`))
 }
 
-func getCostMetricsHandler(w http.ResponseWriter, r *http.Request) {
+func getCostMetricsHandler(w http.ResponseWriter, _ *http.Request) {
+	// This is a test helper - in production, use handlers.MetricsHandler.GetCostMetrics
+	// Request parameter unused - required for http.HandlerFunc interface compliance
 	w.WriteHeader(http.StatusNotImplemented)
-	w.Write([]byte(`{"error":"getCostMetricsHandler stub"}`))
+	w.Write([]byte(`{"error":"Use handlers.MetricsHandler.GetCostMetrics instead"}`))
 }
 
 // TestHandlerCaller provides a way to call handlers from tests
